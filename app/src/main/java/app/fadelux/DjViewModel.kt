@@ -320,7 +320,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         val id = (1..12).map { "abcdefghijkmnpqrstuvwxyz23456789".random() }.joinToString("")
         viewModelScope.launch {
             try {
-                withContext(Dispatchers.IO) { firestore.createEvent(id, name, songList()) }
+                withContext(Dispatchers.IO) { firestore.createEvent(id, name.take(80), songList()) }
                 settings.eventId = id
                 wishUrl = BackendConfig.guestUrlBase + "?e=" + id
                 qrBitmap = makeQrBitmap(wishUrl)

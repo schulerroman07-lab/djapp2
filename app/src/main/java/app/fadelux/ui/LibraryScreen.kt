@@ -82,7 +82,7 @@ fun LibraryScreen(vm: DjViewModel, onClose: () -> Unit) {
                 return@OverlayScaffold
             }
             LazyColumn(Modifier.fillMaxSize()) {
-                items(filtered, key = { it.id }) { t -> TrackRow(vm, t, false, onClose) }
+                items(filtered, key = { it.id }) { t -> LibraryRow(vm, t, false, onClose) }
             }
         } else {
             val suggestions = remember(tracks, vm.wishes.size, vm.decks[0].track, vm.decks[1].track, vm.mixer.crossfader > 0) { vm.suggestions() }
@@ -94,15 +94,26 @@ fun LibraryScreen(vm: DjViewModel, onClose: () -> Unit) {
                 return@OverlayScaffold
             }
             LazyColumn(Modifier.fillMaxSize()) {
-                items(suggestions, key = { it.track.id }) { s -> TrackRow(vm, s.track, s.isWish, onClose) }
+                items(suggestions, key = { it.track.id }) { s -> LibraryRow(vm, s.track, s.isWish, onClose) }
             }
         }
     }
 }
 
+/** Verbindet eine Zeile mit der App-Logik. */
+@Composable
+private fun LibraryRow(vm: DjViewModel, t: Track, isWish: Boolean, onLoaded: () -> Unit) {
+    TrackRow(
+        t, isWish,
+        onA = { vm.loadTrack(0, t); onLoaded() },
+        onB = { vm.loadTrack(1, t); onLoaded() },
+        onQueue = { vm.autoMix.add(t); vm.message = UiText(R.string.msg_queued, t.title) },
+    )
+}
+
 /** Eine Zeile: Cover, Titel, Interpret, Länge, BPM, Energie, Knöpfe A / B / Warteschlange. */
 @Composable
-fun TrackRow(vm: DjViewModel, t: Track, isWish: Boolean, onLoaded: () -> Unit) {
+fun TrackRow(t: Track, isWish: Boolean, onA: () -> Unit, onB: () -> Unit, onQueue: () -> Unit) {
     val accent = LocalAccent.current
     Row(
         Modifier.fillMaxWidth().padding(vertical = 3.dp).glass(corner = 12.dp, glowColor = if (isWish) AppColors.Amber else null).padding(6.dp),
@@ -124,12 +135,9 @@ fun TrackRow(vm: DjViewModel, t: Track, isWish: Boolean, onLoaded: () -> Unit) {
             style = AppType.bodyBold, color = accent, modifier = Modifier.width(52.dp),
         )
         EnergyBar(t.energy, Modifier.width(36.dp).height(10.dp))
-        NeonButton(Modifier.size(width = 52.dp, height = 42.dp), text = "A", fontSize = 17) { vm.loadTrack(0, t); onLoaded() }
-        NeonButton(Modifier.size(width = 52.dp, height = 42.dp), text = "B", color = AppColors.Cyan, fontSize = 17) { vm.loadTrack(1, t); onLoaded() }
-        NeonButton(Modifier.size(width = 52.dp, height = 42.dp), icon = AppIcons.Queue, color = AppColors.Violet, iconSize = 20.dp) {
-            vm.autoMix.add(t)
-            vm.message = UiText(R.string.msg_queued, t.title)
-        }
+        NeonButton(Modifier.size(width = 52.dp, height = 42.dp), text = "A", fontSize = 17) { onA() }
+        NeonButton(Modifier.size(width = 52.dp, height = 42.dp), text = "B", color = AppColors.Cyan, fontSize = 17) { onB() }
+        NeonButton(Modifier.size(width = 52.dp, height = 42.dp), icon = AppIcons.Queue, color = AppColors.Violet, iconSize = 20.dp) { onQueue() }
     }
 }
 

@@ -133,8 +133,10 @@ const res=await fetch('/wish',{method:'POST',headers:{'Content-Type':'applicatio
     companion object {
         /** Eigene IP-Adresse im WLAN/Hotspot finden (bevorzugt 192.168.x.x). */
         fun localIp(): String? = try {
+            // Nur WLAN/Hotspot/LAN – nicht die mobilen Daten (rmnet, ccmni …)
+            val lan = listOf("wlan", "swlan", "ap", "eth", "softap", "p2p")
             NetworkInterface.getNetworkInterfaces().toList()
-                .filter { it.isUp && !it.isLoopback }
+                .filter { it.isUp && !it.isLoopback && lan.any { p -> it.name.startsWith(p) } }
                 .flatMap { it.inetAddresses.toList() }
                 .filterIsInstance<Inet4Address>()
                 .map { it.hostAddress ?: "" }

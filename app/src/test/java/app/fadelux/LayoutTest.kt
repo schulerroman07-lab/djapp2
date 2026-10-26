@@ -18,6 +18,7 @@ import app.fadelux.ui.DeckPanel
 import app.fadelux.ui.MixerPanel
 import app.fadelux.ui.OnboardingScreen
 import app.fadelux.ui.TopBar
+import app.fadelux.ui.TrackRow
 import app.fadelux.ui.components.AppBackground
 import app.fadelux.ui.theme.AppColors
 import app.fadelux.ui.theme.AppTheme
@@ -77,6 +78,24 @@ class LayoutTest {
                             MixerPanel(decks, mixer, colors, Modifier.width(204.dp).fillMaxHeight())
                             DeckPanel(decks[1], colors[1], Modifier.weight(1f).fillMaxHeight())
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun library() {
+        paparazzi.snapshot {
+            AppTheme(AppColors.Emerald) {
+                AppBackground {
+                    androidx.compose.foundation.layout.Column(Modifier.fillMaxSize().padding(12.dp)) {
+                        listOf(
+                            Track(1, "", "Midnight Drive", "Neon Avenue", 245000, 124f, 0.8f),
+                            Track(2, "", "Sunset Groove", "The Waves", 198000, 118.5f, 0.4f),
+                            Track(3, "", "Ein sehr, sehr langer Titel mit vielen Wörtern", "Interpret", 320000, null, null),
+                            Track(4, "", "Unknown BPM", "Artist", 180000, 0f, 0.6f),
+                        ).forEachIndexed { i, t -> TrackRow(t, i == 1, {}, {}, {}) }
                     }
                 }
             }
