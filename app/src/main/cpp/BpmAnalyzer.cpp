@@ -11,6 +11,8 @@ void BpmAnalyzer::ensureRate(int sampleRate) {
     hop_ = std::max(64, sampleRate / 200);  // ca. 200 Punkte pro Sekunde
     envRate_ = (double)sampleRate / hop_;
     lpCoef_ = 1.f - std::exp(-2.f * 3.14159265f * 150.f / sampleRate);
+    c300_ = 1.f - std::exp(-2.f * 3.14159265f * 300.f / sampleRate);
+    c3k_ = 1.f - std::exp(-2.f * 3.14159265f * 3000.f / sampleRate);
 }
 
 void BpmAnalyzer::feed(const int16_t* stereo, size_t frames, int sampleRate) {
@@ -23,10 +25,22 @@ void BpmAnalyzer::feed(const int16_t* stereo, size_t frames, int sampleRate) {
         sumLow_ += lp_ * lp_;
         sumAll_ += m * m;
         sumCount_++;
+        lp300_ += c300_ * (m - lp300_);
+        lp3k_ += c3k_ * (m - lp3k_);
+        float mid = lp3k_ - lp300_;
+        float high = m - lp3k_;
+        accMid_ += mid * mid;
+        accHigh_ += high * high;
+        accLowLin_ += lp_ * lp_;
         if (++accCount_ >= hop_) {
             low_.push_back((float)std::log(1e-6 + accLow_ / hop_));
             all_.push_back((float)std::log(1e-6 + accAll_ / hop_));
+            bandAll_.push_back((float)(accAll_ / hop_));
+            bandLow_.push_back((float)(accLowLin_ / hop_));
+            bandMid_.push_back((float)(accMid_ / hop_));
+            bandHigh_.push_back((float)(accHigh_ / hop_));
             accLow_ = accAll_ = 0;
+            accMid_ = accHigh_ = accLowLin_ = 0;
             accCount_ = 0;
         }
     }
@@ -111,6 +125,45 @@ BpmResult BpmAnalyzer::result() const {
         res.energy = (float)(0.7 * loud + 0.3 * bass);
     }
     return res;
+}
+
+}  // namespace dj
+
+namespace dj {
+
+std::vector<uint8_t> BpmAnalyzer::beatFeatures(float bpm, float firstBeat) const {
+    std::vector<uint8_t> out;
+    size_t n = bandAll_.size();
+    if (bpm <= 0 || n == 0 || envRate_ <= 0) return out;
+    double beatHops = envRate_ * 60.0 / bpm;
+    double start = firstBeat * envRate_;
+    size_t beats = (size_t)std::max(0.0, (n - start) / beatHops);
+    if (beats == 0) return out;
+    // 1) Mittelwert pro Beat und Band
+    std::vector<float> v[4];
+    const std::vector<float>* src[4] = {&bandAll_, &bandLow_, &bandMid_, &bandHigh_};
+    for (int b = 0; b < 4; b++) v[b].resize(beats);
+    for (size_t k = 0; k < beats; k++) {
+        size_t a = (size_t)(start + k * beatHops);
+        size_t e = std::min(n, (size_t)(start + (k + 1) * beatHops));
+        for (int b = 0; b < 4; b++) {
+            double s = 0;
+            for (size_t i = a; i < e; i++) s += (*src[b])[i];
+            v[b][k] = (float)(e > a ? s / (e - a) : 0.0);
+        }
+    }
+    // 2) Pro Band auf das 95-%-Quantil normieren (laute Stellen ≈ 1), Wurzel = Amplitude
+    out.resize(beats * 4);
+    for (int b = 0; b < 4; b++) {
+        std::vector<float> sorted = v[b];
+        std::sort(sorted.begin(), sorted.end());
+        float ref = sorted[(size_t)(sorted.size() * 0.95)] + 1e-12f;
+        for (size_t k = 0; k < beats; k++) {
+            float x = std::sqrt(v[b][k] / ref);
+            out[k * 4 + b] = (uint8_t)std::min(255.f, std::max(0.f, x * 255.f));
+        }
+    }
+    return out;
 }
 
 }  // namespace dj

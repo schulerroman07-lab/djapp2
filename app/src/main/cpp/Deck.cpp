@@ -55,6 +55,7 @@ void Deck::load(int fd, int64_t length, int engineRate) {
         BpmResult r = an.result();
         t->bpm = r.bpm;
         t->firstBeat = r.firstBeat;
+        t->features = an.beatFeatures(r.bpm, r.firstBeat);
 
         // Wellenform: 100 Spitzenwerte pro Sekunde
         size_t step = std::max(1, engineRate / 100);
@@ -72,7 +73,9 @@ void Deck::load(int fd, int64_t length, int engineRate) {
         {
             std::lock_guard<std::mutex> lk(peaksMutex_);
             peaks_ = t->peaks;
+            featuresCopy_ = t->features;
         }
+        loopOn_.store(false);
         frames_.store(t->frames);
         rate_.store(engineRate);
         bpm_.store(t->bpm);
@@ -90,6 +93,37 @@ void Deck::load(int fd, int64_t length, int engineRate) {
         state_.store(LoadState::Ready);
         // 'old' wird hier (ausserhalb des Audio-Threads) freigegeben
     });
+}
+
+void Deck::setLoop(double startSec, double lengthSec, bool on) {
+    int rate = rate_.load();
+    loopStart_.store(startSec * rate);
+    loopLen_.store(lengthSec * rate);
+    loopOn_.store(on && lengthSec > 0.05);
+}
+
+std::vector<uint8_t> Deck::features() {
+    std::lock_guard<std::mutex> lk(peaksMutex_);
+    return featuresCopy_;
+}
+
+void Reverb::prepare(int rate) {
+    if (rate == rate_) return;
+    rate_ = rate;
+    const int combs[4] = {1116, 1188, 1277, 1356};
+    const int aps[2] = {556, 441};
+    float scale = rate / 44100.f;
+    for (int i = 0; i < 4; i++) {
+        combL_[i].assign((size_t)(combs[i] * scale), 0.f);
+        combR_[i].assign((size_t)((combs[i] + 23) * scale), 0.f);
+        combPosL_[i] = combPosR_[i] = 0;
+        combStoreL_[i] = combStoreR_[i] = 0;
+    }
+    for (int i = 0; i < 2; i++) {
+        apL_[i].assign((size_t)(aps[i] * scale), 0.f);
+        apR_[i].assign((size_t)((aps[i] + 23) * scale), 0.f);
+        apPosL_[i] = apPosR_[i] = 0;
+    }
 }
 
 void Deck::setPlaying(bool p) {
@@ -189,6 +223,14 @@ void Deck::wsolaGrain(TrackData* t) {
     std::fill(ola_.begin() + kHop * 2, ola_.end(), 0.f);
     prevGrain_ = start;
     wsolaIn_ += kHop * tempo_.load();
+    if (loopOn_.load(std::memory_order_relaxed)) {
+        double ls = loopStart_.load(), ll = loopLen_.load();
+        if (wsolaIn_ >= ls + ll) {
+            // zurückspringen – auch das vorherige Korn, damit der Übergang nahtlos bleibt
+            wsolaIn_ -= ll;
+            prevGrain_ -= (long)ll;
+        }
+    }
 }
 
 void Deck::renderSource(TrackData* t, float* out, int numFrames, double& pos) {
@@ -212,6 +254,10 @@ void Deck::renderSource(TrackData* t, float* out, int numFrames, double& pos) {
             out[i * 2] = sample(t, i0, 0) * (1 - fr) + sample(t, i0 + 1, 0) * fr;
             out[i * 2 + 1] = sample(t, i0, 1) * (1 - fr) + sample(t, i0 + 1, 1) * fr;
             pos += tempo;
+            if (loopOn_.load(std::memory_order_relaxed)) {
+                double ls = loopStart_.load(), ll = loopLen_.load();
+                if (pos >= ls + ll) pos -= ll;
+            }
         }
         return;
     }
@@ -298,6 +344,14 @@ void Deck::render(float* main, float* cue, int numFrames, int engineRate) {
     bool echoOn = echoOn_.load();
     float wet = echoAmount_.load();
     bool pfl = pfl_.load();
+    float echoFb = std::min(0.9f, std::max(0.f, echoFeedback_.load()));
+    float send = reverbSend_.load();
+    if (send > 0.001f) reverbTail_ = engineRate * 4;   // Hall klingt bis 4 s nach
+    bool useReverb = reverbTail_ > 0;
+    if (useReverb) {
+        reverb_.prepare(engineRate);
+        reverbTail_ -= numFrames;
+    }
 
     float peak = 0;
     for (int i = 0; i < numFrames; i++) {
@@ -317,8 +371,18 @@ void Deck::render(float* main, float* cue, int numFrames, int engineRate) {
 
             size_t rd = (echoPos_ + echoLen - delay) % echoLen;
             float d = echoBuf_[rd * 2 + ch];
-            echoBuf_[echoPos_ * 2 + ch] = (echoOn ? y : 0.f) + d * 0.55f;
+            echoBuf_[echoPos_ * 2 + ch] = (echoOn ? y : 0.f) + d * echoFb;
             y += d * wet;
+            main[i * 2 + ch] = y;   // Zwischenspeichern (Hall wird unten pro Stereo-Paar berechnet)
+        }
+        if (useReverb) {
+            float rl, rr;
+            reverb_.process(main[i * 2] * send, main[i * 2 + 1] * send, rl, rr);
+            main[i * 2] += rl;
+            main[i * 2 + 1] += rr;
+        }
+        for (int ch = 0; ch < 2; ch++) {
+            float y = main[i * 2 + ch];
 
             if (pfl) cue[i * 2 + ch] = y;
             float m = y * gv;

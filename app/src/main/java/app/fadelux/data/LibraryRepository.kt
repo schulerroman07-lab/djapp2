@@ -11,7 +11,9 @@ import kotlinx.coroutines.withContext
 
 /** Liest die Musik vom Handy ein und analysiert im Hintergrund BPM und Energie. */
 class LibraryRepository(private val context: Context) {
-    private val dao = AppDatabase.get(context).tracks()
+    private val db = AppDatabase.get(context)
+    private val dao = db.tracks()
+    private val analysisDao = db.analysis()
 
     val tracks = dao.all()
     val unanalyzedCount = dao.unanalyzedCount()
@@ -81,20 +83,29 @@ class LibraryRepository(private val context: Context) {
         val t = dao.nextUnanalyzed() ?: return@withContext false
         var bpm = 0f
         var energy = 0.5f
+        var firstBeat = 0f
+        var features = ByteArray(0)
         try {
             context.contentResolver.openFileDescriptor(Uri.parse(t.uri), "r")?.use { pfd ->
                 val len = pfd.statSize
                 val fd = pfd.detachFd() // C++ schliesst die Datei
                 val r = NativeEngine.analyzeFile(fd, len)
                 bpm = r[0]
-                if (r.size > 2) energy = r[2]
+                firstBeat = r.getOrElse(1) { 0f }
+                energy = r.getOrElse(2) { 0.5f }
+                val n = r.getOrElse(3) { 0f }.toInt()
+                if (n > 0 && r.size >= 4 + n * 4) features = ByteArray(n * 4) { r[4 + it].toInt().toByte() }
             }
         } catch (e: Exception) {
             Log.e("Fadelux", "Analyse fehlgeschlagen: ${t.title}", e)
         }
         dao.setAnalysis(t.id, bpm, energy)
+        // Auch bei Fehler speichern (leere Merkmale), sonst würde der Titel endlos neu analysiert
+        analysisDao.put(TrackAnalysis(t.id, firstBeat, features))
         true
     }
 
     suspend fun setBpm(id: Long, bpm: Float) = withContext(Dispatchers.IO) { dao.setBpm(id, bpm) }
+
+    suspend fun analysis(id: Long): TrackAnalysis? = withContext(Dispatchers.IO) { analysisDao.get(id) }
 }

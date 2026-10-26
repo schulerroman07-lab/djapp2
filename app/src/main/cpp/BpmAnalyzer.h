@@ -17,6 +17,9 @@ public:
     void feed(const int16_t* stereo, size_t frames, int sampleRate);
     BpmResult result() const;
 
+    // Merkmale pro Beat (für Auto-Mix): je 4 Bytes = Energie, Bass, Mitten (Gesang), Höhen (0..255)
+    std::vector<uint8_t> beatFeatures(float bpm, float firstBeat) const;
+
 private:
     void ensureRate(int sampleRate);
 
@@ -30,6 +33,10 @@ private:
     size_t sumCount_ = 0;
     int accCount_ = 0;
     std::vector<float> low_, all_;
+    // Bänder in linearer Leistung pro Abschnitt
+    float lp300_ = 0, lp3k_ = 0, c300_ = 0, c3k_ = 0;
+    double accMid_ = 0, accHigh_ = 0, accLowLin_ = 0;
+    std::vector<float> bandAll_, bandLow_, bandMid_, bandHigh_;
 };
 
 }  // namespace dj

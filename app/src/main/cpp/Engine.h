@@ -40,6 +40,15 @@ public:
     void setOutput(int mode, int masterDevice, int cueDevice);
 
     void setBufferBursts(int n);
+
+    /**
+     * Geplanter Start (für Auto-Mix): Deck "target" startet genau dann, wenn Deck "trigger"
+     * die Position triggerSec erreicht (Genauigkeit ~1 ms). stopTrigger = gleichzeitig das
+     * auslösende Deck anhalten (harter Schnitt auf dem Downbeat).
+     */
+    void scheduleStart(int target, int trigger, double triggerSec, bool stopTrigger);
+    void cancelSchedule() { schedTarget_.store(-1); }
+    bool scheduled() const { return schedTarget_.load() >= 0; }
     // Spektrum für die Anzeige (wird im UI-Thread berechnet, NICHT im Audio-Thread)
     void spectrum(float* bands, int numBands);
 
@@ -78,6 +87,10 @@ private:
     StereoRing cueRing_{1 << 15};
     std::vector<float> cueTmp_;
     std::atomic<int> bufferBursts_{2};
+    std::atomic<int> schedTarget_{-1}, schedTrigger_{0};
+    std::atomic<double> schedFrame_{0};
+    std::atomic<bool> schedStop_{false};
+    void checkSchedule();
     static constexpr int kScope = 2048;          // Mono-Kopie des Masters für das Spektrum
     float scope_[kScope] = {0};
     std::atomic<int> scopePos_{0};

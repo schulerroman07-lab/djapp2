@@ -32,6 +32,8 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease bundleRelease
+      - name: Datenbank-Schema anzeigen (Kontrolle der Migration)
+        run: grep -rhoE "CREATE (TABLE|INDEX) IF NOT EXISTS [^\"]*" app/build/generated/ksp/release | sort -u || true
       - name: Dateien umbenennen
         run: |
           cp app/build/outputs/apk/release/app-release.apk Fadelux.apk

@@ -122,6 +122,25 @@ JNIEXPORT void JNICALL FN(getSpectrum)(JNIEnv* env, jobject, jfloatArray out) {
     env->SetFloatArrayRegion(out, 0, n, b.data());
 }
 
+JNIEXPORT void JNICALL FN(setEchoFeedback)(JNIEnv*, jobject, jint d, jfloat fb) { if (g) DECK(d).setEchoFeedback(fb); }
+JNIEXPORT void JNICALL FN(setReverb)(JNIEnv*, jobject, jint d, jfloat send) { if (g) DECK(d).setReverb(send); }
+JNIEXPORT void JNICALL FN(setLoop)(JNIEnv*, jobject, jint d, jdouble start, jdouble len, jboolean on) {
+    if (g) DECK(d).setLoop(start, len, on);
+}
+JNIEXPORT void JNICALL FN(scheduleStart)(JNIEnv*, jobject, jint target, jint trigger, jdouble sec, jboolean stop) {
+    if (g) g->scheduleStart(target, trigger, sec, stop);
+}
+JNIEXPORT void JNICALL FN(cancelSchedule)(JNIEnv*, jobject) { if (g) g->cancelSchedule(); }
+JNIEXPORT jboolean JNICALL FN(isScheduled)(JNIEnv*, jobject) { return g ? g->scheduled() : false; }
+
+// Merkmale pro Beat des geladenen Titels (je 4 Bytes: Energie, Bass, Mitten, Höhen)
+JNIEXPORT jbyteArray JNICALL FN(getDeckFeatures)(JNIEnv* env, jobject, jint d) {
+    std::vector<uint8_t> f = g ? DECK(d).features() : std::vector<uint8_t>();
+    jbyteArray arr = env->NewByteArray((jsize)f.size());
+    if (!f.empty()) env->SetByteArrayRegion(arr, 0, (jsize)f.size(), reinterpret_cast<const jbyte*>(f.data()));
+    return arr;
+}
+
 JNIEXPORT void JNICALL FN(setBufferBursts)(JNIEnv*, jobject, jint n) { if (g) g->setBufferBursts(n); }
 
 JNIEXPORT jfloat JNICALL FN(getMasterLevel)(JNIEnv*, jobject) { return g ? g->masterLevel() : 0.f; }
@@ -150,9 +169,12 @@ JNIEXPORT jfloatArray JNICALL FN(analyzeFile)(JNIEnv* env, jobject, jint fd, jlo
         nullptr, 60 * 8);
     close(fd);
     BpmResult r = an.result();
-    jfloat v[3] = {r.bpm, r.firstBeat, r.energy};
-    jfloatArray arr = env->NewFloatArray(3);
-    env->SetFloatArrayRegion(arr, 0, 3, v);
+    std::vector<uint8_t> f = an.beatFeatures(r.bpm, r.firstBeat);
+    // [BPM, erster Beat, Energie, Anzahl Beats, dann 4 Werte pro Beat (0..255)]
+    std::vector<jfloat> v = {r.bpm, r.firstBeat, r.energy, (jfloat)(f.size() / 4)};
+    for (uint8_t b : f) v.push_back((jfloat)b);
+    jfloatArray arr = env->NewFloatArray((jsize)v.size());
+    env->SetFloatArrayRegion(arr, 0, (jsize)v.size(), v.data());
     return arr;
 }
 

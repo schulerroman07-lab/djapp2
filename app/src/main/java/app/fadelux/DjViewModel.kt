@@ -23,6 +23,7 @@ import app.fadelux.data.AppSettings
 import app.fadelux.data.LibraryRepository
 import app.fadelux.data.Track
 import app.fadelux.ui.UiText
+import app.fadelux.playback.AudioFocusHelper
 import app.fadelux.wishes.BackendConfig
 import app.fadelux.wishes.FirestoreClient
 import app.fadelux.wishes.LocalWishServer
@@ -146,9 +147,9 @@ class DjViewModel private constructor(private val app: Application) {
     private var duckRestore = -1f
     private var remotePaused = emptyList<Int>()   // Decks, die per Pause angehalten wurden
 
-    private val focus = app.let { a ->
-        app.fadelux.playback.AudioFocusHelper(
-            a,
+    private val focus =
+        AudioFocusHelper(
+            app,
             onPause = { _ -> pauseAll() },
             onResume = { resumePaused() },
             onDuck = { duck ->
@@ -162,7 +163,6 @@ class DjViewModel private constructor(private val app: Application) {
             },
             onNoisy = { if (settings.outputMode == 0) pauseAll() },
         )
-    }
 
     private fun pauseAll() {
         remotePaused = decks.filter { it.playing }.map { it.index }

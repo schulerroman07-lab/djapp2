@@ -153,7 +153,10 @@ oboe::DataCallbackResult Engine::onAudioReady(oboe::AudioStream* stream, void* d
     int channels = stream->getChannelCount();
     int done = 0;
     while (done < numFrames) {
-        int n = std::min(kChunk, numFrames - done);
+        // Mit geplantem Start in kleinen Stücken rechnen → Start auf ~1 ms genau
+        int chunk = schedTarget_.load(std::memory_order_relaxed) >= 0 ? 48 : kChunk;
+        checkSchedule();
+        int n = std::min(chunk, numFrames - done);
         renderMain(out + (size_t)done * channels, channels, n);
         done += n;
     }
@@ -303,6 +306,31 @@ void Engine::spectrum(float* bands, int numBands) {
         for (int k = k0; k < k1 && k < n / 2; k++) m = std::max(m, re[k] * re[k] + im[k] * im[k]);
         float db = 10.f * std::log10(m + 1e-12f);
         bands[b] = std::max(0.f, std::min(1.f, (db + 20.f) / 60.f));
+    }
+}
+
+}  // namespace dj
+
+namespace dj {
+
+void Engine::scheduleStart(int target, int trigger, double triggerSec, bool stopTrigger) {
+    schedTrigger_.store(trigger & 1);
+    schedFrame_.store(triggerSec * std::max(1, rate_.load()));
+    schedStop_.store(stopTrigger);
+    schedTarget_.store(target & 1);   // zuletzt setzen = "scharf schalten"
+}
+
+void Engine::checkSchedule() {
+    int target = schedTarget_.load(std::memory_order_acquire);
+    if (target < 0) return;
+    Deck& trig = deck[schedTrigger_.load()];
+    // Auslösen, wenn die Position erreicht ist – oder der Titel zu Ende gelaufen ist.
+    // (Ist das Deck nur pausiert, z.B. wegen eines Anrufs, wird gewartet.)
+    bool ended = !trig.playing() && trig.positionFrames() >= trig.durationFrames() - 4096;
+    if ((trig.playing() && trig.positionFrames() >= schedFrame_.load()) || ended) {
+        deck[target].setPlaying(true);
+        if (schedStop_.load()) trig.setPlaying(false);
+        schedTarget_.store(-1);
     }
 }
 

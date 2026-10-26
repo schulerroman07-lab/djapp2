@@ -19,6 +19,49 @@ struct TrackData {
     float bpm = 0;
     float firstBeat = 0;  // Sekunden
     std::vector<float> peaks;  // Wellenform (Spitzenwerte, 0..1), ca. 100 pro Sekunde
+    std::vector<uint8_t> features;  // pro Beat: Energie, Bass, Mitten, Höhen (für Auto-Mix)
+};
+
+/** Einfacher Hall (Freeverb-Prinzip): 4 Kammfilter + 2 Allpass pro Kanal. */
+class Reverb {
+public:
+    void prepare(int rate);
+    // Verarbeitet ein Stereo-Sample (Eingang = gesendeter Anteil), gibt Hall zurück
+    inline void process(float inL, float inR, float& outL, float& outR) {
+        float in = (inL + inR) * 0.5f;
+        float l = 0, r = 0;
+        for (int i = 0; i < 4; i++) {
+            l += comb(combL_[i], combPosL_[i], combStoreL_[i], in);
+            r += comb(combR_[i], combPosR_[i], combStoreR_[i], in);
+        }
+        for (int i = 0; i < 2; i++) {
+            l = allpass(apL_[i], apPosL_[i], l);
+            r = allpass(apR_[i], apPosR_[i], r);
+        }
+        outL = l * 0.25f;
+        outR = r * 0.25f;
+    }
+
+private:
+    inline float comb(std::vector<float>& buf, size_t& pos, float& store, float in) {
+        float out = buf[pos];
+        store = out * (1.f - damp_) + store * damp_;
+        buf[pos] = in + store * feedback_;
+        if (++pos >= buf.size()) pos = 0;
+        return out;
+    }
+    inline float allpass(std::vector<float>& buf, size_t& pos, float in) {
+        float b = buf[pos];
+        float out = -in + b;
+        buf[pos] = in + b * 0.5f;
+        if (++pos >= buf.size()) pos = 0;
+        return out;
+    }
+    std::vector<float> combL_[4], combR_[4], apL_[2], apR_[2];
+    size_t combPosL_[4] = {0}, combPosR_[4] = {0}, apPosL_[2] = {0}, apPosR_[2] = {0};
+    float combStoreL_[4] = {0}, combStoreR_[4] = {0};
+    float feedback_ = 0.84f, damp_ = 0.3f;
+    int rate_ = 0;
 };
 
 enum class LoadState { Empty = 0, Loading = 1, Ready = 2, Error = 3 };
@@ -41,6 +84,13 @@ public:
     void setFilter(float v) { filter_.store(v); }
     void setEcho(bool on, float amount) { echoOn_.store(on); echoAmount_.store(amount); }
     void setPfl(bool on) { pfl_.store(on); }
+    void setEchoFeedback(float fb) { echoFeedback_.store(fb); }
+    void setReverb(float send) { reverbSend_.store(send); }
+    // Loop: Abschnitt [start, start+length) wiederholen (Sekunden). on=false beendet den Loop.
+    void setLoop(double startSec, double lengthSec, bool on);
+    std::vector<uint8_t> features();
+    double positionFrames() const { return pos_.load(); }
+    double durationFrames() const { return (double)frames_.load(); }
 
     // --- Abfragen ---
     LoadState loadState() const { return state_.load(); }
@@ -94,6 +144,13 @@ private:
     std::atomic<float> echoAmount_{0.5f};
     std::atomic<bool> pfl_{false};
     std::atomic<float> level_{0};
+    std::atomic<float> echoFeedback_{0.55f};
+    std::atomic<float> reverbSend_{0};
+    std::atomic<bool> loopOn_{false};
+    std::atomic<double> loopStart_{0}, loopLen_{0};   // in Frames
+    Reverb reverb_;
+    int reverbTail_ = 0;      // wie lange der Hall noch nachklingt (Frames)
+    std::vector<uint8_t> featuresCopy_;
 
     // DSP-Zustand (nur Audio-Thread)
     Biquad eqLow_, eqHigh_, filterLp_, filterHp_;
