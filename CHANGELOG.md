@@ -8,6 +8,7 @@
 - Alle Bezüge zu „Hirsch Express“ aus App, Gästeseite und Bau-Skript entfernt.
 - Neues adaptives App-Symbol (leuchtende Schallplatte + Crossfader), inkl. einfarbiger Version für Themensymbole (Android 13+), eigenes Benachrichtigungs-Symbol.
 - GitHub baut jetzt **APK und AAB**; Play-Store-Schlüssel über GitHub-Secrets (**SIGNING.md**).
+- Native Bibliothek für **16-KB-Speicherseiten** ausgerichtet (Pflicht im Play Store seit Nov. 2025, geprüft an der fertigen APK).
 - Berechtigungen reduziert: `WAKE_LOCK` und `POST_NOTIFICATIONS` entfernt, Backups deaktiviert.
 - **PRIVACY.md**: Vorlage Datenschutzerklärung inkl. Hilfe für den Play-Store-Fragebogen.
 - **STORE_LISTING.md**: Play-Store-Texte (kurz + lang) in DE/EN/FR/IT.
@@ -55,7 +56,7 @@
 
 ### Qualität & Tests
 - Automatische Tests (laufen bei jedem Bau auf GitHub): Tempo-Angleichung, Intro/Outro-Erkennung, Reihenfolge optimieren, Vorschläge, lokaler Wunsch-Server inkl. Spam-Schutz.
-- Automatische Bildschirmfotos (Mischpult, Bibliothek, Einführung) zur Layout-Kontrolle.
+- Automatische Bildschirmfotos (Mischpult, Bibliothek, Auto-Mix, Wunschliste, Einführung) zur Layout-Kontrolle.
 - Leistung: Glas-Flächen in eigener Grafik-Ebene, Anzeigen lesen schnelle Werte erst beim Zeichnen.
 
 ## Offene Punkte / bekannte Grenzen
@@ -66,6 +67,6 @@
 5. **Name „Fadelux“**: kurz im Web gesucht, keine gleichnamige App gefunden – vor Veröffentlichung im Play Store und Markenregister (z.B. swissreg.ch, EUIPO) nochmals prüfen.
 6. **SoundTouch** ist nicht eingebaut (Quelle war hier nicht erreichbar); Tempo ohne Tonhöhe läuft über einen eigenen WSOLA-Algorithmus.
 7. Aufnahme nur als **WAV** (MP3-Encoder fehlt noch).
-8. Bildschirmfotos gibt es für Mischpult, Bibliothek und Einführung; Auto-Mix-, Wunsch- und Einstellungs-Fenster sind nur im Code geprüft.
+8. Bildschirmfotos gibt es für Mischpult, Bibliothek, Auto-Mix, Wunschliste und Einführung; das Einstellungs-Fenster ist nur im Code geprüft.
 9. Der lokale Wunsch-Server läuft nur, solange die App offen ist; Wünsche aus dem lokalen Modus werden nicht dauerhaft gespeichert.
 10. `CLAUDE.md` (Arbeitsanweisungen für Claude) enthält noch die alte Projektbeschreibung – sie gehört nicht zur App.
