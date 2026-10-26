@@ -1,51 +1,34 @@
-# Hirsch Express DJ
+# Fadelux – DJ-App für Android
 
-DJ-App für Android (Samsung): zwei Decks, Mixer, BPM-Sync, EQ, Effekte, Vorhören, Aufnahme und Gästewünsche per QR-Code.
+Zwei Decks, Beat-Sync, EQ & Effekte, Auto-Mix, Song-Vorschläge und Gästewünsche per QR-Code.
+Neon-/Glas-Design, Sprachen: Deutsch, English, Français, Italiano.
 
-## App aufs Handy bringen (ohne Android Studio)
+## App aufs Handy bringen
+1. Am Handy im Browser öffnen (bei GitHub angemeldet):
+   **https://github.com/schulerroman07-lab/djapp2/releases/latest/download/Fadelux.apk**
+2. Heruntergeladene Datei antippen → „Installation aus unbekannten Quellen erlauben“ → **Installieren**.
+3. Beim ersten Start: kurze Einführung, dann „Musik und Audio“ **erlauben**.
 
-GitHub baut die App automatisch, sobald neuer Code hochgeladen wird.
+> Hinweis: Fadelux hat einen neuen Paketnamen (`app.fadelux`). Die alte Test-App
+> („Hirsch Express DJ“) bleibt daneben installiert und kann gelöscht werden.
 
-1. Am Handy im Browser (bei GitHub angemeldet) öffnen:
-   **https://github.com/schulerroman07-lab/djapp2/releases/latest/download/HirschExpressDJ.apk**
-   → die neueste App-Datei wird heruntergeladen.
-2. (Alternative: https://github.com/schulerroman07-lab/djapp2/releases → oberste Version → `HirschExpressDJ.apk`.)
-3. Die Datei in der Download-Benachrichtigung bzw. in „Eigene Dateien“ → Downloads antippen.
-4. Android fragt: „Installation aus unbekannten Quellen erlauben?“ → **Einstellungen** → Schalter für „Eigene Dateien“ (bzw. Chrome) einschalten → zurück → **Installieren**.
-5. Beim ersten Start „Zugriff auf Musik und Audio“ **erlauben**.
+## Play Store
+- AAB-Datei: Releases → `Fadelux.aab` (siehe **SIGNING.md** für den eigenen Schlüssel)
+- Datenschutzerklärung: **PRIVACY.md** (Vorlage)
+- Zentrales Backend für Gästewünsche (Internet-Modus): **SETUP_BACKEND.md**
 
-Neue Versionen lassen sich einfach darüber installieren (die Einstellungen bleiben).
+## App umbenennen
+Der Name steht nur an **einer Stelle**: `app/src/main/res/values/strings.xml` → `app_name`.
 
-## Bedienung kurz
-
-| Element | Funktion |
+## Aufbau (für Entwickler)
+| Ordner | Inhalt |
 |---|---|
-| ♫ Bibliothek | Titel suchen, mit **A** oder **B** ins Deck laden. „Neu einlesen“ nach dem Kopieren neuer MP3s. |
-| ▶ / ❚❚ | Abspielen / Pause |
-| CUE | Steht das Deck: aktuelle Stelle merken. Spielt es: zurück zur gemerkten Stelle. |
-| SYNC | Tempo (und Takt) an das andere Deck anpassen |
-| Tempo-Regler | ±8 % oder ±16 % (Knopf oben). Doppeltippen = 0 %. **KEY** = Tonhöhe bleibt gleich. |
-| ‹ › | Gedrückt halten = kurz langsamer/schneller (Beats von Hand angleichen) |
-| HOCH/MITTE/TIEF | Equalizer. Nach oben/unten ziehen. Doppeltippen = Mitte. **KILL** = Band ganz weg. |
-| FILTER | Links = nur Bässe, rechts = nur Höhen |
-| ECHO | Knopf ein/aus, Drehregler = Stärke (im Takt) |
-| 🎧 | Deck im Kopfhörer vorhören |
-| Crossfader | Unten in der Mitte: zwischen A und B überblenden. Doppeltippen = Mitte. |
-| ● Aufnahme | Mix als WAV in **Musik/HirschExpressDJ** speichern |
-| ★ Wünsche | Gästewünsche (siehe `FIREBASE_ANLEITUNG.md`) |
-| ⚙ | Audio-Ausgabe, Kopfhörer-Verzögerung, Firebase |
+| `app/src/main/cpp` | Audio-Engine (C++, Oboe): Decks, Mixer, EQ, Effekte, Time-Stretch, Aufnahme, Spektrum |
+| `app/src/main/java/app/fadelux/ui/theme` | Design-System (Farben, Abstände, Schriften) |
+| `app/src/main/java/app/fadelux/ui/components` | Glas-/Neon-Bausteine (Knöpfe, Regler, Cover, Spektrum) |
+| `app/src/main/java/app/fadelux/ui` | Bildschirme |
+| `app/src/main/java/app/fadelux/automix` | Auto-Mix und Vorschläge |
+| `app/src/main/java/app/fadelux/wishes` | Gästewünsche (Firebase + lokaler Webserver) |
+| `web/` | Gästeseite und Firestore-Regeln |
 
-## Vorhören mit Kopfhörer
-
-In ⚙ Einstellungen den Ausgabe-Modus wählen:
-- **Splitter-Kabel** (Y-Kabel „Stereo auf 2× Mono“): links = Master für die Box, rechts = Kopfhörer.
-- **USB-Audio-Interface mit 4 Kanälen**: Kanal 1/2 Master, 3/4 Kopfhörer.
-- **Zwei Geräte**: z.B. Master auf Bluetooth-Box, Kopfhörer am USB-C-Adapter. Bluetooth ist ca. 150–300 ms verspätet → „Kopfhörer-Verzögerung“ entsprechend einstellen.
-
-## Technik
-
-- Kotlin + Jetpack Compose (Oberfläche), C++ mit Oboe (Audio, tiefe Latenz)
-- MP3-Dekodierung: Android NDK (AMediaCodec)
-- Tempo ohne Tonhöhenänderung: eigener WSOLA-Algorithmus (statt SoundTouch – Quelle hier nicht erreichbar, kann später ersetzt werden)
-- BPM-Erkennung: eigene Beat-Analyse, gespeichert in Room-Datenbank
-- Gästewünsche: Firebase (Firestore + Hosting), Webseite in `web/`
+Gebaut wird automatisch auf GitHub (`.github/workflows/build.yml`): APK, AAB und Bildschirmfotos.
