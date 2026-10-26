@@ -158,7 +158,7 @@ class AutoMix(
     private fun structureOf(d: DeckModel): TrackStructure? {
         val id = d.track?.id ?: return null
         structureCache[id]?.let { return it }
-        val s = StructureAnalyzer.analyze(d.bpm, d.firstBeat, d.features(), d.duration)
+        val s = StructureAnalyzer.analyze(d.bpm, d.firstBeat, d.features(), d.duration, StructureAnalyzer.soundEnd(d.peaks, d.duration))
         if (structureCache.size > 50) structureCache.clear()
         structureCache[id] = s
         return s
@@ -169,7 +169,9 @@ class AutoMix(
         val s = plannerSettings()
         val type = listOf(TransitionType.ECHO_OUT, TransitionType.REVERB_WASH, TransitionType.CUT).firstOrNull { it in s.enabled }
             ?: TransitionType.CUT
-        val at = if (now) a.position + 2.0 else maxOf(a.position + 4.0, a.duration - 6.0)
+        // Ende = letzter hörbarer Moment (Stille am Schluss zählt nicht)
+        val end = StructureAnalyzer.soundEnd(a.peaks, a.duration)
+        val at = if (now) a.position + 2.0 else maxOf(a.position + 4.0, end - 6.0)
         return TransitionPlan(type, -1, at, 0.0, 2, 1f, false)
     }
 

@@ -57,7 +57,8 @@ object TransitionPlanner {
 
         // --- 3) Startpunkt in A (Phrasengrenze) ---
         val currentBar = a.barAt(aPos)
-        val mixBar = chooseMixBar(a, currentBar, length, now)
+        val (mixBar, fitLength) = chooseMixBar(a, currentBar, length, now)
+        length = fitLength
 
         // --- 4) Startpunkt in B: Intro so legen, dass der Hauptteil am Ende der Überblendung kommt ---
         fun bStartFor(len: Int): Int {
@@ -82,6 +83,8 @@ object TransitionPlanner {
         val allowed = settings.enabled.ifEmpty { setOf(TransitionType.CUT) }.filter { t ->
             when {
                 t in blendTypes && (!matchTempo || vocalClash) -> false
+                // Song endet vor dem Ende der Überblendung (z.B. Auto-Mix kurz vor Schluss gestartet)
+                t in blendTypes && !now && mixBar + length > a.endBar -> false
                 t == TransitionType.LOOP && a.vocalIn(mixBar - 1, mixBar) -> false   // Gesang nicht loopen
                 else -> true
             }
@@ -112,24 +115,38 @@ object TransitionPlanner {
         )
     }
 
-    /** Phrasengrenze in A, an der der Übergang beginnt. */
-    private fun chooseMixBar(a: TrackStructure, currentBar: Int, length: Int, now: Boolean): Int {
+    /**
+     * Takt in A, an dem der Übergang beginnt. Regeln:
+     *  - nie mitten im Song: Start frühestens in den letzten max(32, Länge) Takten vor dem hörbaren Ende
+     *  - ideal am Outro-Beginn, sonst so, dass der Übergang genau am Ende fertig ist (Fallback)
+     *  - immer auf einer Phrasengrenze (8 Takte), notfalls auf 4 Takten
+     *  - fertig, bevor A natürlich endet (Stille am Schluss zählt nicht)
+     * Gibt (Takt, Länge) zurück – die Länge wird gekürzt, wenn es sonst nicht mehr reicht.
+     */
+    internal fun chooseMixBar(a: TrackStructure, currentBar: Int, length: Int, now: Boolean): Pair<Int, Int> {
         val earliest = currentBar + 2   // mindestens 2 Takte Vorlauf (Vorbereitung, Hall aufbauen)
         if (now) {
             // bald: nächste 4-Takt-Grenze
             val r = earliest % 4
-            return if (r == 0) earliest else earliest + (4 - r)
+            return (if (r == 0) earliest else earliest + (4 - r)) to length
         }
-        // ideal: am Outro-Beginn (auf 8 Takte gerundet), Übergang muss vor dem Ende fertig sein
-        val last = (a.barCount - length).coerceAtLeast(earliest)
-        var bar = (a.outroStartBar / 8) * 8
-        if (bar + length > a.barCount) bar = (last / 8) * 8
-        if (bar < earliest) {
-            // schon zu spät für das Outro → nächste 8er-Grenze, notfalls 4er
-            bar = ((earliest + 7) / 8) * 8
-            if (bar > last) bar = ((earliest + 3) / 4) * 4
+        val end = a.endBar
+        var len = length
+        // Reicht die Zeit bis zum Ende nicht mehr? Dann kürzer überblenden.
+        while (len > 4 && end - len < earliest) len /= 2
+        val latest = end - len
+        if (latest < earliest) {
+            // Ganz knapp vor dem Ende: so bald wie möglich (nächster Takt mit 4er-Raster, sonst sofort)
+            val r = earliest % 4
+            val b4 = if (r == 0) earliest else earliest + (4 - r)
+            return (if (b4 < end) b4 else earliest) to len
         }
-        return bar
+        val lo = max(earliest, end - max(32, len))
+        val target = a.outroStartBar.coerceIn(lo, latest)
+        fun nearest(step: Int): Int? = (lo..latest).filter { it % step == 0 }
+            .minWithOrNull(compareBy<Int>({ abs(it - target) }, { -it }))
+        val bar = nearest(16)?.takeIf { abs(it - target) <= 4 } ?: nearest(8) ?: nearest(4) ?: latest
+        return bar to len
     }
 
     private fun chooseType(

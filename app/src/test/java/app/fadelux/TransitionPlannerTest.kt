@@ -23,6 +23,7 @@ class TransitionPlannerTest {
     private fun features(
         bars: Int, introBars: Int, outroBars: Int,
         downbeatOffset: Int = 0, vocalBars: Set<Int> = emptySet(), breakBars: Set<Int> = emptySet(),
+        silentBars: Int = 0,
     ): ByteArray {
         val beats = bars * 4 + downbeatOffset
         val out = ByteArray(beats * 4)
@@ -34,7 +35,8 @@ class TransitionPlannerTest {
             var b = if (beatInBar == 0) 0.95f else 0.6f
             if (!loud) b *= 0.8f
             if (bar in breakBars) { b = 0.05f; e = 0.5f }
-            val m = if (bar in vocalBars) 0.9f else 0.3f
+            var m = if (bar in vocalBars) 0.9f else 0.3f
+            if (bar >= bars - silentBars) { e = 0f; b = 0f; m = 0f }   // Stille am Schluss
             out[i * 4] = (e * 255).toInt().toByte()
             out[i * 4 + 1] = (b * 255).toInt().toByte()
             out[i * 4 + 2] = (m * 255).toInt().toByte()
@@ -45,10 +47,10 @@ class TransitionPlannerTest {
 
     private fun track(
         bpm: Float = 124f, bars: Int = 96, intro: Int = 16, outro: Int = 16,
-        vocal: Set<Int> = emptySet(), breaks: Set<Int> = emptySet(), offset: Int = 0,
+        vocal: Set<Int> = emptySet(), breaks: Set<Int> = emptySet(), offset: Int = 0, silent: Int = 0,
     ): TrackStructure {
         val beatSec = 60.0 / bpm
-        return StructureAnalyzer.analyze(bpm, 0.5f, features(bars, intro, outro, offset, vocal, breaks), bars * 4 * beatSec + 1)!!
+        return StructureAnalyzer.analyze(bpm, 0.5f, features(bars, intro, outro, offset, vocal, breaks, silent), bars * 4 * beatSec + 1)!!
     }
 
     @Test
@@ -137,5 +139,60 @@ class TransitionPlannerTest {
         val club = TransitionPlanner.plan(a, 20.0, 1f, b, PlannerSettings(enabled = setOf(TransitionType.BASS_SWAP), style = MixStyle.CLUB))
         assertTrue(calm.lengthBars > club.lengthBars)
         assertNotNull(calm)
+    }
+
+    // ---------- Übergang erst am Liedende ----------
+
+    @Test
+    fun structure_ignoresSilenceAtEnd() {
+        val s = track(bars = 104, outro = 24, silent = 8)       // 8 Takte Stille am Schluss
+        assertEquals(96, s.endBar)
+        assertTrue("outro=${s.outroStartBar}", s.outroStartBar <= 96)
+    }
+
+    @Test
+    fun structure_soundEndFromWaveform() {
+        val peaks = FloatArray(30000) { if (it < 25000) 0.5f else 0.001f }   // 250 s Musik, dann Stille
+        assertEquals(250.1, StructureAnalyzer.soundEnd(peaks, 300.0), 0.01)
+        assertEquals(300.0, StructureAnalyzer.soundEnd(FloatArray(0), 300.0), 0.0)
+    }
+
+    @Test
+    fun plan_finishesBeforeSilence() {
+        val a = track(bars = 104, outro = 24, silent = 8)
+        for (style in MixStyle.entries) {
+            val p = TransitionPlanner.plan(a, 20.0, 1f, track(bpm = 125f), PlannerSettings(style = style))
+            assertTrue("$style mixBar=${p.mixBar} len=${p.lengthBars}", p.mixBar + p.lengthBars <= a.endBar)
+        }
+    }
+
+    @Test
+    fun plan_neverMidSong_evenWithLongOutro() {
+        // Energie fällt schon bei Takt 48 ab (sehr langes, ruhiges Outro) → trotzdem erst in den letzten 32 Takten
+        val a = track(bars = 128, outro = 80)
+        val p = TransitionPlanner.plan(a, 20.0, 1f, track(bpm = 125f), PlannerSettings())
+        assertTrue("mixBar=${p.mixBar}", p.mixBar >= a.endBar - 32)
+        assertTrue(p.mixBar + p.lengthBars <= a.endBar)
+        assertEquals(0, p.mixBar % 8)
+    }
+
+    @Test
+    fun plan_fallbackWithoutOutro_onPhraseBeforeEnd() {
+        // Kein Outro erkennbar (bis zum Schluss laut) → Start rechtzeitig vor dem Ende, auf Phrasengrenze
+        val a = track(bars = 100, outro = 0)
+        val p = TransitionPlanner.plan(a, 20.0, 1f, track(bpm = 125f), PlannerSettings(style = MixStyle.BALANCED))
+        assertEquals(0, p.mixBar % 8)
+        assertTrue("mixBar=${p.mixBar} len=${p.lengthBars} end=${a.endBar}", p.mixBar + p.lengthBars <= a.endBar)
+        assertTrue("mixBar=${p.mixBar}", p.mixBar >= a.endBar - 32)
+    }
+
+    @Test
+    fun plan_lateStart_shortensOrUsesShortType() {
+        // Auto-Mix erst 6 Takte vor Schluss gestartet → kurze Überblendung oder Echo/Schnitt, nie über das Ende hinaus
+        val a = track(bars = 96, outro = 16)
+        val pos = a.barTime(90)
+        val p = TransitionPlanner.plan(a, pos, 1f, track(bpm = 125f), PlannerSettings())
+        assertTrue("mixBar=${p.mixBar}", p.mixBar >= 92)
+        assertTrue("type=${p.type} len=${p.lengthBars}", p.type !in TransitionPlanner.blendTypes || p.mixBar + p.lengthBars <= a.endBar)
     }
 }

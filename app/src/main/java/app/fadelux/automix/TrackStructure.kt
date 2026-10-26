@@ -23,6 +23,7 @@ data class TrackStructure(
     val introEndBar: Int,           // erster Takt mit "voller" Energie
     val outroStartBar: Int,         // erster Takt des Outros (Energie fällt ab)
     val breaks: List<IntRange>,     // Takte ohne Bass (Break)
+    val endBar: Int = bars.size,    // erster Takt NACH dem hörbaren Ende (Stille am Schluss zählt nicht)
 ) {
     val beatSec: Double get() = 60.0 / bpm
     val barSec: Double get() = 4 * beatSec
@@ -63,7 +64,11 @@ object StructureAnalyzer {
      * Baut die Struktur aus den Merkmalen pro Beat (je 4 Bytes: Energie, Bass, Mitten, Höhen).
      * Gibt null zurück, wenn kein Tempo erkannt wurde.
      */
-    fun analyze(bpm: Float, firstBeat: Float, features: ByteArray, duration: Double): TrackStructure? {
+    /**
+     * @param soundEnd Zeit (Sekunden), ab der der Titel nur noch still ist (aus der Wellenform),
+     *                 oder [duration], wenn unbekannt.
+     */
+    fun analyze(bpm: Float, firstBeat: Float, features: ByteArray, duration: Double, soundEnd: Double = duration): TrackStructure? {
         val n = features.size / 4
         if (bpm <= 0f || n < 16) return null
         fun f(i: Int, band: Int) = (features[i * 4 + band].toInt() and 0xFF) / 255f
@@ -95,6 +100,12 @@ object StructureAnalyzer {
             midRatio[bar] = mid[bar] / (e[bar] + 0.05f)
         }
 
+        // 2b) Hörbares Ende: Stille am Schluss ignorieren (Merkmale + Wellenform)
+        var lastLoud = barCount - 1
+        while (lastLoud > 0 && e[lastLoud] < SILENCE) lastLoud--
+        val endByWave = kotlin.math.floor((soundEnd - downbeat) / (4 * beatSec) + 1e-6).toInt()
+        val endBar = min(lastLoud + 1, endByWave).coerceIn(min(8, barCount), barCount)
+
         // 3) Gesang (grob): Mitten deutlich stärker als typisch für diesen Titel
         val medRatio = median(midRatio)
         val vocal = BooleanArray(barCount) { midRatio[it] > medRatio * 1.15f && mid[it] > 0.35f }
@@ -109,7 +120,7 @@ object StructureAnalyzer {
         val smooth = FloatArray(barCount) { i -> (max(0, i - 1)..min(barCount - 1, i + 1)).map { e[it] }.average().toFloat() }
         val thr = medE * 0.8f
         val introEnd = smooth.indexOfFirst { it >= thr }.coerceAtLeast(0)
-        val outroStart = (smooth.indexOfLast { it >= thr } + 1).coerceIn(introEnd, barCount)
+        val outroStart = (smooth.indexOfLast { it >= thr } + 1).coerceIn(introEnd, max(introEnd, endBar))
 
         // 5) Breaks: mindestens 2 Takte fast ohne Bass, aber nicht still, zwischen Intro und Outro
         val medB = median(b)
@@ -126,7 +137,21 @@ object StructureAnalyzer {
         }
 
         val bars = (0 until barCount).map { BarInfo(it, e[it], b[it], vocalSmooth[it]) }
-        return TrackStructure(bpm, downbeat, duration, bars, introEnd, outroStart, breaks)
+        return TrackStructure(bpm, downbeat, duration, bars, introEnd, outroStart, breaks, endBar)
+    }
+
+    /** Energie pro Beat, unter der ein Takt als "still" gilt. */
+    private const val SILENCE = 0.05f
+
+    /**
+     * Ab welcher Zeit (Sekunden) ist der Titel nur noch still? Aus der Wellenform (100 Werte/s).
+     * Leise Ausklänge unter ca. -34 dB zählen als Stille.
+     */
+    fun soundEnd(peaks: FloatArray, duration: Double): Double {
+        if (peaks.isEmpty()) return duration
+        var i = peaks.size - 1
+        while (i > 0 && peaks[i] < 0.02f) i--
+        return min(duration, (i + 1) / 100.0 + 0.1)
     }
 
     private fun median(a: FloatArray): Float {
