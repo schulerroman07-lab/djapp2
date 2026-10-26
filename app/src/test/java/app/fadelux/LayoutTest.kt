@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import app.fadelux.data.Track
+import app.fadelux.ui.AutoMixContent
 import app.fadelux.ui.DeckPanel
 import app.fadelux.ui.MixerPanel
 import app.fadelux.ui.OnboardingScreen
@@ -97,6 +98,22 @@ class LayoutTest {
                             Track(4, "", "Unknown BPM", "Artist", 180000, 0f, 0.6f),
                         ).forEachIndexed { i, t -> TrackRow(t, i == 1, {}, {}, {}) }
                     }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun automix() {
+        val q = listOf(
+            Track(1, "", "Midnight Drive", "Neon Avenue", 245000, 124f, 0.8f),
+            Track(2, "", "Sunset Groove", "The Waves", 198000, 118.5f, 0.4f),
+            Track(3, "", "Ein sehr, sehr langer Titel mit vielen Wörtern", "Interpret", 320000, 128f, 0.6f),
+        )
+        paparazzi.snapshot {
+            AppTheme(AppColors.Emerald) {
+                AppBackground {
+                    AutoMixContent(q, true, "Next: Sunset Groove – waiting for the outro", 8, {}, {}, {}, {}, {}, {}, { _, _ -> }, {})
                 }
             }
         }
