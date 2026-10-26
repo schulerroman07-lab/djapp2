@@ -16,7 +16,11 @@ static Engine* g = nullptr;
 extern "C" {
 
 JNIEXPORT jboolean JNICALL FN(create)(JNIEnv*, jobject) {
-    if (!g) g = new Engine();
+    if (g) {  // App wurde neu geöffnet: Engine läuft schon, nur Ausgabe neu starten
+        g->reopen();
+        return g->sampleRate() > 0;
+    }
+    g = new Engine();
     return g->start();
 }
 

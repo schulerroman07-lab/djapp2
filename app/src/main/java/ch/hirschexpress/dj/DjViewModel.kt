@@ -470,6 +470,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         if (recording) stopRecording()
+        decks.forEach { NativeEngine.setPlaying(it.index, false) }
         super.onCleared()
     }
 }

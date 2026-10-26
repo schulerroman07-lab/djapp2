@@ -48,6 +48,16 @@ class MainActivity : ComponentActivity() {
             DjTheme { MainScreen(vm) }
         }
 
+        handlePermission()
+    }
+
+    override fun onDestroy() {
+        // App wird ganz geschlossen: Dienst beenden
+        if (isFinishing) stopService(Intent(this, DjService::class.java))
+        super.onDestroy()
+    }
+
+    private fun handlePermission() {
         val perm = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO
         else Manifest.permission.READ_EXTERNAL_STORAGE
         if (ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED) {
