@@ -382,6 +382,10 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearNewWishes() { newWishes = 0 }
 
+    /** Titel aus der Bibliothek, der zu einem Wunsch passt (oder null). */
+    fun trackForWish(w: Wish): Track? =
+        Suggestions.matchWish(if (w.song.isNotBlank()) w.song else w.text, tracks.value)
+
     // Muss am Ende stehen: alle Variablen oben sind dann schon angelegt
     init {
         engineOk = NativeEngine.create()

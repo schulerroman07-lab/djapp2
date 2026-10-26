@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -125,6 +126,19 @@ fun WishesScreen(vm: DjViewModel, onClose: () -> Unit) {
                                 val deco = if (w.done) TextDecoration.LineThrough else null
                                 if (w.song.isNotBlank()) Text(w.song, style = AppType.bodyBold.copy(color = AppColors.Amber, textDecoration = deco))
                                 if (w.text.isNotBlank()) Text(w.text, style = AppType.body.copy(color = if (w.done) AppColors.TextDim else AppColors.Text, textDecoration = deco))
+                            }
+                            // Wunsch ist in der Bibliothek: direkt laden oder in die Warteschlange
+                            val match = remember(w.id, vm.tracks.value.size) { vm.trackForWish(w) }
+                            if (match != null && !w.done) {
+                                NeonButton(Modifier.size(width = 40.dp, height = 42.dp), text = "A", fontSize = 15) { vm.loadTrack(0, match) }
+                                Spacer(Modifier.width(4.dp))
+                                NeonButton(Modifier.size(width = 40.dp, height = 42.dp), text = "B", color = AppColors.Cyan, fontSize = 15) { vm.loadTrack(1, match) }
+                                Spacer(Modifier.width(4.dp))
+                                NeonButton(Modifier.size(width = 40.dp, height = 42.dp), icon = AppIcons.Queue, color = AppColors.Violet, iconSize = 18.dp) {
+                                    vm.autoMix.add(match)
+                                    vm.message = UiText(R.string.msg_queued, match.title)
+                                }
+                                Spacer(Modifier.width(10.dp))
                             }
                             NeonButton(Modifier.size(width = 48.dp, height = 42.dp), icon = AppIcons.Check, color = AppColors.Emerald, active = w.done) { vm.markWish(w) }
                             Spacer(Modifier.width(6.dp))

@@ -66,6 +66,14 @@ object TrackAnalysis {
 data class Suggestion(val track: Track, val isWish: Boolean)
 
 object Suggestions {
+    /** Passt ein Gästewunsch (Song aus der Liste oder Freitext) zu einem Titel der Bibliothek? */
+    fun matchWish(text: String, all: List<Track>): Track? {
+        val q = text.lowercase().trim()
+        if (q.length < 3) return null
+        return all.firstOrNull { "${it.artist} – ${it.title}".lowercase() == q }
+            ?: all.firstOrNull { it.title.length >= 3 && q.contains(it.title.lowercase()) }
+    }
+
     /**
      * Vorschläge: zuerst Gästewünsche, die in der Bibliothek sind,
      * dann Titel mit ähnlichem Tempo (±6 %) und ähnlicher Energie.
@@ -75,11 +83,7 @@ object Suggestions {
         val used = HashSet<Long>(exclude)
         // 1) Gästewünsche, die zu einem Titel der Bibliothek passen
         for (w in wishTexts) {
-            val q = w.lowercase()
-            val hit = all.firstOrNull { t ->
-                t.id !in used && t.title.length >= 3 &&
-                    (q.contains(t.title.lowercase()) || q == "${t.artist} – ${t.title}".lowercase())
-            }
+            val hit = matchWish(w, all.filter { it.id !in used })
             if (hit != null) { out += Suggestion(hit, true); used += hit.id }
         }
         // 2) Ähnliches Tempo und Energie
