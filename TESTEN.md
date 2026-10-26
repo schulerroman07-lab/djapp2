@@ -20,6 +20,8 @@ Bitte der Reihe nach ausprobieren und die Nummern notieren, bei denen etwas nich
 ## D. Mixen (wie bisher)
 10. Play/Pause, CUE, Wellenformen, Tempo, KEY, SYNC, EQ/KILL, Filter, Echo, Crossfader, Kopfhörer, Aufnahme.
 
+10b. Drehendes Cover mit dem Finger seitlich wischen → Deck wird kurz schneller/langsamer.
+
 ## E. Auto-Mix
 11. Mehrere Titel zur Warteschlange → Auto-Mix öffnen → Reihenfolge per Griff ziehen.
 12. „Reihenfolge optimieren“ sortiert um.
@@ -33,6 +35,7 @@ Bitte der Reihe nach ausprobieren und die Nummern notieren, bei denen etwas nich
 18. Wünsche → „Lokales WLAN“ → Event starten → QR-Code.
 19. Zweites Handy mit dem Hotspot/WLAN verbinden → QR scannen → Song suchen → senden.
 20. Wunsch erscheint sofort. Zweiter Wunsch sofort danach → „nur alle 5 Minuten“.
+20b. Wunsch eines Songs aus deiner Bibliothek → in der Liste erscheinen Knöpfe A / B / Warteschlange.
 
 ## G. Einstellungen
 21. Design: Akzentfarbe wechseln → ganze App ändert die Farbe.

@@ -10,11 +10,13 @@
 - GitHub baut jetzt **APK und AAB**; Play-Store-Schlüssel über GitHub-Secrets (**SIGNING.md**).
 - Berechtigungen reduziert: `WAKE_LOCK` und `POST_NOTIFICATIONS` entfernt, Backups deaktiviert.
 - **PRIVACY.md**: Vorlage Datenschutzerklärung inkl. Hilfe für den Play-Store-Fragebogen.
+- **STORE_LISTING.md**: Play-Store-Texte (kurz + lang) in DE/EN/FR/IT.
 
 ### 2. Redesign (Neon + Glas)
 - Design-System in eigenen Dateien: `ui/theme/Color.kt`, `Dimens.kt`, `Type.kt`, `Theme.kt`.
 - Komponenten: Glas-Flächen mit Leucht-Rand, Neon-Knöpfe mit Feder-Animation und Vibration, neue Regler mit Leuchtbogen, Hintergrund mit weichen Farbflecken.
 - Deck leuchtet, solange es spielt; Cover dreht sich wie eine Platte (60 fps, nur Grafik).
+- **Jog:** Das drehende Cover seitlich wischen = Deck kurz schneller/langsamer (Beats von Hand angleichen).
 - **Live-Spektrum** (28 Bänder) im Mischpult. Der Audio-Thread kopiert nur Samples, die FFT läuft im UI-Takt.
 - Fenster (Bibliothek, Auto-Mix, Wünsche, Einstellungen) blenden weich ein/aus.
 - Positionen/Wellenformen werden 60× pro Sekunde aktualisiert und nur neu gezeichnet (keine unnötige Neuberechnung des Layouts).
@@ -41,6 +43,7 @@
 - **Neu: Modus „Lokales WLAN“** – die App startet einen eigenen kleinen Webserver; Gäste im gleichen WLAN/Hotspot scannen den QR-Code. Kein Internet nötig.
 - Gästeseite mehrsprachig (DE/EN/FR/IT) und im neuen Design.
 - 3-Schritte-Anleitung mit Symbolen in der App.
+- Wünsche, die in der Bibliothek vorhanden sind, lassen sich direkt aus der Wunschliste auf Deck A/B laden oder in die Auto-Mix-Warteschlange legen.
 
 ### 7. Einstellungen & Sprachen
 - Kategorien: Design (Akzentfarbe), Sprache, Audio (Ausgabe, Geräte, Latenz, Qualität/Puffer), Bibliothek (Ordner, neu einlesen), Hilfe/FAQ, Über (Version, Lizenzen), Datenschutz.
