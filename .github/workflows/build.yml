@@ -20,9 +20,9 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
       - name: APK bauen
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleRelease --stacktrace
       - name: APK umbenennen
-        run: cp app/build/outputs/apk/debug/app-debug.apk HirschExpressDJ.apk
+        run: cp app/build/outputs/apk/release/app-release.apk HirschExpressDJ.apk
       - uses: actions/upload-artifact@v4
         with:
           name: HirschExpressDJ-APK
