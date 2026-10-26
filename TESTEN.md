@@ -65,7 +65,7 @@ Bitte der Reihe nach ausprobieren und die Nummern notieren, bei denen etwas nich
 38. „Song überspringen“ → der nächste Song in der Warteschlange wird vorbereitet.
 39. Zwei Songs mit sehr unterschiedlichem Tempo (z.B. 90 und 128 BPM) → kein Überblenden der Beats, sondern Echo, Hall oder Schnitt.
 40. Einstellungen → Auto-Mix: Stil „Club“ → kürzere, härtere Übergänge; „Ruhig“ → lange, weiche. Einen Typ ausschalten → er kommt nicht mehr vor.
-41. Während eines Übergangs selbst am Crossfader ziehen → Auto-Mix gibt ab.
+41. Während Auto-Mix läuft, ist der Crossfader gesperrt (Schloss-Symbol). „Manuell übernehmen“ (unter den Lautstärkereglern) beendet Auto-Mix bewusst.
 
 ## L. Playlists
 42. Oben „Playlists“ → „Neue Playlist“ → Name → leere Playlist öffnet sich.
@@ -82,3 +82,27 @@ Bitte der Reihe nach ausprobieren und die Nummern notieren, bei denen etwas nich
 51. Playlist → „Exportieren“ → „Als Ordner“ (Nummern an) → Ordner wählen (z.B. USB-Stick) → Fortschritt läuft, Abbrechen funktioniert; danach: Ordner mit „01 - …“-Dateien + .m3u8.
 52. „Ordner als Playlist importieren“ → den Ordner aus 51 wählen → neue Playlist.
 53. Eine M3U von einem PC importieren → nicht gefundene Songs werden aufgelistet.
+
+## N. Auto-Mix 1.2 (Liedende, Tempo, Lautheit)
+54. Auto-Mix mit 4–5 Songs starten. Der Übergang beginnt immer erst gegen Ende des alten Songs (letzte 16–32 Takte), nie mitten drin. Der alte Song ist fertig ausgeblendet, bevor er von selbst aufhört.
+55. Einen Song mit langer Stille am Schluss in die Warteschlange → Auto-Mix wartet die Stille NICHT ab, der Übergang ist vor der Stille fertig.
+56. Zwei Songs mit leicht verschiedenem Tempo (z.B. 124 und 128 BPM): Während des Übergangs laufen die Beats gleich. Danach im Deck die Tempo-Anzeige beobachten: Sie geht in ca. 15–30 Sekunden langsam auf 0,0 % zurück. Die Tonhöhe bleibt gleich (Keylock).
+57. Leisen Song nach lautem Song (oder umgekehrt) → kein Lautstärkesprung beim Übergang.
+58. Auto-Mix-Seite → unten „Protokoll“ antippen → für jeden Übergang steht, welcher Typ wann und warum gewählt wurde (z.B. „Tempo 124 → 126 BPM: angleichen …“, „Start im Outro (Takt 80 von 96)“, „Lautheit …“).
+
+## O. Warteschlange & Shuffle
+59. Einige Songs nacheinander in die Warteschlange (Bibliothek → Warteschlangen-Knopf). Sie werden automatisch passend eingereiht (ähnliches Tempo/Genre nebeneinander). Es erscheint nie „passt nicht“.
+60. Einen Song am Griff ☰ verschieben → er bekommt eine Stecknadel 📌 und bleibt dort, auch wenn neue Songs dazukommen.
+61. Einen Song am Griff ganz nach unten ziehen und am unteren Rand halten → die Liste scrollt mit.
+62. Menü ⋮ bei einem Song → „Als Nächstes spielen“ / „Ans Ende“ / „Entfernen“.
+63. Bibliothek: Song lange drücken → „Als Nächstes spielen“ oder „Ans Ende der Warteschlange“.
+64. Auto-Mix-Seite → „Smart Shuffle“ mehrmals drücken → jedes Mal eine andere Reihenfolge, aber ähnliche Songs bleiben nahe beieinander.
+65. Playlist öffnen → „Zufällig“ → Playlist läuft in zufälliger Reihenfolge im Auto-Mix.
+66. Einstellungen → Auto-Mix → „Neue Songs automatisch einreihen: aus“ → neue Songs kommen wieder einfach ans Ende.
+
+## P. Bedienung & Design
+67. Auto-Mix läuft → von unten nach oben wischen (App verlassen) → Auto-Mix läuft weiter, der Crossfader hat sich nicht bewegt.
+68. Unten und an den Seiten ist etwas mehr Abstand zum Bildschirmrand.
+69. Musik läuft → der Hintergrund leuchtet sanft grün, bewegt sich langsam und pulsiert leicht im Beat.
+70. Einstellungen → Design → Animierter Hintergrund: „Energiesparen“ (ruhiger) und „Aus“ (still) ausprobieren.
+
