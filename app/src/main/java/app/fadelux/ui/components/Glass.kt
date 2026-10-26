@@ -33,10 +33,19 @@ fun Modifier.glow(color: Color, radius: Dp = 14.dp, corner: Dp = Dimens.radius, 
         drawIntoCanvas { c ->
             val p = Paint().apply {
                 isAntiAlias = true
-                this.color = color.copy(alpha = 0.02f).toArgb()
+                this.color = color.toArgb()
                 setShadowLayer(radius.toPx(), 0f, 0f, color.copy(alpha = alpha).toArgb())
             }
-            c.nativeCanvas.drawRoundRect(0f, 0f, size.width, size.height, corner.toPx(), corner.toPx(), p)
+            val nc = c.nativeCanvas
+            val r = corner.toPx()
+            // Nur AUSSERHALB der Fläche leuchten (die Glasfläche bleibt durchsichtig)
+            val path = android.graphics.Path().apply {
+                addRoundRect(0f, 0f, size.width, size.height, r, r, android.graphics.Path.Direction.CW)
+            }
+            nc.save()
+            nc.clipOutPath(path)
+            nc.drawRoundRect(0f, 0f, size.width, size.height, r, r, p)
+            nc.restore()
         }
     }
 
