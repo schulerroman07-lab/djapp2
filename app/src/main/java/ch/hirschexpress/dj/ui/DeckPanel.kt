@@ -75,9 +75,14 @@ fun DeckPanel(d: DeckModel, modifier: Modifier = Modifier) {
                         if (d.bpm > 0) String.format(Locale.US, "%.1f", d.effectiveBpm) else "--.-",
                         color = color, fontSize = 20.sp, fontWeight = FontWeight.Black,
                     )
+                    // Rot, wenn der Titel bald endet (unter 30 Sekunden)
+                    val remaining = d.duration - d.position
+                    val ending = d.playing && remaining < 30
                     Text(
-                        "-" + formatTime(d.duration - d.position),
-                        color = DjColors.TextDim, fontSize = 12.sp,
+                        "-" + formatTime(remaining),
+                        color = if (ending) DjColors.Red else DjColors.TextDim,
+                        fontSize = if (ending) 15.sp else 12.sp,
+                        fontWeight = if (ending) FontWeight.Bold else FontWeight.Normal,
                     )
                 }
             }
