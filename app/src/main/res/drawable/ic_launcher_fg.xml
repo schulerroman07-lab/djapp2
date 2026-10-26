@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Einfaches Symbol: Schallplatte in Orange -->
+<!-- App-Symbol: leuchtende Schallplatte mit Crossfader (Neon-Grün) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#FFFF8A00"
-        android:pathData="M54,30a24,24 0,1 1,0 48a24,24 0,1 1,0 -48z" />
-    <path android:fillColor="#FF1B1B22"
-        android:pathData="M54,46a8,8 0,1 1,0 16a8,8 0,1 1,0 -16z" />
-    <path android:fillColor="#FFFFFFFF"
-        android:pathData="M54,51a3,3 0,1 1,0 6a3,3 0,1 1,0 -6z" />
+    <!-- Leuchten (breite, transparente Ringe) -->
+    <path android:strokeColor="#3310B981" android:strokeWidth="9" android:fillColor="#00000000"
+        android:pathData="M54,30a20,20 0,1 1,0 40a20,20 0,1 1,0 -40z" />
+    <!-- Platte -->
+    <path android:strokeColor="#FF10B981" android:strokeWidth="3.5" android:fillColor="#FF0B0F0D"
+        android:pathData="M54,30a20,20 0,1 1,0 40a20,20 0,1 1,0 -40z" />
+    <path android:strokeColor="#5510B981" android:strokeWidth="1.2" android:fillColor="#00000000"
+        android:pathData="M54,37a13,13 0,1 1,0 26a13,13 0,1 1,0 -26z" />
+    <path android:fillColor="#FF10B981"
+        android:pathData="M54,46a4,4 0,1 1,0 8a4,4 0,1 1,0 -8z" />
+    <!-- Crossfader -->
+    <path android:fillColor="#FF22D3EE" android:pathData="M36,76h36v3h-36z" />
+    <path android:fillColor="#FFF2F5F7" android:pathData="M58,72h6v11h-6z" />
 </vector>

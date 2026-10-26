@@ -8,7 +8,7 @@
 #include <cstring>
 #include <string>
 
-#define LOG_TAG "HirschDJ"
+#define LOG_TAG "Fadelux"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 namespace dj {

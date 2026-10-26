@@ -39,6 +39,10 @@ public:
     void setCueDelayMs(float ms) { cueDelayMs_.store(ms); }
     void setOutput(int mode, int masterDevice, int cueDevice);
 
+    void setBufferBursts(int n);
+    // Spektrum für die Anzeige (wird im UI-Thread berechnet, NICHT im Audio-Thread)
+    void spectrum(float* bands, int numBands);
+
     int sampleRate() const { return rate_.load(); }
     float masterLevel() const { return masterLevel_.load(); }
     double latencyMs();
@@ -73,6 +77,10 @@ private:
     size_t delayPos_ = 0;
     StereoRing cueRing_{1 << 15};
     std::vector<float> cueTmp_;
+    std::atomic<int> bufferBursts_{2};
+    static constexpr int kScope = 2048;          // Mono-Kopie des Masters für das Spektrum
+    float scope_[kScope] = {0};
+    std::atomic<int> scopePos_{0};
 };
 
 }  // namespace dj

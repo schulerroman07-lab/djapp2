@@ -7,17 +7,17 @@ plugins {
 }
 
 android {
-    namespace = "ch.hirschexpress.dj"
+    namespace = "app.fadelux"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "ch.hirschexpress.dj"
+        applicationId = "app.fadelux"
         minSdk = 29
         targetSdk = 35
         // Auf GitHub zählt die Versionsnummer automatisch hoch
         val build = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
         versionCode = build
-        versionName = "0.1.$build"
+        versionName = "1.0.$build"
 
         externalNativeBuild {
             cmake {
@@ -40,6 +40,21 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        // Play-Store-Schlüssel (siehe SIGNING.md). Fehlt er, wird der Test-Schlüssel benutzt.
+        create("upload") {
+            val ks = file("upload.keystore")
+            if (ks.exists()) {
+                storeFile = ks
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            } else {
+                storeFile = file("debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
     }
 
     buildTypes {
@@ -48,7 +63,7 @@ android {
         }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("upload")
         }
     }
 
@@ -69,6 +84,7 @@ android {
     buildFeatures {
         compose = true
         prefab = true
+        buildConfig = true
     }
 }
 

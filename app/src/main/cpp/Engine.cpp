@@ -5,7 +5,7 @@
 #include <cstring>
 #include <thread>
 
-#define LOG_TAG "HirschDJ"
+#define LOG_TAG "Fadelux"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
@@ -80,7 +80,7 @@ bool Engine::openStreams() {
         return false;
     }
     if (rate_.load() == 0) rate_.store(main_->getSampleRate());
-    main_->setBufferSizeInFrames(main_->getFramesPerBurst() * 2);
+    main_->setBufferSizeInFrames(main_->getFramesPerBurst() * bufferBursts_.load());
 
     if (mode == kModeTwoDev && cueDevice_ > 0) {
         cueRing_.clear();
@@ -206,6 +206,14 @@ void Engine::renderMain(float* out, int channels, int frames) {
 
     recorder.push(master_.data(), frames);
 
+    // Mono-Kopie für die Spektrum-Anzeige (nur kopieren – sehr billig)
+    int sp = scopePos_.load(std::memory_order_relaxed);
+    for (int i = 0; i < frames; i++) {
+        scope_[sp] = (master_[i * 2] + master_[i * 2 + 1]) * 0.5f;
+        sp = (sp + 1) & (kScope - 1);
+    }
+    scopePos_.store(sp, std::memory_order_relaxed);
+
     int mode = mode_.load();
     if (mode == kModeSplit && channels >= 2) {
         for (int i = 0; i < frames; i++) {
@@ -230,6 +238,71 @@ void Engine::renderMain(float* out, int channels, int frames) {
         out[i * channels] = master_[i * 2];
         if (channels > 1) out[i * channels + 1] = master_[i * 2 + 1];
         for (int ch = 2; ch < channels; ch++) out[i * channels + ch] = 0;
+    }
+}
+
+}  // namespace dj
+
+namespace dj {
+
+void Engine::setBufferBursts(int n) {
+    bufferBursts_.store(std::max(1, std::min(8, n)));
+    std::lock_guard<std::mutex> lk(streamMutex_);
+    if (main_) main_->setBufferSizeInFrames(main_->getFramesPerBurst() * bufferBursts_.load());
+}
+
+// Einfache FFT (Radix 2, in-place)
+static void fft(std::vector<float>& re, std::vector<float>& im) {
+    size_t n = re.size();
+    for (size_t i = 1, j = 0; i < n; i++) {
+        size_t bit = n >> 1;
+        for (; j & bit; bit >>= 1) j ^= bit;
+        j ^= bit;
+        if (i < j) {
+            std::swap(re[i], re[j]);
+            std::swap(im[i], im[j]);
+        }
+    }
+    for (size_t len = 2; len <= n; len <<= 1) {
+        float ang = -2.f * kPi / len;
+        float wr = std::cos(ang), wi = std::sin(ang);
+        for (size_t i = 0; i < n; i += len) {
+            float cr = 1, ci = 0;
+            for (size_t k = 0; k < len / 2; k++) {
+                size_t a = i + k, b = i + k + len / 2;
+                float tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr;
+                re[b] = re[a] - tr;
+                im[b] = im[a] - ti;
+                re[a] += tr;
+                im[a] += ti;
+                float ncr = cr * wr - ci * wi;
+                ci = cr * wi + ci * wr;
+                cr = ncr;
+            }
+        }
+    }
+}
+
+void Engine::spectrum(float* bands, int numBands) {
+    const int n = 1024;
+    std::vector<float> re(n), im(n, 0.f);
+    int end = scopePos_.load(std::memory_order_relaxed);
+    for (int i = 0; i < n; i++) {
+        float w = 0.5f - 0.5f * std::cos(2.f * kPi * i / (n - 1));
+        re[i] = scope_[(end - n + i + kScope) & (kScope - 1)] * w;
+    }
+    fft(re, im);
+    int rate = std::max(8000, rate_.load());
+    // Logarithmische Bänder von 40 Hz bis 16 kHz
+    for (int b = 0; b < numBands; b++) {
+        float f0 = 40.f * std::pow(400.f, (float)b / numBands);
+        float f1 = 40.f * std::pow(400.f, (float)(b + 1) / numBands);
+        int k0 = std::max(1, (int)(f0 * n / rate));
+        int k1 = std::max(k0 + 1, (int)(f1 * n / rate));
+        float m = 0;
+        for (int k = k0; k < k1 && k < n / 2; k++) m = std::max(m, re[k] * re[k] + im[k] * im[k]);
+        float db = 10.f * std::log10(m + 1e-12f);
+        bands[b] = std::max(0.f, std::min(1.f, (db + 20.f) / 60.f));
     }
 }
 

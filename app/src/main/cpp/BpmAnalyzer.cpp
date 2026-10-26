@@ -20,6 +20,9 @@ void BpmAnalyzer::feed(const int16_t* stereo, size_t frames, int sampleRate) {
         lp_ += lpCoef_ * (m - lp_);
         accLow_ += lp_ * lp_;
         accAll_ += m * m;
+        sumLow_ += lp_ * lp_;
+        sumAll_ += m * m;
+        sumCount_++;
         if (++accCount_ >= hop_) {
             low_.push_back((float)std::log(1e-6 + accLow_ / hop_));
             all_.push_back((float)std::log(1e-6 + accAll_ / hop_));
@@ -99,6 +102,14 @@ BpmResult BpmAnalyzer::result() const {
     score(bestBpm, &phase);
     res.bpm = (float)(std::round(bestBpm * 10.0) / 10.0);
     res.firstBeat = (float)(phase / envRate_);
+
+    // Energie: 70 % Lautheit (RMS in dB) + 30 % Bass-Anteil
+    if (sumCount_ > 0) {
+        double rmsDb = 10.0 * std::log10(1e-12 + sumAll_ / sumCount_);
+        double loud = std::min(1.0, std::max(0.0, (rmsDb + 28.0) / 20.0));
+        double bass = std::min(1.0, std::max(0.0, (sumLow_ / (sumAll_ + 1e-12)) * 2.0));
+        res.energy = (float)(0.7 * loud + 0.3 * bass);
+    }
     return res;
 }
 

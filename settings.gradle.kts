@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "HirschExpressDJ"
+rootProject.name = "Fadelux"
 include(":app")

@@ -1,3 +1,171 @@
 <resources>
-    <string name="app_name">Hirsch Express DJ</string>
+    <!-- Der App-Name steht NUR hier. Zum Umbenennen nur diese Zeile ändern. -->
+    <string name="app_name" translatable="false">Fadelux</string>
+
+    <string name="notif_text">Running – tap to open</string>
+
+    <!-- Navigation -->
+    <string name="nav_library">Library</string>
+    <string name="nav_automix">Auto-Mix</string>
+    <string name="nav_wishes">Requests</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Deck -->
+    <string name="deck_empty">No track loaded</string>
+    <string name="deck_empty_hint">Open the library to load a track</string>
+    <string name="deck_loading">Loading…</string>
+    <string name="eq_high">High</string>
+    <string name="eq_mid">Mid</string>
+    <string name="eq_low">Low</string>
+    <string name="fx_filter">Filter</string>
+    <string name="fx_echo">Echo</string>
+    <string name="mix_master">Master</string>
+    <string name="mix_phones">Phones</string>
+    <string name="mix_cue_mix">Cue/Mix</string>
+
+    <!-- Messages -->
+    <string name="msg_tracks_found">%1$d tracks found</string>
+    <string name="msg_scan_error">Could not read your music</string>
+    <string name="msg_load_failed">Track could not be loaded</string>
+    <string name="msg_deck_playing">Deck %1$s is playing – stop it first</string>
+    <string name="msg_rec_started">Recording to %1$s</string>
+    <string name="msg_rec_saved">Recording saved in %1$s</string>
+    <string name="msg_rec_failed">Recording not possible</string>
+    <string name="msg_permission">Without permission the app cannot read your music</string>
+    <string name="msg_use_home">Use the Home button to leave (music keeps playing)</string>
+    <string name="msg_queued">Added to Auto-Mix: %1$s</string>
+
+    <!-- Library -->
+    <string name="lib_tab_all">All tracks</string>
+    <string name="lib_tab_suggest">Fits next</string>
+    <string name="lib_search">Search title or artist</string>
+    <string name="lib_rescan">Rescan</string>
+    <string name="lib_count">%1$d tracks</string>
+    <string name="lib_analyzing">analysing BPM and energy (%1$d left)</string>
+    <string name="lib_empty">No music found yet.\nCopy MP3 files to your phone (e.g. the “Music” folder) and tap “Rescan”.</string>
+    <string name="lib_suggest_hint">Guest requests from your library first, then tracks with similar tempo (±6 percent) and energy as the track on air.</string>
+    <string name="lib_suggest_empty">Load and play a track first – then suggestions appear here.</string>
+    <string name="lib_folder">Music folder</string>
+    <string name="lib_folder_all">All folders</string>
+
+    <!-- Auto-Mix -->
+    <string name="am_queue">Queue (%1$d)</string>
+    <string name="am_queue_empty">Queue is empty.\nAdd tracks in the library with the queue button.</string>
+    <string name="am_start">Start Auto-Mix</string>
+    <string name="am_stop">Stop Auto-Mix</string>
+    <string name="am_mix_now">Mix now</string>
+    <string name="am_optimize">Optimise order</string>
+    <string name="am_optimized">Order sorted by BPM and energy</string>
+    <string name="am_length">Transition length</string>
+    <string name="am_bars">%1$d bars</string>
+    <string name="am_seconds">%1$d s</string>
+    <string name="am_clear">Clear queue</string>
+    <string name="am_help">Drag the handle to reorder. Auto-Mix syncs the beats and fades at the end of each track. Move the crossfader yourself at any time to take over.</string>
+    <string name="automix_empty">Add tracks to the queue first</string>
+    <string name="automix_next">Preparing: %1$s</string>
+    <string name="automix_waiting">Next: %1$s – waiting for the outro</string>
+    <string name="automix_mixing">Mixing into: %1$s</string>
+    <string name="automix_last">Last track playing</string>
+    <string name="automix_done">Auto-Mix finished</string>
+    <string name="automix_load_error">Track could not be loaded – skipped</string>
+    <string name="automix_manual">You took over – Auto-Mix stopped</string>
+
+    <!-- Requests -->
+    <string name="wish_step1">Start an event</string>
+    <string name="wish_step2">Guests scan the QR code with their phone camera</string>
+    <string name="wish_step3">Requests appear here live – tick them off or delete them</string>
+    <string name="wish_mode">Connection</string>
+    <string name="wish_mode_online">Internet</string>
+    <string name="wish_mode_local">Local Wi-Fi</string>
+    <string name="wish_mode_online_hint">Guests use mobile data. Your phone needs internet. Events expire after 24 hours.</string>
+    <string name="wish_mode_local_hint">No internet needed: guests join the same Wi-Fi or your phone’s hotspot.</string>
+    <string name="wish_online_unavailable">Internet mode is not available in this version – use Local Wi-Fi</string>
+    <string name="wish_event_name">Event name</string>
+    <string name="wish_start">Start event</string>
+    <string name="wish_starting">Starting…</string>
+    <string name="wish_end">End event</string>
+    <string name="wish_scan_hint">Guests scan this code with their camera.</string>
+    <string name="wish_local_same_wifi">Guests must be in the same Wi-Fi / hotspot.</string>
+    <string name="wish_count">%1$d open · %2$d total</string>
+    <string name="wish_err_server">Could not start the local server</string>
+    <string name="wish_err_no_wifi">No Wi-Fi found – connect to Wi-Fi or turn on your hotspot</string>
+    <string name="wish_err_online">Could not start the event – check your internet</string>
+    <string name="wish_err_connection">No connection – retrying…</string>
+
+    <!-- Guest page -->
+    <string name="guest_title">Song request</string>
+    <string name="guest_search">Search song or artist…</string>
+    <string name="guest_free">Or write your own request (optional)</string>
+    <string name="guest_send">Send request</string>
+    <string name="guest_thanks">Thanks! Your request has reached the DJ.</string>
+    <string name="guest_wait">Only one request every 5 minutes – please wait.</string>
+    <string name="guest_empty">Please pick a song or write something.</string>
+
+    <!-- Settings -->
+    <string name="set_design">Design</string>
+    <string name="set_language">Language</string>
+    <string name="set_audio">Audio</string>
+    <string name="set_library">Library</string>
+    <string name="set_help">Help &amp; FAQ</string>
+    <string name="set_about">About</string>
+    <string name="set_privacy">Privacy</string>
+    <string name="set_accent">Accent colour</string>
+    <string name="lang_system">Phone language</string>
+    <string name="audio_info">%1$d Hz · latency approx. %2$d ms · %3$d channels</string>
+    <string name="audio_mode">Output mode</string>
+    <string name="audio_mode_stereo">Normal: everything on one device (no pre-listening)</string>
+    <string name="audio_mode_split">Splitter cable: left = master, right = headphones (mono each)</string>
+    <string name="audio_mode_4ch">USB audio interface (4 channels): 1/2 master, 3/4 headphones</string>
+    <string name="audio_mode_2dev">Two devices: master on device 1, headphones on device 2</string>
+    <string name="audio_master_device">Master (speaker / box)</string>
+    <string name="audio_cue_device">Headphones</string>
+    <string name="audio_auto">Automatic</string>
+    <string name="audio_refresh">Refresh devices</string>
+    <string name="audio_latency">Headphone delay (latency correction)</string>
+    <string name="audio_latency_hint">Bluetooth speakers play about 150–300 ms late. Delay the headphones by the same amount so both sound together. Wired: 0 ms.</string>
+    <string name="audio_quality">Quality / stability</string>
+    <string name="audio_quality_hint">Smaller buffer = faster response. If the sound crackles, choose “Safe”.</string>
+    <string name="audio_q_fast">Fastest</string>
+    <string name="audio_q_normal">Normal</string>
+    <string name="audio_q_safe">Safe</string>
+    <string name="dev_speaker">Phone speaker</string>
+    <string name="dev_wired">Wired</string>
+    <string name="dev_bluetooth">Bluetooth</string>
+    <string name="dev_usb">USB audio</string>
+    <string name="dev_other">Device</string>
+
+    <!-- FAQ -->
+    <string name="faq_q1">How do I load music?</string>
+    <string name="faq_a1">Copy MP3 files to your phone, open the library and tap “Rescan”. Tap A or B to load a track into a deck.</string>
+    <string name="faq_q2">What does SYNC do?</string>
+    <string name="faq_a2">SYNC matches the tempo and the beat of this deck to the other deck, so both play in time.</string>
+    <string name="faq_q3">How can I pre-listen on headphones?</string>
+    <string name="faq_a3">You need a splitter cable, a USB audio interface or two output devices. Choose the mode under Settings → Audio, then tap the headphone button on a deck.</string>
+    <string name="faq_q4">Why is my Bluetooth speaker late?</string>
+    <string name="faq_a4">Bluetooth always adds a delay. Set the headphone delay under Settings → Audio so headphones and speaker match.</string>
+    <string name="faq_q5">How do guest requests work?</string>
+    <string name="faq_a5">Open Requests, start an event and show the QR code. Guests need no app. With “Local Wi-Fi” no internet is required.</string>
+    <string name="faq_q6">Where are my recordings?</string>
+    <string name="faq_a6">In the “Music” folder on your phone, in a sub-folder with the app name, as WAV files.</string>
+
+    <!-- About -->
+    <string name="about_version">Version %1$s (%2$d)</string>
+    <string name="about_text">Two-deck DJ app for your own music: beat sync, EQ, effects, Auto-Mix and guest requests via QR code.</string>
+    <string name="about_licenses">Open-source licences</string>
+    <string name="about_timestretch">Time-stretching (tempo without pitch change): own WSOLA algorithm</string>
+    <string name="privacy_text">Privacy in short:\n\n• Your music stays on your phone. It is never uploaded.\n• The app has no ads, no tracking and no user accounts.\n• Guest requests (Internet mode): the event name, the song list titles and the requests are stored on our server (Google Firebase, EU) and deleted automatically after 24 hours. Guests are identified only by an anonymous ID for spam protection.\n• Local Wi-Fi mode: nothing leaves your phone.\n\nFull privacy policy: see the app’s store listing.</string>
+
+    <!-- Onboarding -->
+    <string name="onb1_title">Your music, two decks</string>
+    <string name="onb1_text">Open the library, load tracks into deck A and B and mix with the crossfader.</string>
+    <string name="onb2_title">Perfectly in time</string>
+    <string name="onb2_text">BPM is detected automatically. SYNC matches tempo and beat. EQ, filter and echo for smooth transitions.</string>
+    <string name="onb3_title">Auto-Mix</string>
+    <string name="onb3_text">Fill the queue – the app mixes in time on its own. Take over whenever you want.</string>
+    <string name="onb4_title">Guest requests</string>
+    <string name="onb4_text">Show a QR code – guests send requests from their phone. Works even without internet.</string>
+    <string name="onb_next">Next</string>
+    <string name="onb_skip">Skip</string>
+    <string name="onb_start">Let’s go</string>
+    <string name="onb_show_again">Show introduction again</string>
 </resources>

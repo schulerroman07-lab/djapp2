@@ -1,24 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Musik lesen -->
+    <!-- Nur die nötigsten Berechtigungen -->
+    <!-- Musik lesen (Android 13+) bzw. Speicher lesen (Android 10–12) -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <!-- Internet für Gästewünsche -->
+    <!-- Gästewünsche (Internet bzw. lokaler Webserver im WLAN) -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- Damit die Musik weiterläuft, wenn kurz eine andere App offen ist -->
+    <!-- Musik läuft weiter, wenn kurz eine andere App offen ist -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/Theme.HirschDJ">
+        android:localeConfig="@xml/locales_config"
+        android:theme="@style/Theme.Fadelux">
         <activity
             android:name=".MainActivity"
             android:exported="true"

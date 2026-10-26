@@ -1,5 +1,6 @@
 # Baut die App automatisch auf GitHub bei jedem Hochladen (Push).
-# Die fertige APK-Datei findest du unter "Actions" -> letzter Lauf -> "Artifacts".
+# - APK zum direkten Installieren (Release-Seite)
+# - AAB für den Google Play Store (Artefakt "Fadelux-AAB")
 name: App bauen
 
 on:
@@ -19,24 +20,38 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
-      - name: APK bauen
-        run: ./gradlew assembleRelease
-      - name: APK umbenennen
-        run: cp app/build/outputs/apk/release/app-release.apk HirschExpressDJ.apk
+      # Play-Store-Schlüssel aus den GitHub-Secrets (siehe SIGNING.md). Ohne Secrets: Test-Schlüssel.
+      - name: Upload-Schlüssel vorbereiten
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then echo "$KEYSTORE_BASE64" | base64 -d > app/upload.keystore; fi
+      - name: APK und AAB bauen
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease bundleRelease
+      - name: Dateien umbenennen
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk Fadelux.apk
+          cp app/build/outputs/bundle/release/app-release.aab Fadelux.aab
       - uses: actions/upload-artifact@v4
         with:
-          name: HirschExpressDJ-APK
-          path: HirschExpressDJ.apk
+          name: Fadelux-AAB
+          path: Fadelux.aab
       # Direkter Download-Link (immer die neueste Version):
-      # https://github.com/schulerroman07-lab/djapp2/releases/latest/download/HirschExpressDJ.apk
+      # https://github.com/<besitzer>/<projekt>/releases/latest/download/Fadelux.apk
       - name: Als Release veröffentlichen
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.${{ github.run_number }}
-          name: Hirsch Express DJ 0.1.${{ github.run_number }}
+          tag_name: v1.0.${{ github.run_number }}
+          name: Fadelux 1.0.${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           body: "Automatisch gebaut aus: ${{ github.event.head_commit.message }}"
-          files: HirschExpressDJ.apk
+          files: |
+            Fadelux.apk
+            Fadelux.aab
           make_latest: true
 
   # Bildschirmfotos der Oberfläche (zum Prüfen des Layouts, ohne Handy)
@@ -52,11 +67,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Bildschirmfotos erstellen
         run: ./gradlew recordPaparazziDebug
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Bildschirmfotos
-          path: app/src/test/snapshots/images/
       - name: Bildschirmfotos als Vorabversion ablegen
         uses: softprops/action-gh-release@v2
         with:

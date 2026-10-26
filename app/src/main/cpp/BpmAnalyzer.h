@@ -8,6 +8,7 @@ namespace dj {
 struct BpmResult {
     float bpm = 0;         // 0 = nicht erkannt
     float firstBeat = 0;   // Zeit des ersten Beats in Sekunden
+    float energy = 0;      // 0..1: Lautheit/Intensität (für Song-Vorschläge)
 };
 
 // Sammelt Lautstärke-Hüllkurve aus Stereo-Samples und berechnet daraus das Tempo.
@@ -25,6 +26,8 @@ private:
     float lp_ = 0;           // Tiefpass-Zustand (Bassdrum betonen)
     float lpCoef_ = 0;
     double accLow_ = 0, accAll_ = 0;
+    double sumLow_ = 0, sumAll_ = 0;  // Summen für die Energie-Berechnung
+    size_t sumCount_ = 0;
     int accCount_ = 0;
     std::vector<float> low_, all_;
 };

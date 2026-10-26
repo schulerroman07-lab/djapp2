@@ -10,7 +10,7 @@ using namespace dj;
 
 static Engine* g = nullptr;
 
-#define FN(name) Java_ch_hirschexpress_dj_audio_NativeEngine_##name
+#define FN(name) Java_app_fadelux_audio_NativeEngine_##name
 #define DECK(d) (g->deck[(d) & 1])
 
 extern "C" {
@@ -114,6 +114,16 @@ JNIEXPORT jboolean JNICALL FN(startRecording)(JNIEnv*, jobject, jint fd) {
 JNIEXPORT void JNICALL FN(stopRecording)(JNIEnv*, jobject) { if (g) g->recorder.stop(); }
 JNIEXPORT jdouble JNICALL FN(recordingSeconds)(JNIEnv*, jobject) { return g ? g->recorder.seconds() : 0; }
 
+JNIEXPORT void JNICALL FN(getSpectrum)(JNIEnv* env, jobject, jfloatArray out) {
+    if (!g) return;
+    jsize n = env->GetArrayLength(out);
+    std::vector<float> b(n, 0.f);
+    g->spectrum(b.data(), n);
+    env->SetFloatArrayRegion(out, 0, n, b.data());
+}
+
+JNIEXPORT void JNICALL FN(setBufferBursts)(JNIEnv*, jobject, jint n) { if (g) g->setBufferBursts(n); }
+
 JNIEXPORT jfloat JNICALL FN(getMasterLevel)(JNIEnv*, jobject) { return g ? g->masterLevel() : 0.f; }
 
 // Volle Wellenform (100 Werte pro Sekunde) für die Zoom-Ansicht
@@ -140,9 +150,9 @@ JNIEXPORT jfloatArray JNICALL FN(analyzeFile)(JNIEnv* env, jobject, jint fd, jlo
         nullptr, 60 * 8);
     close(fd);
     BpmResult r = an.result();
-    jfloat v[2] = {r.bpm, r.firstBeat};
-    jfloatArray arr = env->NewFloatArray(2);
-    env->SetFloatArrayRegion(arr, 0, 2, v);
+    jfloat v[3] = {r.bpm, r.firstBeat, r.energy};
+    jfloatArray arr = env->NewFloatArray(3);
+    env->SetFloatArrayRegion(arr, 0, 3, v);
     return arr;
 }
 

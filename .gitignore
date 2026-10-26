@@ -8,3 +8,4 @@ local.properties
 captures/
 web/.firebase/
 web/node_modules/
+upload.keystore
