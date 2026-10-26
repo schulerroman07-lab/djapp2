@@ -24,6 +24,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,7 +74,8 @@ fun LibraryScreen(vm: DjViewModel, onClose: () -> Unit) {
                 NeonButton(Modifier.width(140.dp).height(48.dp), text = stringResource(R.string.lib_rescan), icon = AppIcons.Sync, fontSize = 13, iconSize = 16.dp) { vm.scanLibrary() }
             }
             Text(
-                stringResource(R.string.lib_count, tracks.size) + if (unanalyzed > 0) " · " + stringResource(R.string.lib_analyzing, unanalyzed) else "",
+                stringResource(R.string.lib_count, tracks.size) + (if (unanalyzed > 0) " · " + stringResource(R.string.lib_analyzing, unanalyzed) else "") +
+                    " · " + stringResource(R.string.pl_hint_longpress),
                 style = AppType.small, modifier = Modifier.padding(vertical = 4.dp),
             )
             if (tracks.isEmpty()) {
@@ -100,23 +103,37 @@ fun LibraryScreen(vm: DjViewModel, onClose: () -> Unit) {
     }
 }
 
-/** Verbindet eine Zeile mit der App-Logik. */
+/** Verbindet eine Zeile mit der App-Logik. Lange drücken = "Zu Playlist hinzufügen". */
 @Composable
 private fun LibraryRow(vm: DjViewModel, t: Track, isWish: Boolean, onLoaded: () -> Unit) {
+    var addToPlaylist by remember { mutableStateOf(false) }
     TrackRow(
         t, isWish,
         onA = { vm.loadTrack(0, t); onLoaded() },
         onB = { vm.loadTrack(1, t); onLoaded() },
         onQueue = { vm.autoMix.add(t); vm.message = UiText(R.string.msg_queued, t.title) },
+        onLongPress = { addToPlaylist = true },
     )
+    if (addToPlaylist) AddToPlaylistDialog(vm, t) { addToPlaylist = false }
 }
 
 /** Eine Zeile: Cover, Titel, Interpret, Länge, BPM, Energie, Knöpfe A / B / Warteschlange. */
 @Composable
-fun TrackRow(t: Track, isWish: Boolean, onA: () -> Unit, onB: () -> Unit, onQueue: () -> Unit) {
+fun TrackRow(t: Track, isWish: Boolean, onA: () -> Unit, onB: () -> Unit, onQueue: () -> Unit, onLongPress: (() -> Unit)? = null) {
     val accent = LocalAccent.current
+    val view = androidx.compose.ui.platform.LocalView.current
+    val longPress by androidx.compose.runtime.rememberUpdatedState(onLongPress)
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 3.dp).glass(corner = 12.dp, glowColor = if (isWish) AppColors.Amber else null).padding(6.dp),
+        Modifier.fillMaxWidth().padding(vertical = 3.dp).glass(corner = 12.dp, glowColor = if (isWish) AppColors.Amber else null)
+            .pointerInput(Unit) {
+                detectTapGestures(onLongPress = {
+                    longPress?.let { cb ->
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                        cb()
+                    }
+                })
+            }
+            .padding(6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

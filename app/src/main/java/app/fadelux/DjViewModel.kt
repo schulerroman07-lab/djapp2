@@ -22,6 +22,9 @@ import app.fadelux.automix.Suggestion
 import app.fadelux.automix.Suggestions
 import app.fadelux.data.AppSettings
 import app.fadelux.data.LibraryRepository
+import app.fadelux.data.PlaylistRepository
+import app.fadelux.io.ImportResult
+import app.fadelux.io.PlaylistIO
 import app.fadelux.data.Track
 import app.fadelux.ui.UiText
 import app.fadelux.playback.AudioFocusHelper
@@ -75,6 +78,8 @@ class DjViewModel private constructor(private val app: Application) {
     val tracks = library.tracks.stateIn(scope, SharingStarted.Eagerly, emptyList())
     val unanalyzed = library.unanalyzedCount.stateIn(scope, SharingStarted.Eagerly, 0)
     var folders by mutableStateOf<List<String>>(emptyList())
+    val playlists = PlaylistRepository(app)
+    val playlistSummaries = playlists.summaries.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     val decks = listOf(DeckModel(0), DeckModel(1))
     val mixer = MixerModel()
@@ -284,6 +289,103 @@ class DjViewModel private constructor(private val app: Application) {
         val exclude = decks.mapNotNull { it.track?.id }.toSet() + autoMix.queue.map { it.id }
         val wishTexts = wishes.filter { !it.done }.map { if (it.song.isNotBlank()) it.song else it.text }
         return Suggestions.suggest(ref, refBpm, tracks.value, wishTexts, exclude).take(6).map { it.track }
+    }
+
+    // ---------------- Playlists ----------------
+    fun createPlaylist(name: String, initial: List<Track> = emptyList(), onCreated: (Long) -> Unit = {}) {
+        scope.launch {
+            val id = playlists.create(name)
+            if (initial.isNotEmpty()) playlists.addTracks(id, initial.map { it.id })
+            if (initial.isNotEmpty()) message = UiText(R.string.pl_added, name)
+            onCreated(id)
+        }
+    }
+
+    fun addToPlaylist(playlistId: Long, playlistName: String, tracks: List<Track>) {
+        scope.launch {
+            playlists.addTracks(playlistId, tracks.map { it.id })
+            message = UiText(R.string.pl_added, playlistName)
+        }
+    }
+
+    fun renamePlaylist(id: Long, name: String) { scope.launch { playlists.rename(id, name) } }
+    fun deletePlaylist(id: Long) { scope.launch { playlists.delete(id) } }
+    fun removeFromPlaylist(entryId: Long) { scope.launch { playlists.removeEntry(entryId) } }
+    fun reorderPlaylist(entryIds: List<Long>) { scope.launch { playlists.reorder(entryIds) } }
+
+    /** Ganze Playlist in die Auto-Mix-Warteschlange; optional Auto-Mix gleich starten. */
+    fun queuePlaylist(id: Long, start: Boolean) {
+        scope.launch {
+            val list = playlists.tracks(id)
+            val before = autoMix.queue.size
+            autoMix.addAll(list)
+            message = UiText(R.string.msg_queue_added, autoMix.queue.size - before)
+            if (start && !autoMix.running) {
+                autoMix.start()
+                if (!batteryUnrestricted()) message = UiText(R.string.bg_hint_short)
+            }
+        }
+    }
+
+    // ---------------- Import / Export ----------------
+    /** Fortschritt (fertig, total) einer laufenden Kopie, oder null. */
+    var ioProgress by mutableStateOf<Pair<Int, Int>?>(null)
+    var importResult by mutableStateOf<ImportResult?>(null)
+    private var ioJob: Job? = null
+
+    fun exportM3u(playlistId: Long, target: Uri) {
+        scope.launch {
+            try {
+                PlaylistIO.exportM3u(app, target, playlists.tracks(playlistId))
+                message = UiText(R.string.io_export_done)
+            } catch (e: Exception) {
+                Log.e("Fadelux", "M3U-Export", e)
+                message = UiText(R.string.io_failed)
+            }
+        }
+    }
+
+    fun exportFolder(playlistId: Long, name: String, tree: Uri, numbered: Boolean) {
+        ioJob?.cancel()
+        ioJob = scope.launch {
+            try {
+                ioProgress = 0 to 1
+                val n = PlaylistIO.exportFolder(app, tree, name, playlists.tracks(playlistId), numbered) { done, total ->
+                    scope.launch { ioProgress = done to total }
+                }
+                message = UiText(R.string.io_folder_done, n)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                message = UiText(R.string.io_cancelled)
+            } catch (e: Exception) {
+                Log.e("Fadelux", "Ordner-Export", e)
+                message = UiText(R.string.io_failed)
+            } finally {
+                ioProgress = null
+            }
+        }
+    }
+
+    fun cancelIo() { ioJob?.cancel() }
+
+    /** .m3u/.m3u8 oder Ordner importieren → neue Playlist. */
+    fun importPlaylist(source: Uri, isFolder: Boolean) {
+        scope.launch {
+            try {
+                val (name, result) = if (isFolder) PlaylistIO.readFolder(app, source, tracks.value)
+                else PlaylistIO.readM3u(app, source, tracks.value)
+                if (result.trackIds.isNotEmpty()) {
+                    val id = playlists.create(name)
+                    playlists.addTracks(id, result.trackIds)
+                }
+                importResult = ImportResult(
+                    name, result.trackIds.size,
+                    result.missing.map { m -> listOfNotNull(m.artist, m.title).joinToString(" – ").ifBlank { m.path } },
+                )
+            } catch (e: Exception) {
+                Log.e("Fadelux", "Import", e)
+                message = UiText(R.string.io_failed)
+            }
+        }
     }
 
     // ---------------- Ausgabe / Einstellungen ----------------

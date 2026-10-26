@@ -74,7 +74,7 @@ class LayoutTest {
             AppTheme(AppColors.Emerald) {
                 AppBackground {
                     Column(Modifier.fillMaxSize().padding(6.dp)) {
-                        TopBar(true, 3, true, 754.0, true, {}, {}, {}, {}, {})
+                        TopBar(true, 3, true, 754.0, true, {}, {}, {}, {}, {}, {})
                         Box(Modifier.height(6.dp))
                         val decks = listOf(demoDeck(0), demoDeck(1))
                         val mixer = MixerModel().apply {
@@ -168,6 +168,32 @@ class LayoutTest {
                     Row(Modifier.fillMaxSize().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         SettingsNav(0) {}
                         Column(Modifier.weight(1f).fillMaxHeight().glass().padding(14.dp)) { AccentPicker(2) {} }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun playlist() {
+        val tracks = listOf(
+            Track(1, "", "Midnight Drive", "Neon Avenue", 245000, 124f, 0.8f),
+            Track(2, "", "Sunset Groove", "The Waves", 198000, 118.5f, 0.4f),
+            Track(3, "", "Ein sehr, sehr langer Titel mit vielen Wörtern", "Interpret", 320000, 128f, 0.6f),
+        )
+        paparazzi.snapshot {
+            AppTheme(AppColors.Emerald) {
+                AppBackground {
+                    Row(Modifier.fillMaxSize().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(Modifier.width(180.dp)) {
+                            app.fadelux.ui.CoverCollage(tracks, Modifier.width(180.dp).height(180.dp))
+                        }
+                        Column(Modifier.weight(1f)) {
+                            app.fadelux.ui.PlaylistEntryList(
+                                tracks.mapIndexed { i, t -> app.fadelux.data.PlaylistEntry(i.toLong(), i, t) },
+                                {}, {}, {}, { _, _ -> },
+                            )
+                        }
                     }
                 }
             }

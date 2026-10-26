@@ -39,5 +39,7 @@ object AppIcons {
     val ArrowUp = icon("up", "M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z")
     val ArrowDown = icon("down", "M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z")
     val Next = icon("next", "M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z")
+    val ArrowLeft = icon("left", "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z")
+    val Playlist = icon("playlist", "M3 10h11v2H3v-2zm0-4h11v2H3V6zm0 8h7v2H3v-2zm13-1v8l6-4-6-4z")
     val Info = icon("info", "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z")
 }

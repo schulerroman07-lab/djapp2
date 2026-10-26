@@ -64,8 +64,9 @@ fun SettingsScreen(vm: DjViewModel, onLanguageChanged: () -> Unit, onClose: () -
                         { vm.settings.mixStyle = it }, { vm.settings.transitionBars = it }, { vm.toggleTransitionType(it) },
                     )
                     4 -> LibrarySection(vm)
-                    5 -> HelpSection(vm)
-                    6 -> AboutSection()
+                    5 -> ImportExportSection(vm)
+                    6 -> HelpSection(vm)
+                    7 -> AboutSection()
                     else -> Text(stringResource(R.string.privacy_text), style = AppType.body)
                 }
             }
@@ -99,7 +100,7 @@ fun AccentPicker(selected: Int, onSelect: (Int) -> Unit) {
 fun SettingsNav(selected: Int, onSelect: (Int) -> Unit) {
     val sections = listOf(
         R.string.set_design, R.string.set_language, R.string.set_audio, R.string.nav_automix, R.string.set_library,
-        R.string.set_help, R.string.set_about, R.string.set_privacy,
+        R.string.io_title, R.string.set_help, R.string.set_about, R.string.set_privacy,
     )
     Column(Modifier.width(190.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         sections.forEachIndexed { i, s ->

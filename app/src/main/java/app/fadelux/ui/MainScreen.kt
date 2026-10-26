@@ -49,6 +49,7 @@ const val VIEW_LIBRARY = 1
 const val VIEW_AUTOMIX = 2
 const val VIEW_WISHES = 3
 const val VIEW_SETTINGS = 4
+const val VIEW_PLAYLISTS = 5
 
 @Composable
 fun MainScreen(vm: DjViewModel, onLanguageChanged: () -> Unit) {
@@ -70,7 +71,7 @@ fun MainScreen(vm: DjViewModel, onLanguageChanged: () -> Unit) {
         Column(Modifier.fillMaxSize().padding(Dimens.gap)) {
             TopBar(
                 vm.engineOk, vm.newWishes, vm.recording, vm.recordSeconds, vm.autoMix.running,
-                onLibrary = { view = VIEW_LIBRARY }, onAutoMix = { view = VIEW_AUTOMIX },
+                onLibrary = { view = VIEW_LIBRARY }, onPlaylists = { view = VIEW_PLAYLISTS }, onAutoMix = { view = VIEW_AUTOMIX },
                 onWishes = { view = VIEW_WISHES; vm.clearNewWishes() },
                 onRecord = { vm.toggleRecording() }, onSettings = { view = VIEW_SETTINGS },
             )
@@ -95,9 +96,13 @@ fun MainScreen(vm: DjViewModel, onLanguageChanged: () -> Unit) {
                 VIEW_AUTOMIX -> AutoMixScreen(vm) { view = VIEW_MIXER }
                 VIEW_WISHES -> WishesScreen(vm) { view = VIEW_MIXER }
                 VIEW_SETTINGS -> SettingsScreen(vm, onLanguageChanged) { view = VIEW_MIXER }
+                VIEW_PLAYLISTS -> PlaylistsScreen(vm) { view = VIEW_MIXER }
                 else -> Box(Modifier)
             }
         }
+        // Import/Export: Fortschritt und Ergebnis
+        vm.ioProgress?.let { IoProgressDialog(it) { vm.cancelIo() } }
+        vm.importResult?.let { ImportResultDialog(it) { vm.importResult = null } }
         // Kurze Meldungen unten
         val msg = vm.message
         LaunchedEffect(msg) {
@@ -123,6 +128,7 @@ fun TopBar(
     recordSeconds: Double,
     autoMixRunning: Boolean,
     onLibrary: () -> Unit,
+    onPlaylists: () -> Unit,
     onAutoMix: () -> Unit,
     onWishes: () -> Unit,
     onRecord: () -> Unit,
@@ -142,17 +148,18 @@ fun TopBar(
         )
         if (!engineOk) Text("⚠", style = AppType.bodyBold, color = AppColors.Red)
         Spacer(Modifier.weight(1f))
-        NeonButton(Modifier.width(118.dp).fillMaxHeight(), text = stringResource(R.string.nav_library), icon = AppIcons.Library, fontSize = 13, iconSize = 18.dp) { onLibrary() }
-        NeonButton(Modifier.width(112.dp).fillMaxHeight(), text = stringResource(R.string.nav_automix), icon = AppIcons.Auto, active = autoMixRunning, fontSize = 13, iconSize = 18.dp) { onAutoMix() }
+        NeonButton(Modifier.width(108.dp).fillMaxHeight(), text = stringResource(R.string.nav_library), icon = AppIcons.Library, fontSize = 12, iconSize = 17.dp) { onLibrary() }
+        NeonButton(Modifier.width(108.dp).fillMaxHeight(), text = stringResource(R.string.nav_playlists), icon = AppIcons.Playlist, color = AppColors.Violet, fontSize = 12, iconSize = 17.dp) { onPlaylists() }
+        NeonButton(Modifier.width(104.dp).fillMaxHeight(), text = stringResource(R.string.nav_automix), icon = AppIcons.Auto, active = autoMixRunning, fontSize = 12, iconSize = 17.dp) { onAutoMix() }
         NeonButton(
-            Modifier.width(112.dp).fillMaxHeight(),
+            Modifier.width(104.dp).fillMaxHeight(),
             text = if (newWishes > 0) "${stringResource(R.string.nav_wishes)} $newWishes" else stringResource(R.string.nav_wishes),
-            icon = AppIcons.Star, color = AppColors.Amber, active = newWishes > 0, fontSize = 13, iconSize = 18.dp,
+            icon = AppIcons.Star, color = AppColors.Amber, active = newWishes > 0, fontSize = 12, iconSize = 17.dp,
         ) { onWishes() }
         NeonButton(
-            Modifier.width(98.dp).fillMaxHeight(),
+            Modifier.width(88.dp).fillMaxHeight(),
             text = if (recording) formatTime(recordSeconds) else "REC",
-            icon = AppIcons.Record, color = AppColors.Red, active = recording, fontSize = 13, iconSize = 16.dp,
+            icon = AppIcons.Record, color = AppColors.Red, active = recording, fontSize = 12, iconSize = 15.dp,
         ) { onRecord() }
         NeonButton(Modifier.width(Dimens.topBar).fillMaxHeight(), icon = AppIcons.Settings, color = AppColors.TextDim, iconSize = 20.dp) { onSettings() }
     }
