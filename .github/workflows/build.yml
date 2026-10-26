@@ -57,3 +57,11 @@ jobs:
         with:
           name: Bildschirmfotos
           path: app/src/test/snapshots/images/
+      - name: Bildschirmfotos als Vorabversion ablegen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: screenshots
+          name: Bildschirmfotos (nur zur Kontrolle)
+          prerelease: true
+          make_latest: false
+          files: app/src/test/snapshots/images/*.png
