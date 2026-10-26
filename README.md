@@ -6,12 +6,13 @@ DJ-App für Android (Samsung): zwei Decks, Mixer, BPM-Sync, EQ, Effekte, Vorhör
 
 GitHub baut die App automatisch, sobald neuer Code hochgeladen wird.
 
-1. Am Handy oder PC öffnen: https://github.com/schulerroman07-lab/djapp2/actions
-2. Den obersten Lauf mit grünem Haken ✅ antippen.
-3. Ganz unten bei **Artifacts** auf **HirschExpressDJ-APK** tippen → eine ZIP-Datei wird geladen.
-4. ZIP am Handy öffnen (App „Eigene Dateien“) → darin liegt `HirschExpressDJ.apk` → antippen.
-5. Android fragt: „Installation aus unbekannten Quellen erlauben?“ → **Einstellungen** → Schalter für „Eigene Dateien“ (bzw. Chrome) einschalten → zurück → **Installieren**.
-6. Beim ersten Start „Zugriff auf Musik und Audio“ **erlauben**.
+1. Am Handy im Browser (bei GitHub angemeldet) öffnen:
+   **https://github.com/schulerroman07-lab/djapp2/releases/latest/download/HirschExpressDJ.apk**
+   → die neueste App-Datei wird heruntergeladen.
+2. (Alternative: https://github.com/schulerroman07-lab/djapp2/releases → oberste Version → `HirschExpressDJ.apk`.)
+3. Die Datei in der Download-Benachrichtigung bzw. in „Eigene Dateien“ → Downloads antippen.
+4. Android fragt: „Installation aus unbekannten Quellen erlauben?“ → **Einstellungen** → Schalter für „Eigene Dateien“ (bzw. Chrome) einschalten → zurück → **Installieren**.
+5. Beim ersten Start „Zugriff auf Musik und Audio“ **erlauben**.
 
 Neue Versionen lassen sich einfach darüber installieren (die Einstellungen bleiben).
 

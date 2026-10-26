@@ -6,6 +6,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,3 +27,14 @@ jobs:
         with:
           name: HirschExpressDJ-APK
           path: HirschExpressDJ.apk
+      # Direkter Download-Link (immer die neueste Version):
+      # https://github.com/schulerroman07-lab/djapp2/releases/latest/download/HirschExpressDJ.apk
+      - name: Als Release veröffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.${{ github.run_number }}
+          name: Hirsch Express DJ 0.1.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          body: "Automatisch gebaut aus: ${{ github.event.head_commit.message }}"
+          files: HirschExpressDJ.apk
+          make_latest: true

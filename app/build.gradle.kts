@@ -13,8 +13,10 @@ android {
         applicationId = "ch.hirschexpress.dj"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1"
+        // Auf GitHub zählt die Versionsnummer automatisch hoch
+        val build = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = build
+        versionName = "0.1.$build"
 
         externalNativeBuild {
             cmake {
