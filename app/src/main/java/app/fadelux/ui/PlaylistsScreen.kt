@@ -322,6 +322,19 @@ fun AddToPlaylistDialog(vm: DjViewModel, track: Track, onDone: () -> Unit) {
     }
     app.fadelux.ui.components.GlassDialog(stringResource(R.string.pl_add_to), onDone) {
         Text(track.title + " – " + track.artist, style = AppType.small, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // Warteschlange: als Nächstes oder ans Ende (wird dort "angeheftet")
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            NeonButton(Modifier.weight(1f).height(44.dp), text = stringResource(R.string.q_play_next), icon = AppIcons.Next, color = AppColors.Cyan, fontSize = 12, iconSize = 15.dp) {
+                vm.autoMix.addNext(track)
+                vm.message = UiText(R.string.msg_queued_next, track.title)
+                onDone()
+            }
+            NeonButton(Modifier.weight(1f).height(44.dp), text = stringResource(R.string.q_queue_end), icon = AppIcons.Queue, color = AppColors.Cyan, fontSize = 12, iconSize = 15.dp) {
+                vm.autoMix.addLast(track)
+                vm.message = UiText(R.string.msg_queued, track.title)
+                onDone()
+            }
+        }
         NeonButton(Modifier.fillMaxWidth().height(44.dp), text = stringResource(R.string.pl_new), icon = AppIcons.Add, fontSize = 13, iconSize = 16.dp) { creating = true }
         LazyColumn(Modifier.fillMaxWidth().height(260.dp)) {
             items(summaries.size, key = { summaries[it].id }) { i ->

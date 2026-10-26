@@ -228,4 +228,11 @@ Touchez « Nouvelle playlist » – ou appui long sur un titre dans la biblioth�
     <string name="am_sort_off">Classer automatiquement les nouveaux titres : non</string>
     <string name="am_sort_help">Les nouveaux titres sont placés là où ils conviennent le mieux (genre, BPM, énergie). Les titres que vous déplacez (📌) restent à leur place.</string>
     <string name="am_take_over">Reprendre la main</string>
+    <string name="q_play_next">Lire ensuite</string>
+    <string name="q_to_end">Déplacer à la fin</string>
+    <string name="q_remove">Retirer</string>
+    <string name="q_queue_end">À la fin de la file</string>
+    <string name="msg_queued_next">Joué ensuite : %1$s</string>
+    <string name="am_smart_shuffle">Lecture aléatoire intelligente</string>
+    <string name="am_shuffled">Mélangé – avec un bon enchaînement</string>
 </resources>

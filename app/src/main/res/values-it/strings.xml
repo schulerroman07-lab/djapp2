@@ -228,4 +228,11 @@ Tocca «Nuova playlist» – oppure tieni premuto un brano nella libreria.</stri
     <string name="am_sort_off">Ordina automaticamente i nuovi brani: no</string>
     <string name="am_sort_help">I nuovi brani vanno dove si adattano meglio (genere, BPM, energia). I brani che sposti tu (📌) restano dove li metti.</string>
     <string name="am_take_over">Controllo manuale</string>
+    <string name="q_play_next">Riproduci dopo</string>
+    <string name="q_to_end">Sposta in fondo</string>
+    <string name="q_remove">Rimuovi</string>
+    <string name="q_queue_end">In fondo alla coda</string>
+    <string name="msg_queued_next">Suona dopo: %1$s</string>
+    <string name="am_smart_shuffle">Shuffle intelligente</string>
+    <string name="am_shuffled">Mescolato – con un buon flusso</string>
 </resources>

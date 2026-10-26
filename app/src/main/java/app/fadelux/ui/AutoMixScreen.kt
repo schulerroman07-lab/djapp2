@@ -15,6 +15,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.background
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -79,6 +87,9 @@ data class AutoMixActions(
     val clear: () -> Unit = {},
     val remove: (Int) -> Unit = {},
     val move: (Int, Int) -> Unit = { _, _ -> },
+    val playNext: (Int) -> Unit = {},
+    val moveToEnd: (Int) -> Unit = {},
+    val smartShuffle: () -> Unit = {},
     val add: (Track) -> Unit = {},
     val changeType: (TransitionType?) -> Unit = {},
     val skip: () -> Unit = {},
@@ -117,6 +128,9 @@ fun AutoMixScreen(vm: DjViewModel, onClose: () -> Unit) {
             clear = { am.clear() },
             remove = { am.remove(it) },
             move = { from, to -> am.move(from, to) },
+            playNext = { am.playNext(it) },
+            moveToEnd = { am.moveToEnd(it) },
+            smartShuffle = { am.smartShuffle(); vm.message = UiText(R.string.am_shuffled) },
             add = { am.add(it) },
             changeType = { am.changeType(it) },
             skip = { am.skipNext() },
@@ -148,7 +162,10 @@ fun AutoMixContent(ui: AutoMixUi, act: AutoMixActions) {
     val accent = LocalAccent.current
     OverlayScaffold(stringResource(R.string.nav_automix), act.close) {
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            QueueList(ui.queue, act.remove, act.move, Modifier.weight(1f).fillMaxHeight(), pinned = ui.pinned)
+            QueueList(
+                ui.queue, act.remove, act.move, Modifier.weight(1f).fillMaxHeight(),
+                pinned = ui.pinned, onPlayNext = act.playNext, onMoveToEnd = act.moveToEnd,
+            )
             Column(Modifier.width(280.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 NeonButton(
                     Modifier.fillMaxWidth().height(56.dp),
@@ -284,7 +301,11 @@ fun AutoMixSettings(
     }
 }
 
-/** Warteschlange mit Drag & Drop (am Griff ziehen). */
+/**
+ * Warteschlange mit Drag & Drop (am Griff ziehen). Hält man einen Song an den oberen oder
+ * unteren Rand, scrollt die Liste mit – so lässt er sich in einem Zug ganz nach oben/unten ziehen.
+ * Menü (⋮) pro Song: Als Nächstes spielen, Ans Ende, Entfernen.
+ */
 @Composable
 fun QueueList(
     queue: List<Track>,
@@ -292,6 +313,8 @@ fun QueueList(
     onMove: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
     pinned: Set<Long> = emptySet(),
+    onPlayNext: (Int) -> Unit = {},
+    onMoveToEnd: (Int) -> Unit = {},
 ) {
     val accent = LocalAccent.current
     Column(modifier) {
@@ -302,12 +325,57 @@ fun QueueList(
             }
         } else {
             val rowH = 58.dp
-            val rowPx = with(LocalDensity.current) { rowH.toPx() }
-            var dragId by remember { mutableIntStateOf(-1) }
+            val density = LocalDensity.current
+            val rowPx = with(density) { rowH.toPx() }
+            val edgePx = with(density) { 70.dp.toPx() }
+            val listState = rememberLazyListState()
+            val currentQueue by rememberUpdatedState(queue)
+            val move by rememberUpdatedState(onMove)
+            var dragId by remember { mutableLongStateOf(-1L) }
             var dragOffset by remember { mutableFloatStateOf(0f) }
-            LazyColumn(Modifier.fillMaxSize()) {
+
+            /** Gezogenen Song um so viele Plätze verschieben, wie er sich bewegt hat. */
+            fun applyDrag() {
+                val q = currentQueue
+                val from = q.indexOfFirst { it.id == dragId }
+                val steps = (dragOffset / rowPx).roundToInt()
+                if (from >= 0 && steps != 0) {
+                    val to = (from + steps).coerceIn(0, q.size - 1)
+                    if (to != from) {
+                        move(from, to)
+                        dragOffset -= (to - from) * rowPx
+                    }
+                }
+            }
+
+            // Auto-Scroll: gezogener Song nahe am Rand → Liste läuft mit (schneller, je näher am Rand)
+            LaunchedEffect(dragId) {
+                if (dragId < 0) return@LaunchedEffect
+                while (true) {
+                    val info = listState.layoutInfo
+                    val item = info.visibleItemsInfo.firstOrNull { it.key == dragId }
+                    var speed = 0f
+                    if (item != null) {
+                        val top = item.offset + dragOffset
+                        val bottom = top + item.size
+                        val start = info.viewportStartOffset.toFloat()
+                        val end = info.viewportEndOffset.toFloat()
+                        if (top < start + edgePx) speed = -((start + edgePx - top) / edgePx).coerceIn(0f, 1f) * 28f
+                        else if (bottom > end - edgePx) speed = ((bottom - (end - edgePx)) / edgePx).coerceIn(0f, 1f) * 28f
+                    }
+                    if (speed != 0f) {
+                        val used = listState.scrollBy(speed)
+                        dragOffset += used          // Song bleibt unter dem Finger
+                        applyDrag()
+                    }
+                    delay(16)
+                }
+            }
+
+            LazyColumn(Modifier.fillMaxSize(), state = listState) {
                 itemsIndexed(queue, key = { _, t -> t.id }) { index, t ->
-                    val dragging = dragId == t.id.hashCode()
+                    val dragging = dragId == t.id
+                    var menu by remember { mutableStateOf(false) }
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -328,19 +396,13 @@ fun QueueList(
                         Box(
                             Modifier.size(40.dp).pointerInput(t.id) {
                                 detectDragGestures(
-                                    onDragStart = { dragId = t.id.hashCode(); dragOffset = 0f },
-                                    onDragEnd = { dragId = -1; dragOffset = 0f },
-                                    onDragCancel = { dragId = -1; dragOffset = 0f },
+                                    onDragStart = { dragId = t.id; dragOffset = 0f },
+                                    onDragEnd = { dragId = -1L; dragOffset = 0f },
+                                    onDragCancel = { dragId = -1L; dragOffset = 0f },
                                 ) { change, amount ->
                                     change.consume()
                                     dragOffset += amount.y
-                                    val from = queue.indexOfFirst { it.id == t.id }
-                                    val steps = (dragOffset / rowPx).roundToInt()
-                                    if (from >= 0 && steps != 0) {
-                                        val to = (from + steps).coerceIn(0, queue.size - 1)
-                                        onMove(from, to)
-                                        dragOffset -= (to - from) * rowPx
-                                    }
+                                    applyDrag()
                                 }
                             },
                             contentAlignment = Alignment.Center,
@@ -357,10 +419,31 @@ fun QueueList(
                         }
                         Text(t.bpm?.takeIf { it > 0 }?.let { String.format(Locale.US, "%.0f", it) } ?: "–", style = AppType.bodyBold, color = accent)
                         EnergyBar(t.energy, Modifier.width(30.dp).height(10.dp))
-                        NeonButton(Modifier.size(40.dp), icon = AppIcons.Delete, color = AppColors.Red, iconSize = 18.dp) { onRemove(index) }
+                        Box {
+                            NeonButton(Modifier.size(40.dp), icon = AppIcons.More, color = AppColors.TextDim, iconSize = 18.dp) { menu = true }
+                            DropdownMenu(
+                                expanded = menu,
+                                onDismissRequest = { menu = false },
+                                modifier = Modifier.background(androidx.compose.ui.graphics.Color(0xFF14171C)),
+                            ) {
+                                QueueMenuItem(stringResource(R.string.q_play_next), AppIcons.Next, accent) { menu = false; onPlayNext(index) }
+                                QueueMenuItem(stringResource(R.string.q_to_end), AppIcons.ArrowDown, AppColors.Cyan) { menu = false; onMoveToEnd(index) }
+                                QueueMenuItem(stringResource(R.string.q_remove), AppIcons.Delete, AppColors.Red) { menu = false; onRemove(index) }
+                            }
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun QueueMenuItem(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { Text(text, style = AppType.body) },
+        leadingIcon = { Icon(icon, null, tint = color, modifier = Modifier.size(20.dp)) },
+        onClick = onClick,
+        modifier = Modifier.height(52.dp),
+    )
 }

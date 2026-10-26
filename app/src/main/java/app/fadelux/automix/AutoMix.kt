@@ -119,6 +119,18 @@ class AutoMix(
         move(index, 0)
     }
 
+    /** Song (aus der Bibliothek) als Nächstes spielen – ist er schon in der Warteschlange, wird er nach vorne geholt. */
+    fun addNext(t: Track) {
+        val i = queue.indexOfFirst { it.id == t.id }
+        if (i >= 0) playNext(i) else { queue.add(0, t); pinned += t.id }
+    }
+
+    /** Song (aus der Bibliothek) ans Ende der Warteschlange. */
+    fun addLast(t: Track) {
+        val i = queue.indexOfFirst { it.id == t.id }
+        if (i >= 0) moveToEnd(i) else { queue.add(t); pinned += t.id }
+    }
+
     /** "Ans Ende" */
     fun moveToEnd(index: Int) {
         if (index !in queue.indices) return

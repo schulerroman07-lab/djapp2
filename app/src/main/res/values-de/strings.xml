@@ -228,4 +228,11 @@ Tippe auf „Neue Playlist“ – oder halte in der Bibliothek einen Song gedrü
     <string name="am_sort_off">Neue Songs automatisch einreihen: aus</string>
     <string name="am_sort_help">Neue Songs kommen dorthin, wo sie am besten passen (Genre, BPM, Energie). Songs, die du selbst verschiebst (📌), bleiben, wo du sie hinsetzt.</string>
     <string name="am_take_over">Manuell übernehmen</string>
+    <string name="q_play_next">Als Nächstes spielen</string>
+    <string name="q_to_end">Ans Ende</string>
+    <string name="q_remove">Entfernen</string>
+    <string name="q_queue_end">Ans Ende der Warteschlange</string>
+    <string name="msg_queued_next">Kommt als Nächstes: %1$s</string>
+    <string name="am_smart_shuffle">Smart Shuffle</string>
+    <string name="am_shuffled">Gemischt – mit gutem Flow</string>
 </resources>

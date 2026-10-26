@@ -242,4 +242,11 @@ Tap “New playlist” – or long-press a song in the library.</string>
     <string name="am_sort_off">Sort new songs automatically: off</string>
     <string name="am_sort_help">New songs go where they fit best (genre, BPM, energy). Songs you move yourself (📌) stay where you put them.</string>
     <string name="am_take_over">Take over manually</string>
+    <string name="q_play_next">Play next</string>
+    <string name="q_to_end">Move to end</string>
+    <string name="q_remove">Remove</string>
+    <string name="q_queue_end">Add to end of queue</string>
+    <string name="msg_queued_next">Plays next: %1$s</string>
+    <string name="am_smart_shuffle">Smart Shuffle</string>
+    <string name="am_shuffled">Shuffled – with a good flow</string>
 </resources>
