@@ -46,7 +46,10 @@ class LocalWishServer(
             while (!s.isClosed) {
                 try {
                     val c = s.accept()
-                    thread(isDaemon = true) { handle(c) }
+                    thread(isDaemon = true) {
+                        // Fehlerhafte Anfragen dürfen den Server nie stören
+                        try { handle(c) } catch (_: Exception) { runCatching { c.close() } }
+                    }
                 } catch (_: Exception) { }
             }
         }

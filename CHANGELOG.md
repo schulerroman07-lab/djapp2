@@ -28,6 +28,7 @@
 - Intro/Outro-Erkennung aus der Wellenform, Start am Outro (auf den Takt gerundet), BPM-Angleichung + Beat-Sync, Bass-Tausch in der Mitte.
 - Übergangslänge 4/8/16 Takte oder 10/20 Sekunden.
 - „Reihenfolge optimieren“ (ähnliche BPM nebeneinander, Energie steigt langsam).
+- Intro des neuen Titels wird erkannt: Er startet so, dass sein Hauptteil genau am Ende der Überblendung einsetzt.
 - „Jetzt überblenden“; wer selbst am Crossfader dreht, übernimmt sofort.
 
 ### 5. Vorschläge „Passt als nächstes“
@@ -48,3 +49,20 @@
 
 ### Audio-Engine
 - Unverändert in Klang und Latenz. Neu: Spektrum-Puffer (nur Kopieren), einstellbare Puffergrösse, Energie-Analyse.
+
+### Qualität & Tests
+- Automatische Tests (laufen bei jedem Bau auf GitHub): Tempo-Angleichung, Intro/Outro-Erkennung, Reihenfolge optimieren, Vorschläge, lokaler Wunsch-Server inkl. Spam-Schutz.
+- Automatische Bildschirmfotos (Mischpult, Bibliothek, Einführung) zur Layout-Kontrolle.
+- Leistung: Glas-Flächen in eigener Grafik-Ebene, Anzeigen lesen schnelle Werte erst beim Zeichnen.
+
+## Offene Punkte / bekannte Grenzen
+1. **Nicht auf einem echten Handy getestet** – bitte `TESTEN.md` durchgehen.
+2. **Internet-Modus der Wünsche** ist erst aktiv, wenn das zentrale Backend eingerichtet und in `BackendConfig.kt` eingetragen ist (**SETUP_BACKEND.md**). Bis dahin: Modus „Lokales WLAN“.
+3. **Play-Store-Schlüssel**: eigener Upload-Schlüssel nötig (**SIGNING.md**); ohne ihn ist die AAB nur zum Testen.
+4. **Datenschutzerklärung**: Vorlage `PRIVACY.md` mit eigenen Angaben ergänzen und online stellen.
+5. **Name „Fadelux“**: kurz im Web gesucht, keine gleichnamige App gefunden – vor Veröffentlichung im Play Store und Markenregister (z.B. swissreg.ch, EUIPO) nochmals prüfen.
+6. **SoundTouch** ist nicht eingebaut (Quelle war hier nicht erreichbar); Tempo ohne Tonhöhe läuft über einen eigenen WSOLA-Algorithmus.
+7. Aufnahme nur als **WAV** (MP3-Encoder fehlt noch).
+8. Bildschirmfotos gibt es für Mischpult, Bibliothek und Einführung; Auto-Mix-, Wunsch- und Einstellungs-Fenster sind nur im Code geprüft.
+9. Der lokale Wunsch-Server läuft nur, solange die App offen ist; Wünsche aus dem lokalen Modus werden nicht dauerhaft gespeichert.
+10. `CLAUDE.md` (Arbeitsanweisungen für Claude) enthält noch die alte Projektbeschreibung – sie gehört nicht zur App.
