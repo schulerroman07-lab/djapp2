@@ -135,13 +135,21 @@ class AutoMix(
             TrackAnalysis.tempoRatio(curBpm, b.bpm)?.let { b.setTempoRatio(it) } ?: b.setTempoRatio(1f)
             b.changeVolume(a.volume)
             b.setEq(2, -1f)   // Bass des neuen Titels erst einmal weg
-            val startAt = if (b.firstBeat < 30f) b.firstBeat.toDouble() else 0.0
-            b.seek(startAt)
-
             // 2) Übergangslänge und Startpunkt berechnen (in "Titel-Sekunden" des aktuellen Decks)
             val bars = settings.transitionBars
             val beatSec = if (a.bpm > 0) 60.0 / a.bpm else 0.5
             val transTrackSec = if (bars > 0) bars * 4 * beatSec else -bars * a.tempo.toDouble()
+
+            // Intro des neuen Titels: so starten, dass sein Hauptteil genau am Ende der Überblendung einsetzt
+            val firstBeatB = if (b.firstBeat < 30f) b.firstBeat.toDouble() else 0.0
+            var startAt = firstBeatB
+            val (bIntro, _) = TrackAnalysis.introOutro(b.peaks)
+            val transB = transTrackSec / a.tempo * b.tempo   // Übergang in "Titel-Sekunden" des neuen Decks
+            if (b.bpm > 0 && bIntro - transB > firstBeatB + 1.0) {
+                val barB = 4 * 60.0 / b.bpm
+                startAt = firstBeatB + kotlin.math.floor((bIntro - transB - firstBeatB) / barB) * barB
+            }
+            b.seek(startAt)
             val (_, aOutro) = TrackAnalysis.introOutro(a.peaks)
             var mixOut = minOf(aOutro, a.duration - transTrackSec - 1.0)
             if (a.bpm > 0) {

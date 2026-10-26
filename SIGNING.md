@@ -52,3 +52,7 @@ Die AAB findest du unter **Releases** → neueste Version → `Fadelux.aab`
 | `READ_MEDIA_AUDIO` (ab Android 13) / `READ_EXTERNAL_STORAGE` (Android 10–12) | eigene Musik lesen |
 | `INTERNET` | Gästewünsche |
 | `FOREGROUND_SERVICE` + `…_MEDIA_PLAYBACK` | Musik läuft weiter, wenn kurz eine andere App offen ist |
+
+> **Play Console – Vordergrunddienst:** Beim Hochladen fragt Google, wofür der Dienst
+> „Medienwiedergabe“ gebraucht wird. Antwort: *„Die DJ-Musik spielt weiter, wenn der Benutzer
+> kurz eine andere App öffnet (z.B. während eines Events).“* Optional ein kurzes Video davon.
