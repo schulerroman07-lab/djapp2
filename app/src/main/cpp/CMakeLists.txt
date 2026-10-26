@@ -17,3 +17,6 @@ add_library(fadelux SHARED
 
 target_compile_options(fadelux PRIVATE -O2 -Wall)
 target_link_libraries(fadelux oboe::oboe mediandk log android)
+
+# Google Play verlangt seit Nov. 2025 Unterstützung für 16-KB-Speicherseiten
+target_link_options(fadelux PRIVATE "-Wl,-z,max-page-size=16384")
