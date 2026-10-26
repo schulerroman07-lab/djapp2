@@ -268,6 +268,18 @@ class DjViewModel private constructor(private val app: Application) {
         }
     }
 
+    /**
+     * Beat-Puls für den animierten Hintergrund: 1 genau auf dem Beat, fällt bis zum nächsten Beat ab.
+     * 0, wenn nichts spielt oder kein Tempo erkannt wurde.
+     */
+    fun beatPulse(): Float {
+        val d = liveDeck() ?: return 0f
+        if (!d.playing || d.bpm <= 0f) return 0f
+        val beat = 60.0 / d.bpm
+        val phase = ((d.position - d.firstBeat) / beat).mod(1.0)
+        return kotlin.math.exp(-phase * 5.0).toFloat()
+    }
+
     /** Das Deck, das gerade "on air" ist (spielt und ist am Crossfader offen). */
     fun liveDeck(): DeckModel? {
         val playing = decks.filter { it.playing }

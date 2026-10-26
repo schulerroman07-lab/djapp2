@@ -250,4 +250,9 @@ Tap “New playlist” – or long-press a song in the library.</string>
     <string name="am_smart_shuffle">Smart Shuffle</string>
     <string name="am_shuffled">Shuffled – with a good flow</string>
     <string name="pl_shuffle">Shuffle</string>
+    <string name="set_bg_anim">Animated background</string>
+    <string name="set_bg_off">Off</string>
+    <string name="set_bg_eco">Battery saver</string>
+    <string name="set_bg_full">Full</string>
+    <string name="set_bg_help">A soft glow that slowly moves and pulses with the beat and energy of the music. “Battery saver” moves more slowly and reacts less; “Off” shows a still background.</string>
 </resources>

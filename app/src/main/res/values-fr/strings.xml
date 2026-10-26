@@ -236,4 +236,9 @@ Touchez « Nouvelle playlist » – ou appui long sur un titre dans la biblioth�
     <string name="am_smart_shuffle">Lecture aléatoire intelligente</string>
     <string name="am_shuffled">Mélangé – avec un bon enchaînement</string>
     <string name="pl_shuffle">Aléatoire</string>
+    <string name="set_bg_anim">Fond animé</string>
+    <string name="set_bg_off">Désactivé</string>
+    <string name="set_bg_eco">Économie</string>
+    <string name="set_bg_full">Complet</string>
+    <string name="set_bg_help">Une lueur douce qui bouge lentement et pulse avec le rythme et l’énergie de la musique. « Économie » bouge plus lentement et réagit moins ; « Désactivé » affiche un fond fixe.</string>
 </resources>

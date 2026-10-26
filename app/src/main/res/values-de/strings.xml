@@ -236,4 +236,9 @@ Tippe auf „Neue Playlist“ – oder halte in der Bibliothek einen Song gedrü
     <string name="am_smart_shuffle">Smart Shuffle</string>
     <string name="am_shuffled">Gemischt – mit gutem Flow</string>
     <string name="pl_shuffle">Zufällig</string>
+    <string name="set_bg_anim">Animierter Hintergrund</string>
+    <string name="set_bg_off">Aus</string>
+    <string name="set_bg_eco">Energiesparen</string>
+    <string name="set_bg_full">Voll</string>
+    <string name="set_bg_help">Ein weiches Leuchten, das sich langsam bewegt und mit Beat und Energie der Musik pulsiert. „Energiesparen“ bewegt sich langsamer und reagiert dezenter; „Aus“ zeigt einen ruhigen Hintergrund.</string>
 </resources>

@@ -236,4 +236,9 @@ Tocca «Nuova playlist» – oppure tieni premuto un brano nella libreria.</stri
     <string name="am_smart_shuffle">Shuffle intelligente</string>
     <string name="am_shuffled">Mescolato – con un buon flusso</string>
     <string name="pl_shuffle">Casuale</string>
+    <string name="set_bg_anim">Sfondo animato</string>
+    <string name="set_bg_off">Spento</string>
+    <string name="set_bg_eco">Risparmio</string>
+    <string name="set_bg_full">Completo</string>
+    <string name="set_bg_help">Un bagliore morbido che si muove lentamente e pulsa con il ritmo e l’energia della musica. «Risparmio» si muove più lentamente e reagisce meno; «Spento» mostra uno sfondo fisso.</string>
 </resources>

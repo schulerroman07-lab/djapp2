@@ -64,7 +64,7 @@ fun MainScreen(vm: DjViewModel, onLanguageChanged: () -> Unit) {
         else vm.message = UiText(R.string.msg_use_home)
     }
 
-    AppBackground {
+    AppBackground(vm.settings.bgAnimation, pulse = { vm.beatPulse() }, level = { vm.mixer.masterLevel }) {
         if (!vm.settings.onboardingDone) {
             OnboardingScreen { vm.settings.onboardingDone = true }
             return@AppBackground

@@ -78,6 +78,16 @@ fun SettingsScreen(vm: DjViewModel, onLanguageChanged: () -> Unit, onClose: () -
 @Composable
 private fun ColumnScope.DesignSection(vm: DjViewModel) {
     AccentPicker(vm.settings.accentIndex) { vm.settings.accentIndex = it }
+    // Animierter Hintergrund: aus / Energiesparen / voll
+    SectionTitle(stringResource(R.string.set_bg_anim))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(R.string.set_bg_off, R.string.set_bg_eco, R.string.set_bg_full).forEachIndexed { i, label ->
+            NeonButton(Modifier.weight(1f).height(44.dp), text = stringResource(label), active = vm.settings.bgAnimation == i, fontSize = 13) {
+                vm.settings.bgAnimation = i
+            }
+        }
+    }
+    Text(stringResource(R.string.set_bg_help), style = AppType.small)
 }
 
 /** Auswahl der Akzentfarbe (runde Farbfelder). */
