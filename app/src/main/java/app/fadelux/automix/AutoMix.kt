@@ -239,7 +239,7 @@ class AutoMix(
                     b.play(false)
                     b.resetEffects()
                     plan = if (aStruct != null && bStruct != null) {
-                        TransitionPlanner.plan(aStruct, a.position, a.tempo, bStruct, plannerSettings(), history, mixNow, forcedType)
+                        TransitionPlanner.plan(aStruct, a.livePosition(), a.tempo, bStruct, plannerSettings(), history, mixNow, forcedType)
                     } else fallbackPlan(a, mixNow)
                     // Tempo des neuen Songs angleichen (nur bei kleinem Unterschied)
                     b.setTempoRatio(plan.tempoRatio)
@@ -254,15 +254,16 @@ class AutoMix(
                     status = UiText(R.string.automix_waiting, next.title)
                 }
                 // Vor-Phase (z.B. Hall aufbauen, Echo einschalten)
+                val aPos = a.livePosition()
                 val preStart = plan.mixSec - transition.preBars * ctx.aBarSec
-                if (transition.preBars > 0 && a.position >= preStart) {
-                    transition.pre(ctx, ((a.position - preStart) / (transition.preBars * ctx.aBarSec)).toFloat().coerceIn(0f, 1f))
+                if (transition.preBars > 0 && aPos >= preStart) {
+                    transition.pre(ctx, ((aPos - preStart) / (transition.preBars * ctx.aBarSec)).toFloat().coerceIn(0f, 1f))
                 }
-                if (transition.centerBeforeStart && !centered && a.position >= plan.mixSec - ctx.aBarSec) {
+                if (transition.centerBeforeStart && !centered && aPos >= plan.mixSec - ctx.aBarSec) {
                     mixer.moveCrossfader(0f)   // Mitte: alter Song bleibt voll, neuer ist noch stumm
                     centered = true
                 }
-                if (b.playing) break           // Engine hat den neuen Song gestartet
+                if (b.livePlaying()) break     // Engine hat den neuen Song gestartet
                 delay(10)
             }
 
@@ -273,7 +274,7 @@ class AutoMix(
             val lengthTrackSec = plan.lengthBars * bBarSec
             while (true) {
                 if (!transitioning) return     // abgebrochen
-                val p = ((b.position - plan.bStartSec) / lengthTrackSec).toFloat().coerceIn(0f, 1f)
+                val p = ((b.livePosition() - plan.bStartSec) / lengthTrackSec).toFloat().coerceIn(0f, 1f)
                 transition.step(ctx, p)
                 if (p >= 1f) break
                 delay(16)

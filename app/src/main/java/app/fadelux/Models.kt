@@ -128,6 +128,20 @@ class DeckModel(val index: Int) {
         setLoop(0.0, 0.0, false)
     }
 
+    private val liveBuf = DoubleArray(9)
+
+    /** Position direkt aus der Engine (genau, auch wenn die Anzeige im Hintergrund seltener aktualisiert). */
+    fun livePosition(): Double {
+        NativeEngine.getDeckState(index, liveBuf)
+        return liveBuf[2]
+    }
+
+    /** Spielt das Deck gerade? (direkt aus der Engine) */
+    fun livePlaying(): Boolean {
+        NativeEngine.getDeckState(index, liveBuf)
+        return liveBuf[1] > 0.5
+    }
+
     /** Merkmale pro Beat des geladenen Titels (für die Struktur-Analyse). */
     fun features(): ByteArray = NativeEngine.getDeckFeatures(index)
     fun toggleKeylock() { keylock = !keylock; NativeEngine.setKeylock(index, keylock) }

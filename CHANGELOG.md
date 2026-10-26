@@ -1,5 +1,52 @@
 # Changelog
 
+## 1.1 – Hintergrund, DJ-Übergänge, Playlists, Import/Export
+
+### 1. Hintergrund-Wiedergabe & Steuerung über Benachrichtigung
+- Der App-Kern (Decks, Auto-Mix, Wünsche) lebt jetzt unabhängig vom Fenster: Musik und Auto-Mix laufen weiter bei ausgeschaltetem Bildschirm, im Hintergrund oder wenn eine andere App offen ist.
+- Neuer Hintergrund-Dienst mit **Media3 / MediaSession**: Medien-Benachrichtigung und Sperrbildschirm mit Cover, Titel, Interpret, Fortschritt, **Play/Pause**, **Nächster Song** (startet einen sauberen Übergang im Takt statt hartem Schnitt) und **Auto-Mix an/aus**.
+- Steuerung über **Bluetooth-Kopfhörer / Auto** (Media-Tasten: Play/Pause/Weiter).
+- **Audio-Fokus**: Anruf → Pause, danach automatisch weiter; Navigationsansage → kurz leiser; andere Musik-App → Pause; Kopfhörer ausgesteckt → Pause (im normalen Ausgabe-Modus).
+- Auto-Mix wartet während einer Pause (z.B. Anruf) statt zu überblenden; geplante Starts werden ebenfalls angehalten.
+- **Akku-Optimierung**: Hinweis in Einstellungen → Audio („Wiedergabe im Hintergrund“) mit Knopf zu den App-Einstellungen, Tipp beim Start des Auto-Mix, neue FAQ (inkl. Samsung „Apps im Standby“).
+- Im Hintergrund aktualisiert die App ihre Anzeige seltener (spart Akku); der Auto-Mix liest die Positionen direkt aus der Engine (bleibt genau).
+
+### 2. Auto-Mix: echte DJ-Übergänge
+- **Analyse pro Titel** (beim Import, in der Datenbank gespeichert): Beat-Raster, Downbeats, Takte, Phrasen (8/16/32 Takte), Intro/Outro, Energie-Verlauf, Breaks, grobe Gesangs-Erkennung (über den Frequenzbereich der Stimme).
+- **6 Übergangs-Typen**, jeder in einer eigenen Klasse (`automix/transitions/`): Bass-Swap, Filter-Sweep, Echo-Out, Loop, Hall-Übergang (Reverb Wash), harter Schnitt auf dem Downbeat.
+- **Planer** (`TransitionPlanner`): wählt pro Song-Paar den Typ nach Tempo-Abstand, Energie, Intro/Outro-Länge, Breaks und Gesang; **nie zwei Gesangsteile übereinander**; Abwechslung (gleicher Typ nicht hintereinander); Übergänge im Takt an Phrasengrenzen.
+- **Tempo**: kleine Unterschiede werden angeglichen und danach über ~16 Takte unhörbar zum Originaltempo zurückgeführt; grosse Unterschiede → Echo-Out, Schnitt oder Hall statt verzerrtem Tempo.
+- **Sample-genauer Start**: Die Engine startet den neuen Song exakt auf dem Downbeat (Genauigkeit ~1 ms).
+- Neue Engine-Funktionen: Loop (auch mit Keylock), Hall mit Ausklingen, einstellbare Echo-Rückkopplung.
+- **Anzeige**: „Als nächstes“ mit Titel, Übergangstyp, Länge und **Countdown**; Typ vorher ändern, Song überspringen oder sofort mixen.
+- **Einstellungen** (im Auto-Mix-Fenster und unter Einstellungen → Auto-Mix): Übergangstypen einzeln an/aus, Stil (ruhig / ausgewogen / Club), Länge (Auto / 4 / 8 / 16 / 32 Takte).
+
+### 3. Playlists
+- Neuer Knopf **„Playlists“** oben: Übersicht mit Cover-Collage, Anzahl Songs und Dauer.
+- Erstellen, umbenennen, löschen (mit Bestätigung); Songs hinzufügen (Suche), entfernen, Reihenfolge per **Drag & Drop**.
+- Ganze Playlist in die Warteschlange oder direkt **Auto-Mix starten**; einzelne Songs auf A/B laden oder in die Warteschlange.
+- In der Bibliothek: Song **lange drücken** → „Zu Playlist hinzufügen“ (auch neue Playlist).
+- Gespeichert in der lokalen Datenbank (Room, Version 3; Umstellung ohne Datenverlust, Schema geprüft).
+
+### 4. Import & Export (Einstellungen → Import & Export, oder in einer Playlist → Exportieren)
+- Export als **.m3u8** (UTF-8, Pfade relativ zum Speicher).
+- Import von **.m3u/.m3u8**: Zuordnung über Pfad, sonst Dateiname, sonst Interpret + Titel; nicht gefundene Songs werden angezeigt.
+- **Export als Ordner**: Zielordner wählen (z.B. USB-Stick), alle Songs werden kopiert (optional mit Nummern für die Reihenfolge) + .m3u8 dazu; Fortschrittsanzeige, Abbrechen möglich.
+- **Ordner als Playlist importieren**.
+
+### Tests
+- Neue automatische Tests: Struktur-Analyse und Planer (9 Tests), M3U lesen/schreiben/zuordnen (4 Tests), C++-Tests für Loop, Hall/Echo-Ausklang und Beat-Merkmale.
+- Neue Bildschirmfotos: Auto-Mix mit „Als nächstes“-Karte, Playlist.
+
+### Offene Punkte (1.1)
+1. **Nicht auf einem echten Handy getestet** – bitte `TESTEN.md` Abschnitt J–M durchgehen.
+2. Gesangs-Erkennung ist **grob** (Frequenzbereich der Stimme); bei Instrumenten im selben Bereich kann sie sich irren.
+3. Downbeat-Erkennung nimmt an, dass die Bassdrum auf der „1“ am stärksten ist – bei manchen Stilen (z.B. Reggae, Breakbeat) kann der Takt verschoben sein.
+4. **Android Auto** mit eigener Bibliothek-Ansicht (Durchblättern im Auto-Display) ist nicht eingebaut – nur Steuerung (Play/Pause/Weiter).
+5. Nach dem kompletten Beenden der App kann eine Bluetooth-Taste die Wiedergabe nicht „von null“ neu starten (keine Wiedergabe-Fortsetzung nach Neustart).
+6. Ordner-Export kopiert die Originaldateien; auf sehr langsamen USB-Sticks kann das dauern.
+7. Bestehende Titel werden nach dem Update einmal neu analysiert (für die neuen Merkmale) – das läuft im Hintergrund.
+
 ## 1.0 – Fadelux (Überarbeitung)
 
 ### 1. Entpersonalisiert & Play-Store-ready
