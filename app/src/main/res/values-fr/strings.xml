@@ -154,4 +154,12 @@
     <string name="onb_skip">Passer</string>
     <string name="onb_start">C’est parti</string>
     <string name="onb_show_again">Revoir l’introduction</string>
+    <string name="msg_queue_empty_next">Pas de titre suivant – ajoutez des titres à la file Auto-Mix</string>
+    <string name="bg_title">Lecture en arrière-plan</string>
+    <string name="bg_ok">OK – l’app peut fonctionner en arrière-plan sans restriction.</string>
+    <string name="bg_restricted">L’optimisation de la batterie est active. Android peut arrêter la musique en arrière-plan après un certain temps. Conseil : réglez l’utilisation de la batterie de l’app sur « Non restreinte ».</string>
+    <string name="bg_open_settings">Ouvrir les réglages de l’app</string>
+    <string name="bg_hint_short">Astuce : autorisez la batterie « Non restreinte » (Réglages → Audio) pour que l’Auto-Mix continue en arrière-plan</string>
+    <string name="faq_q7">La musique s’arrête en arrière-plan ?</string>
+    <string name="faq_a7">Réglages → Audio → Lecture en arrière-plan → ouvrir les réglages de l’app → Batterie → « Non restreinte ». Sur Samsung, retirez aussi l’app des « Applications en veille » (Paramètres → Batterie → Limites d’utilisation en arrière-plan).</string>
 </resources>

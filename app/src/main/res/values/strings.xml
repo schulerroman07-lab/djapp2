@@ -168,4 +168,12 @@
     <string name="onb_skip">Skip</string>
     <string name="onb_start">Let’s go</string>
     <string name="onb_show_again">Show introduction again</string>
+    <string name="msg_queue_empty_next">No next track – add tracks to the Auto-Mix queue</string>
+    <string name="bg_title">Background playback</string>
+    <string name="bg_ok">OK – the app may run in the background without restrictions.</string>
+    <string name="bg_restricted">Battery optimisation is on. Android may stop the music in the background after some time. Recommended: set this app’s battery usage to “Unrestricted”.</string>
+    <string name="bg_open_settings">Open app settings</string>
+    <string name="bg_hint_short">Tip: allow unrestricted battery use (Settings → Audio) so Auto-Mix keeps running in the background</string>
+    <string name="faq_q7">The music stops in the background?</string>
+    <string name="faq_a7">Settings → Audio → Background playback → open app settings → Battery → “Unrestricted”. On Samsung also remove the app from “Sleeping apps” (Settings → Battery → Background usage limits).</string>
 </resources>

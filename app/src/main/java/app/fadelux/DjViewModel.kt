@@ -15,8 +15,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
 import app.fadelux.audio.NativeEngine
 import app.fadelux.automix.AutoMix
 import app.fadelux.automix.Suggestion
@@ -30,7 +28,9 @@ import app.fadelux.wishes.FirestoreClient
 import app.fadelux.wishes.LocalWishServer
 import app.fadelux.wishes.Wish
 import app.fadelux.wishes.makeQrBitmap
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -45,11 +45,33 @@ import java.util.Locale
 /** Ein Audio-Ausgabegerät (z.B. Lautsprecher, Kopfhörer, Bluetooth, USB). */
 data class OutputDevice(val id: Int, val type: Int, val name: String)
 
-class DjViewModel(app: Application) : AndroidViewModel(app) {
+/**
+ * Der "Kern" der App: Decks, Mixer, Auto-Mix, Bibliothek, Wünsche.
+ * Gibt es nur EINMAL pro App (nicht pro Fenster) – so läuft die Musik weiter,
+ * auch wenn Android das Fenster im Hintergrund schliesst. Bildschirm und
+ * Hintergrund-Dienst (PlaybackService) greifen beide auf denselben Kern zu.
+ */
+class DjViewModel private constructor(private val app: Application) {
+    /** Eigener Ablauf-Bereich für Hintergrund-Aufgaben (lebt so lange wie die App). */
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    val appContext: Context get() = app
+    val appName: String get() = app.getString(R.string.app_name)
+
+    /** Ist ein Fenster der App sichtbar? Im Hintergrund wird seltener aktualisiert (spart Akku). */
+    @Volatile var uiVisible = true
+
+    companion object {
+        @Volatile private var instance: DjViewModel? = null
+        fun get(app: Application): DjViewModel = instance ?: synchronized(this) {
+            instance ?: DjViewModel(app).also { instance = it }
+        }
+    }
+
     val settings = AppSettings(app)
     val library = LibraryRepository(app)
-    val tracks = library.tracks.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    val unanalyzed = library.unanalyzedCount.stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val tracks = library.tracks.stateIn(scope, SharingStarted.Eagerly, emptyList())
+    val unanalyzed = library.unanalyzedCount.stateIn(scope, SharingStarted.Eagerly, 0)
     var folders by mutableStateOf<List<String>>(emptyList())
 
     val decks = listOf(DeckModel(0), DeckModel(1))
@@ -58,7 +80,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
     var message by mutableStateOf<UiText?>(null)
     var engineInfo by mutableStateOf(DoubleArray(4))
 
-    val autoMix = AutoMix(viewModelScope, decks, mixer, settings) { deck, t -> loadTrack(deck, t, force = true) }
+    val autoMix = AutoMix(scope, decks, mixer, settings) { deck, t -> loadTrack(deck, t, force = true) }
 
     // Aufnahme
     var recording by mutableStateOf(false)
@@ -69,10 +91,11 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
     private var analyzeJob: Job? = null
 
     // ---------------- Laufende Aktualisierung (ca. 60 x pro Sekunde) ----------------
-    private fun startPolling() = viewModelScope.launch {
+    private fun startPolling() = scope.launch {
         val st = DoubleArray(9)
         val lastLoad = intArrayOf(-1, -1)
         var frame = 0
+        var wasPlaying = false
         while (isActive) {
             for (d in decks) {
                 NativeEngine.getDeckState(d.index, st)
@@ -96,6 +119,10 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
                     if (ls == 3) message = UiText(R.string.msg_load_failed)
                 }
             }
+            val anyPlaying = decks.any { it.playing }
+            if (anyPlaying && !wasPlaying) focus.request()
+            if (!anyPlaying && wasPlaying && remotePaused.isEmpty() && !autoMix.running) focus.abandon()
+            wasPlaying = anyPlaying
             mixer.masterLevel = NativeEngine.getMasterLevel()
             // Spektrum: neues Array, damit Compose neu zeichnet (Berechnung hier, nicht im Audio-Thread)
             val spec = FloatArray(28)
@@ -105,7 +132,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
             mixer.spectrum = spec
             if (recording && frame % 10 == 0) recordSeconds = NativeEngine.recordingSeconds()
             frame++
-            delay(16)
+            delay(if (uiVisible) 16 else 100)
         }
     }
 
@@ -115,11 +142,72 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         engineInfo = info
     }
 
+    // ---------------- Audio-Fokus & Fernsteuerung (Benachrichtigung, Bluetooth, Auto) ----------------
+    private var duckRestore = -1f
+    private var remotePaused = emptyList<Int>()   // Decks, die per Pause angehalten wurden
+
+    private val focus = app.let { a ->
+        app.fadelux.playback.AudioFocusHelper(
+            a,
+            onPause = { _ -> pauseAll() },
+            onResume = { resumePaused() },
+            onDuck = { duck ->
+                if (duck && duckRestore < 0f) {
+                    duckRestore = mixer.masterVolume
+                    NativeEngine.setMasterVolume(mixer.masterVolume * 0.3f)
+                } else if (!duck && duckRestore >= 0f) {
+                    NativeEngine.setMasterVolume(mixer.masterVolume)
+                    duckRestore = -1f
+                }
+            },
+            onNoisy = { if (settings.outputMode == 0) pauseAll() },
+        )
+    }
+
+    private fun pauseAll() {
+        remotePaused = decks.filter { it.playing }.map { it.index }
+        remotePaused.forEach { NativeEngine.setPlaying(it, false) }
+    }
+
+    private fun resumePaused() {
+        remotePaused.forEach { decks[it].play(true) }
+        remotePaused = emptyList()
+    }
+
+    /** Play/Pause von aussen (Benachrichtigung, Kopfhörer-Taste, Auto). */
+    fun remotePlayPause(play: Boolean) {
+        if (!play) {
+            pauseAll()
+            return
+        }
+        if (remotePaused.isNotEmpty()) resumePaused()
+        else (liveDeck() ?: decks.firstOrNull { it.loadState == 2 })?.play(true)
+    }
+
+    /** "Nächster Song" von aussen: sauberer Übergang statt hartem Schnitt. */
+    fun remoteNext() {
+        when {
+            autoMix.running -> autoMix.mixNow()
+            autoMix.queue.isNotEmpty() -> { autoMix.start(); autoMix.mixNow() }
+            else -> message = UiText(R.string.msg_queue_empty_next)
+        }
+    }
+
+    fun toggleAutoMix() {
+        if (autoMix.running) autoMix.stop() else autoMix.start()
+    }
+
+    /** Läuft die App ohne Akku-Einschränkung? (sonst kann Android den Dienst stoppen) */
+    fun batteryUnrestricted(): Boolean {
+        val pm = app.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        return pm.isIgnoringBatteryOptimizations(app.packageName)
+    }
+
     // ---------------- Bibliothek ----------------
     fun scanLibrary() {
         if (scanning) return
         scanning = true
-        viewModelScope.launch {
+        scope.launch {
             try {
                 val (n, f) = library.scan(settings.libraryFolder)
                 folders = f
@@ -134,7 +222,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun startAnalysis() {
         if (analyzeJob?.isActive == true) return
-        analyzeJob = viewModelScope.launch {
+        analyzeJob = scope.launch {
             while (isActive && library.analyzeNext()) delay(50)
         }
     }
@@ -145,9 +233,9 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
             message = UiText(R.string.msg_deck_playing, d.name)
             return
         }
-        viewModelScope.launch(Dispatchers.IO) {
+        scope.launch(Dispatchers.IO) {
             try {
-                getApplication<Application>().contentResolver.openFileDescriptor(Uri.parse(t.uri), "r")?.use { pfd ->
+                app.contentResolver.openFileDescriptor(Uri.parse(t.uri), "r")?.use { pfd ->
                     val len = pfd.statSize
                     val fd = pfd.detachFd()
                     withContext(Dispatchers.Main) {
@@ -190,7 +278,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- Ausgabe / Einstellungen ----------------
     fun outputDevices(): List<OutputDevice> {
-        val am = getApplication<Application>().getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val am = app.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         return am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
             .filter { it.type != AudioDeviceInfo.TYPE_TELEPHONY && it.type != AudioDeviceInfo.TYPE_BUILTIN_EARPIECE }
             .map { OutputDevice(it.id, it.type, it.productName.toString()) }
@@ -204,7 +292,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun applyOutput() {
-        viewModelScope.launch(Dispatchers.Default) {
+        scope.launch(Dispatchers.Default) {
             NativeEngine.setOutput(settings.outputMode, settings.masterDevice, settings.cueDevice)
             withContext(Dispatchers.Main) { refreshEngineInfo() }
         }
@@ -218,7 +306,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
     fun changeBuffer(bursts: Int) {
         settings.bufferBursts = bursts
         NativeEngine.setBufferBursts(bursts)
-        viewModelScope.launch { delay(200); refreshEngineInfo() }
+        scope.launch { delay(200); refreshEngineInfo() }
     }
 
     fun setLibraryFolder(folder: String) {
@@ -232,10 +320,10 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private val appFolder: String
-        get() = getApplication<Application>().getString(R.string.app_name).replace(Regex("[^A-Za-z0-9 _-]"), "")
+        get() = app.getString(R.string.app_name).replace(Regex("[^A-Za-z0-9 _-]"), "")
 
     private fun startRecording() {
-        val resolver = getApplication<Application>().contentResolver
+        val resolver = app.contentResolver
         val name = "Mix_" + SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(Date()) + ".wav"
         val values = ContentValues().apply {
             put(MediaStore.Audio.Media.DISPLAY_NAME, name)
@@ -265,7 +353,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         recording = false
         recordUri?.let { uri ->
             val values = ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }
-            getApplication<Application>().contentResolver.update(uri, values, null, null)
+            app.contentResolver.update(uri, values, null, null)
         }
         recordUri = null
         message = UiText(R.string.msg_rec_saved, "Music/$appFolder")
@@ -281,7 +369,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
     var eventBusy by mutableStateOf(false)
     private val firestore by lazy {
         FirestoreClient(BackendConfig.API_KEY, BackendConfig.PROJECT_ID,
-            getApplication<Application>().getSharedPreferences("backend", Context.MODE_PRIVATE))
+            app.getSharedPreferences("backend", Context.MODE_PRIVATE))
     }
     private var localServer: LocalWishServer? = null
     private var pollJob: Job? = null
@@ -310,7 +398,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         wishError = null
         if (local) {
             val server = LocalWishServer(::songList, localTexts) { w ->
-                viewModelScope.launch {
+                scope.launch {
                     wishes.add(0, w)
                     newWishes++
                 }
@@ -327,7 +415,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         }
         eventBusy = true
         val id = (1..12).map { "abcdefghijkmnpqrstuvwxyz23456789".random() }.joinToString("")
-        viewModelScope.launch {
+        scope.launch {
             try {
                 withContext(Dispatchers.IO) { firestore.createEvent(id, name.take(80), songList()) }
                 settings.eventId = id
@@ -352,13 +440,13 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         eventActive = false
         qrBitmap = null
         if (id.isNotEmpty() && onlineAvailable) {
-            viewModelScope.launch(Dispatchers.IO) { runCatching { firestore.endEvent(id) } }
+            scope.launch(Dispatchers.IO) { runCatching { firestore.endEvent(id) } }
         }
     }
 
     private fun startWishPolling(id: String) {
         pollJob?.cancel()
-        pollJob = viewModelScope.launch {
+        pollJob = scope.launch {
             while (isActive) {
                 try {
                     val list = withContext(Dispatchers.IO) { firestore.listWishes(id) }
@@ -380,13 +468,13 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         val i = wishes.indexOfFirst { it.id == w.id }
         if (i >= 0) wishes[i] = w.copy(done = !w.done)
         val id = settings.eventId
-        if (localServer == null && id.isNotEmpty()) viewModelScope.launch(Dispatchers.IO) { runCatching { firestore.setDone(id, w.id, !w.done) } }
+        if (localServer == null && id.isNotEmpty()) scope.launch(Dispatchers.IO) { runCatching { firestore.setDone(id, w.id, !w.done) } }
     }
 
     fun deleteWish(w: Wish) {
         wishes.removeAll { it.id == w.id }
         val id = settings.eventId
-        if (localServer == null && id.isNotEmpty()) viewModelScope.launch(Dispatchers.IO) { runCatching { firestore.delete(id, w.id) } }
+        if (localServer == null && id.isNotEmpty()) scope.launch(Dispatchers.IO) { runCatching { firestore.delete(id, w.id) } }
     }
 
     fun clearNewWishes() { newWishes = 0 }
@@ -407,11 +495,11 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         restoreEvent()
     }
 
-    override fun onCleared() {
+    /** App wird ganz beendet (z.B. "Beenden" in der Benachrichtigung). */
+    fun shutdown() {
         if (recording) stopRecording()
         localServer?.stop()
         autoMix.stop()
         decks.forEach { NativeEngine.setPlaying(it.index, false) }
-        super.onCleared()
     }
 }

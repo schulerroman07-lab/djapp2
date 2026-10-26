@@ -109,6 +109,13 @@ dependencies {
     // Audio mit tiefer Latenz
     implementation("com.google.oboe:oboe:1.9.3")
 
+    // Hintergrund-Wiedergabe: Benachrichtigung, Sperrbildschirm, Bluetooth-Tasten
+    implementation("androidx.media3:media3-session:1.5.1")
+    implementation("androidx.media3:media3-common:1.5.1")
+
+    // Ordner wählen und Dateien kopieren (Playlist-Export)
+    implementation("androidx.documentfile:documentfile:1.0.1")
+
     // QR-Code erzeugen
     implementation("com.google.zxing:core:3.5.3")
 

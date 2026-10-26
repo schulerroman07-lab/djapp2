@@ -154,4 +154,12 @@
     <string name="onb_skip">Salta</string>
     <string name="onb_start">Iniziamo</string>
     <string name="onb_show_again">Mostra di nuovo l’introduzione</string>
+    <string name="msg_queue_empty_next">Nessun brano successivo – aggiungi brani alla coda Auto-Mix</string>
+    <string name="bg_title">Riproduzione in background</string>
+    <string name="bg_ok">OK – l’app può funzionare in background senza limitazioni.</string>
+    <string name="bg_restricted">L’ottimizzazione della batteria è attiva. Android può fermare la musica in background dopo un po’. Consiglio: imposta l’uso della batteria di questa app su «Senza restrizioni».</string>
+    <string name="bg_open_settings">Apri impostazioni app</string>
+    <string name="bg_hint_short">Suggerimento: consenti la batteria «Senza restrizioni» (Impostazioni → Audio) perché l’Auto-Mix continui in background</string>
+    <string name="faq_q7">La musica si ferma in background?</string>
+    <string name="faq_a7">Impostazioni → Audio → Riproduzione in background → apri impostazioni app → Batteria → «Senza restrizioni». Su Samsung togli anche l’app dalle «App in sospensione» (Impostazioni → Batteria → Limiti di utilizzo in background).</string>
 </resources>

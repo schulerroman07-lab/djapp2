@@ -154,4 +154,12 @@
     <string name="onb_skip">Überspringen</string>
     <string name="onb_start">Los geht’s</string>
     <string name="onb_show_again">Einführung nochmals zeigen</string>
+    <string name="msg_queue_empty_next">Kein nächster Titel – füge Titel zur Auto-Mix-Warteschlange hinzu</string>
+    <string name="bg_title">Wiedergabe im Hintergrund</string>
+    <string name="bg_ok">OK – die App darf ohne Einschränkung im Hintergrund laufen.</string>
+    <string name="bg_restricted">Akku-Optimierung ist aktiv. Android kann die Musik im Hintergrund nach einiger Zeit stoppen. Empfehlung: Akkunutzung dieser App auf „Nicht eingeschränkt“ stellen.</string>
+    <string name="bg_open_settings">App-Einstellungen öffnen</string>
+    <string name="bg_hint_short">Tipp: Akku „Nicht eingeschränkt“ erlauben (Einstellungen → Audio), damit Auto-Mix im Hintergrund sicher weiterläuft</string>
+    <string name="faq_q7">Die Musik stoppt im Hintergrund?</string>
+    <string name="faq_a7">Einstellungen → Audio → Wiedergabe im Hintergrund → App-Einstellungen öffnen → Akku → „Nicht eingeschränkt“. Bei Samsung die App ausserdem aus „Apps im Standby“ entfernen (Einstellungen → Akku → Einschränkungen für Hintergrundnutzung).</string>
 </resources>

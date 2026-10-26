@@ -128,6 +128,7 @@ private fun ColumnScope.AudioSection(vm: DjViewModel) {
     val s = vm.settings
     val info = vm.engineInfo
     Text(stringResource(R.string.audio_info, info[0].toInt(), info[1].toInt(), info[2].toInt()), style = AppType.small)
+    BackgroundCard(vm)
     SectionTitle(stringResource(R.string.audio_mode))
     listOf(R.string.audio_mode_stereo, R.string.audio_mode_split, R.string.audio_mode_4ch, R.string.audio_mode_2dev).forEachIndexed { i, label ->
         NeonButton(Modifier.fillMaxWidth().height(44.dp).padding(vertical = 2.dp), text = stringResource(label), color = AppColors.Cyan, active = s.outputMode == i, fontSize = 12) {
@@ -152,6 +153,39 @@ private fun ColumnScope.AudioSection(vm: DjViewModel) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         listOf(1 to R.string.audio_q_fast, 2 to R.string.audio_q_normal, 4 to R.string.audio_q_safe).forEach { (b, label) ->
             NeonButton(Modifier.weight(1f).height(44.dp), text = stringResource(label), active = s.bufferBursts == b, fontSize = 12) { vm.changeBuffer(b) }
+        }
+    }
+}
+
+/** Hinweis zur Akku-Optimierung (sonst kann Android die Musik im Hintergrund stoppen). */
+@Composable
+private fun BackgroundCard(vm: DjViewModel) {
+    val context = LocalContext.current
+    // Beim Zurückkehren aus den System-Einstellungen neu prüfen
+    var ok by remember { mutableStateOf(vm.batteryUnrestricted()) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycle) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) ok = vm.batteryUnrestricted()
+        }
+        lifecycle.lifecycle.addObserver(obs)
+        onDispose { lifecycle.lifecycle.removeObserver(obs) }
+    }
+    SectionTitle(stringResource(R.string.bg_title))
+    Column(Modifier.fillMaxWidth().glass(corner = 12.dp, glowColor = if (ok) null else AppColors.Amber).padding(10.dp)) {
+        Text(
+            stringResource(if (ok) R.string.bg_ok else R.string.bg_restricted),
+            style = AppType.small.copy(color = if (ok) AppColors.Emerald else AppColors.Amber),
+        )
+        if (!ok) {
+            Spacer(Modifier.height(6.dp))
+            NeonButton(Modifier.width(240.dp).height(40.dp), text = stringResource(R.string.bg_open_settings), color = AppColors.Amber, fontSize = 12) {
+                val intent = android.content.Intent(
+                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.fromParts("package", context.packageName, null),
+                )
+                runCatching { context.startActivity(intent) }
+            }
         }
     }
 }
@@ -191,6 +225,7 @@ private fun ColumnScope.HelpSection(vm: DjViewModel) {
     val faq = listOf(
         R.string.faq_q1 to R.string.faq_a1, R.string.faq_q2 to R.string.faq_a2, R.string.faq_q3 to R.string.faq_a3,
         R.string.faq_q4 to R.string.faq_a4, R.string.faq_q5 to R.string.faq_a5, R.string.faq_q6 to R.string.faq_a6,
+        R.string.faq_q7 to R.string.faq_a7,
     )
     faq.forEach { (q, a) ->
         Text(stringResource(q), style = AppType.bodyBold.copy(color = LocalAccent.current), modifier = Modifier.padding(top = 10.dp))

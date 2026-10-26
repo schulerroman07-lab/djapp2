@@ -160,7 +160,11 @@ class AutoMix(
             status = UiText(R.string.automix_waiting, next.title)
             mixNow = false
             while (a.position < mixOut && !mixNow) {
-                if (!a.playing) break
+                if (!a.playing) {
+                    if (a.position >= a.duration - 1.0) break   // Titel ist zu Ende
+                    delay(50)                                   // pausiert (z.B. Anruf): warten
+                    continue
+                }
                 delay(10)
             }
 

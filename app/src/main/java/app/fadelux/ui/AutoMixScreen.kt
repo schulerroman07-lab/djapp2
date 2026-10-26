@@ -56,7 +56,12 @@ fun AutoMixScreen(vm: DjViewModel, onClose: () -> Unit) {
     AutoMixContent(
         queue = am.queue, running = am.running, status = am.status?.resolve(),
         transitionBars = vm.settings.transitionBars,
-        onStartStop = { if (am.running) am.stop() else am.start() },
+        onStartStop = {
+            if (am.running) am.stop() else {
+                am.start()
+                if (!vm.batteryUnrestricted()) vm.message = UiText(R.string.bg_hint_short)
+            }
+        },
         onMixNow = { am.mixNow() },
         onOptimize = { am.optimize(); vm.message = UiText(R.string.am_optimized) },
         onBars = { vm.settings.transitionBars = it },

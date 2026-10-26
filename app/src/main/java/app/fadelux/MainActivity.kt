@@ -11,7 +11,6 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -24,7 +23,9 @@ import app.fadelux.ui.theme.AppTheme
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
-    private val vm: DjViewModel by viewModels()
+    // Der App-Kern lebt unabhängig vom Fenster (Musik läuft im Hintergrund weiter)
+    private val vm: DjViewModel by lazy { DjViewModel.get(application) }
+    private var controller: com.google.common.util.concurrent.ListenableFuture<androidx.media3.session.MediaController>? = null
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -55,12 +56,9 @@ class MainActivity : ComponentActivity() {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
 
-        // Vordergrund-Dienst: Musik läuft weiter, wenn kurz eine andere App offen ist
-        try {
-            startForegroundService(Intent(this, DjService::class.java))
-        } catch (e: Exception) {
-            android.util.Log.e("Fadelux", "Dienst konnte nicht starten", e)
-        }
+        // Mit dem Hintergrund-Dienst verbinden (Benachrichtigung, Sperrbildschirm, Bluetooth-Tasten)
+        val token = androidx.media3.session.SessionToken(this, android.content.ComponentName(this, app.fadelux.playback.PlaybackService::class.java))
+        controller = androidx.media3.session.MediaController.Builder(this, token).buildAsync()
 
         setContent {
             val accent = AppColors.accents.getOrElse(vm.settings.accentIndex) { AppColors.Emerald }
@@ -69,8 +67,19 @@ class MainActivity : ComponentActivity() {
         handlePermission()
     }
 
+    override fun onStart() {
+        super.onStart()
+        vm.uiVisible = true
+    }
+
+    override fun onStop() {
+        vm.uiVisible = false
+        super.onStop()
+    }
+
     override fun onDestroy() {
-        if (isFinishing && !isChangingConfigurations) stopService(Intent(this, DjService::class.java))
+        // Verbindung zum Dienst lösen – der Dienst selbst läuft weiter, solange Musik spielt
+        controller?.let { androidx.media3.session.MediaController.releaseFuture(it) }
         super.onDestroy()
     }
 

@@ -49,6 +49,12 @@ object CoverRepository {
         }
     }
 
+    /** Cover als JPG-Bytes (für Benachrichtigung / Sperrbildschirm), falls vorhanden. */
+    fun jpegBytes(context: Context, id: Long): ByteArray? {
+        val f = File(File(context.cacheDir, "covers"), "$id.jpg")
+        return if (f.exists()) runCatching { f.readBytes() }.getOrNull() else null
+    }
+
     private fun extract(context: Context, uri: String): Bitmap? {
         val r = MediaMetadataRetriever()
         return try {
