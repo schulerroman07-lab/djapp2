@@ -19,7 +19,9 @@ class AppSettings(context: Context) {
     var cueDelayMs by prefF("cueDelayMs", 0f)
     var libraryFolder by prefS("libraryFolder", "")
     var onboardingDone by prefB("onboardingDone", false)
-    var transitionBars by pref("transitionBars", 8)      // Auto-Mix: 4/8/16 Takte, oder negativ = Sekunden
+    var transitionBars by pref("transitionBarsV2", 0)    // Auto-Mix: 0 = automatisch, sonst 4/8/16/32 Takte
+    var mixStyle by pref("mixStyle", 1)                  // 0 ruhig, 1 ausgewogen, 2 Club
+    var disabledTransitions by prefS("disabledTransitions", "")   // abgeschaltete Typen (Komma-getrennt)
     var eventId by prefS("eventId", "")
     var wishMode by pref("wishMode", 0)                  // 0 = Internet, 1 = lokales WLAN
 

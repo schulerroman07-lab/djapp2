@@ -108,6 +108,28 @@ class DeckModel(val index: Int) {
     fun toggleEcho() { echoOn = !echoOn; NativeEngine.setEcho(index, echoOn, echoAmount) }
     fun changeEchoAmount(v: Float) { echoAmount = v; NativeEngine.setEcho(index, echoOn, v) }
     fun togglePfl() { pfl = !pfl; NativeEngine.setPfl(index, pfl) }
+
+    // --- Für automatische Übergänge (Auto-Mix) ---
+    fun setEcho(on: Boolean, amount: Float, feedback: Float = 0.55f) {
+        echoOn = on
+        echoAmount = amount
+        NativeEngine.setEcho(index, on, amount)
+        NativeEngine.setEchoFeedback(index, feedback)
+    }
+    fun setReverb(send: Float) = NativeEngine.setReverb(index, send)
+    fun setLoop(startSec: Double, lengthSec: Double, on: Boolean) = NativeEngine.setLoop(index, startSec, lengthSec, on)
+
+    /** Alles zurücksetzen, was ein Übergang verändert hat (EQ, Filter, Echo, Hall, Loop). */
+    fun resetEffects() {
+        for (i in 0..2) { if (kill[i]) toggleKill(i); setEq(i, 0f) }
+        changeFilter(0f)
+        setEcho(false, 0.4f)
+        setReverb(0f)
+        setLoop(0.0, 0.0, false)
+    }
+
+    /** Merkmale pro Beat des geladenen Titels (für die Struktur-Analyse). */
+    fun features(): ByteArray = NativeEngine.getDeckFeatures(index)
     fun toggleKeylock() { keylock = !keylock; NativeEngine.setKeylock(index, keylock) }
 }
 

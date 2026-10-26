@@ -162,4 +162,23 @@
     <string name="bg_hint_short">Tipp: Akku „Nicht eingeschränkt“ erlauben (Einstellungen → Audio), damit Auto-Mix im Hintergrund sicher weiterläuft</string>
     <string name="faq_q7">Die Musik stoppt im Hintergrund?</string>
     <string name="faq_a7">Einstellungen → Audio → Wiedergabe im Hintergrund → App-Einstellungen öffnen → Akku → „Nicht eingeschränkt“. Bei Samsung die App ausserdem aus „Apps im Standby“ entfernen (Einstellungen → Akku → Einschränkungen für Hintergrundnutzung).</string>
+    <string name="tr_bass_swap">Bass-Swap</string>
+    <string name="tr_filter">Filter</string>
+    <string name="tr_echo_out">Echo-Out</string>
+    <string name="tr_loop">Loop</string>
+    <string name="tr_reverb">Hall-Übergang</string>
+    <string name="tr_cut">Harter Schnitt</string>
+    <string name="style_calm">Ruhig</string>
+    <string name="style_balanced">Ausgewogen</string>
+    <string name="style_club">Club</string>
+    <string name="am_style">Stil</string>
+    <string name="am_types">Erlaubte Übergänge</string>
+    <string name="am_length_auto">Auto</string>
+    <string name="am_next_title">Als nächstes: %1$s</string>
+    <string name="am_next_detail">%1$s · %2$d Takte · in %3$s</string>
+    <string name="am_change_type">Übergang ändern</string>
+    <string name="am_skip_song">Song überspringen</string>
+    <string name="am_tempo_note">Tempo zu unterschiedlich – kein Überblenden der Beats</string>
+    <string name="am_settings">Auto-Mix-Einstellungen</string>
+    <string name="am_help2">Jedes Song-Paar wird analysiert (Beats, Phrasen, Intro/Outro, Breaks, Gesang). Auto-Mix wählt einen passenden Übergang, startet den nächsten Song genau auf dem Downbeat und legt nie zwei Gesangsteile übereinander. Du kannst jederzeit selbst am Crossfader übernehmen.</string>
 </resources>

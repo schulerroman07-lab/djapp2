@@ -176,4 +176,23 @@
     <string name="bg_hint_short">Tip: allow unrestricted battery use (Settings → Audio) so Auto-Mix keeps running in the background</string>
     <string name="faq_q7">The music stops in the background?</string>
     <string name="faq_a7">Settings → Audio → Background playback → open app settings → Battery → “Unrestricted”. On Samsung also remove the app from “Sleeping apps” (Settings → Battery → Background usage limits).</string>
+    <string name="tr_bass_swap">Bass swap</string>
+    <string name="tr_filter">Filter</string>
+    <string name="tr_echo_out">Echo out</string>
+    <string name="tr_loop">Loop</string>
+    <string name="tr_reverb">Reverb wash</string>
+    <string name="tr_cut">Cut</string>
+    <string name="style_calm">Calm</string>
+    <string name="style_balanced">Balanced</string>
+    <string name="style_club">Club</string>
+    <string name="am_style">Style</string>
+    <string name="am_types">Allowed transitions</string>
+    <string name="am_length_auto">Auto</string>
+    <string name="am_next_title">Next: %1$s</string>
+    <string name="am_next_detail">%1$s · %2$d bars · in %3$s</string>
+    <string name="am_change_type">Change transition</string>
+    <string name="am_skip_song">Skip song</string>
+    <string name="am_tempo_note">Tempo differs a lot – no beat blend</string>
+    <string name="am_settings">Auto-Mix settings</string>
+    <string name="am_help2">Each song pair is analysed (beats, phrases, intro/outro, breaks, vocals). Auto-Mix picks a fitting transition, starts the next song exactly on the downbeat and never puts two vocal parts on top of each other. Move the crossfader yourself at any time to take over.</string>
 </resources>

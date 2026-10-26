@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import app.fadelux.audio.NativeEngine
 import app.fadelux.automix.AutoMix
+import app.fadelux.automix.TransitionType
 import app.fadelux.automix.Suggestion
 import app.fadelux.automix.Suggestions
 import app.fadelux.data.AppSettings
@@ -191,6 +192,15 @@ class DjViewModel private constructor(private val app: Application) {
             autoMix.queue.isNotEmpty() -> { autoMix.start(); autoMix.mixNow() }
             else -> message = UiText(R.string.msg_queue_empty_next)
         }
+    }
+
+    /** Übergangstyp an/aus (mindestens einer bleibt an). Plant den nächsten Übergang neu. */
+    fun toggleTransitionType(t: TransitionType) {
+        val off = settings.disabledTransitions.split(',').filter { it.isNotBlank() }.toMutableSet()
+        if (t.name in off) off.remove(t.name)
+        else if (TransitionType.entries.size - off.size > 1) off.add(t.name)
+        settings.disabledTransitions = off.joinToString(",")
+        autoMix.changeType(autoMix.forcedType)
     }
 
     fun toggleAutoMix() {

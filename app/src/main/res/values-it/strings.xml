@@ -162,4 +162,23 @@
     <string name="bg_hint_short">Suggerimento: consenti la batteria «Senza restrizioni» (Impostazioni → Audio) perché l’Auto-Mix continui in background</string>
     <string name="faq_q7">La musica si ferma in background?</string>
     <string name="faq_a7">Impostazioni → Audio → Riproduzione in background → apri impostazioni app → Batteria → «Senza restrizioni». Su Samsung togli anche l’app dalle «App in sospensione» (Impostazioni → Batteria → Limiti di utilizzo in background).</string>
+    <string name="tr_bass_swap">Scambio bassi</string>
+    <string name="tr_filter">Filtro</string>
+    <string name="tr_echo_out">Uscita eco</string>
+    <string name="tr_loop">Loop</string>
+    <string name="tr_reverb">Onda di riverbero</string>
+    <string name="tr_cut">Taglio netto</string>
+    <string name="style_calm">Calmo</string>
+    <string name="style_balanced">Equilibrato</string>
+    <string name="style_club">Club</string>
+    <string name="am_style">Stile</string>
+    <string name="am_types">Transizioni consentite</string>
+    <string name="am_length_auto">Auto</string>
+    <string name="am_next_title">Prossimo: %1$s</string>
+    <string name="am_next_detail">%1$s · %2$d battute · tra %3$s</string>
+    <string name="am_change_type">Cambia transizione</string>
+    <string name="am_skip_song">Salta brano</string>
+    <string name="am_tempo_note">Tempo troppo diverso – nessun mix dei battiti</string>
+    <string name="am_settings">Impostazioni Auto-Mix</string>
+    <string name="am_help2">Ogni coppia di brani viene analizzata (battiti, frasi, intro/outro, break, voce). L’Auto-Mix sceglie una transizione adatta, avvia il brano successivo esattamente sul primo battito e non sovrappone mai due parti cantate. Muovi il crossfader per riprendere il controllo.</string>
 </resources>

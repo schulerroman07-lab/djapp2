@@ -14,7 +14,9 @@ import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import app.fadelux.data.Track
+import app.fadelux.ui.AutoMixActions
 import app.fadelux.ui.AutoMixContent
+import app.fadelux.ui.AutoMixUi
 import app.fadelux.ui.DeckPanel
 import app.fadelux.ui.MixerPanel
 import app.fadelux.ui.OnboardingScreen
@@ -119,7 +121,17 @@ class LayoutTest {
         paparazzi.snapshot {
             AppTheme(AppColors.Emerald) {
                 AppBackground {
-                    AutoMixContent(q, true, "Next: Sunset Groove – waiting for the outro", 8, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, suggestions = q.take(2))
+                    AutoMixContent(
+                        AutoMixUi(
+                            queue = q, running = true, status = "Next: Sunset Groove – waiting for the outro",
+                            nextTrack = q[1],
+                            nextPlan = app.fadelux.automix.TransitionPlan(
+                                app.fadelux.automix.TransitionType.BASS_SWAP, 72, 140.0, 20.0, 16, 0.98f, true,
+                            ),
+                            countdown = { 42.0 }, suggestions = q.take(2),
+                        ),
+                        AutoMixActions(),
+                    )
                 }
             }
         }
