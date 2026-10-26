@@ -51,17 +51,9 @@ import app.fadelux.ui.theme.LocalAccent
 @Composable
 fun SettingsScreen(vm: DjViewModel, onLanguageChanged: () -> Unit, onClose: () -> Unit) {
     var section by rememberSaveable { mutableIntStateOf(0) }
-    val sections = listOf(
-        R.string.set_design, R.string.set_language, R.string.set_audio, R.string.set_library,
-        R.string.set_help, R.string.set_about, R.string.set_privacy,
-    )
     OverlayScaffold(stringResource(R.string.nav_settings), onClose) {
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Column(Modifier.width(190.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                sections.forEachIndexed { i, s ->
-                    NeonButton(Modifier.fillMaxWidth().height(44.dp), text = stringResource(s), active = section == i, fontSize = 13) { section = i }
-                }
-            }
+            SettingsNav(section) { section = it }
             Column(Modifier.weight(1f).fillMaxHeight().glass().padding(14.dp).verticalScroll(rememberScrollState())) {
                 when (section) {
                     0 -> DesignSection(vm)
@@ -79,15 +71,35 @@ fun SettingsScreen(vm: DjViewModel, onLanguageChanged: () -> Unit, onClose: () -
 
 @Composable
 private fun ColumnScope.DesignSection(vm: DjViewModel) {
+    AccentPicker(vm.settings.accentIndex) { vm.settings.accentIndex = it }
+}
+
+/** Auswahl der Akzentfarbe (runde Farbfelder). */
+@Composable
+fun AccentPicker(selected: Int, onSelect: (Int) -> Unit) {
     SectionTitle(stringResource(R.string.set_accent))
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         AppColors.accents.forEachIndexed { i, c ->
-            val sel = vm.settings.accentIndex == i
+            val sel = selected == i
             Box(
                 Modifier.size(48.dp).clip(CircleShape).background(c)
                     .border(if (sel) 3.dp else 0.dp, Color.White, CircleShape)
-                    .clickable { vm.settings.accentIndex = i },
+                    .clickable { onSelect(i) },
             )
+        }
+    }
+}
+
+/** Linke Navigation der Einstellungen. */
+@Composable
+fun SettingsNav(selected: Int, onSelect: (Int) -> Unit) {
+    val sections = listOf(
+        R.string.set_design, R.string.set_language, R.string.set_audio, R.string.set_library,
+        R.string.set_help, R.string.set_about, R.string.set_privacy,
+    )
+    Column(Modifier.width(190.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        sections.forEachIndexed { i, s ->
+            NeonButton(Modifier.fillMaxWidth().height(44.dp), text = stringResource(s), active = selected == i, fontSize = 13) { onSelect(i) }
         }
     }
 }

@@ -19,6 +19,9 @@ import app.fadelux.ui.DeckPanel
 import app.fadelux.ui.MixerPanel
 import app.fadelux.ui.OnboardingScreen
 import app.fadelux.ui.TopBar
+import app.fadelux.ui.SettingsNav
+import app.fadelux.ui.AccentPicker
+import app.fadelux.ui.components.glass
 import app.fadelux.ui.TrackRow
 import app.fadelux.ui.WishRow
 import app.fadelux.ui.WishStep
@@ -139,6 +142,20 @@ class LayoutTest {
                             WishRow(Wish("2", "Bitte etwas von ABBA, und alles Gute zum Geburtstag an Lisa!", "", now, false), "21:06", false, {}, {}, {}, {}, {})
                             WishRow(Wish("3", "", "The Waves – Sunset Groove", now, true), "21:10", true, {}, {}, {}, {}, {})
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun settings() {
+        paparazzi.snapshot {
+            AppTheme(AppColors.Violet) {
+                AppBackground {
+                    Row(Modifier.fillMaxSize().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        SettingsNav(0) {}
+                        Column(Modifier.weight(1f).fillMaxHeight().glass().padding(14.dp)) { AccentPicker(2) {} }
                     }
                 }
             }
