@@ -258,7 +258,7 @@ class DjViewModel private constructor(private val app: Application) {
                         d.waveform = FloatArray(0)
                         d.peaks = FloatArray(0)
                         d.loadState = 1
-                        d.setGain(1f)      // Lautheits-Angleichung gilt nur für den vorherigen Titel
+                        d.applyGain(1f)      // Lautheits-Angleichung gilt nur für den vorherigen Titel
                     }
                     NativeEngine.loadTrack(deck, fd, len)
                 }

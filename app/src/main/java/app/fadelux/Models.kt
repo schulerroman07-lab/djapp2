@@ -148,7 +148,7 @@ class DeckModel(val index: Int) {
     fun features(): ByteArray = NativeEngine.getDeckFeatures(index)
     fun toggleKeylock() { keylock = !keylock; NativeEngine.setKeylock(index, keylock) }
     /** Keylock einschalten (Tempo ändern ohne Tonhöhe) – für Auto-Mix. */
-    fun setGain(g: Float) { gain = g; NativeEngine.setGain(index, g) }
+    fun applyGain(g: Float) { gain = g; NativeEngine.setGain(index, g) }
     /** Lautheit des geladenen Titels in dB (gemessen beim Laden). */
     fun loudness(): Float = NativeEngine.getLoudness(index)
     fun ensureKeylock() { if (!keylock) toggleKeylock() }

@@ -396,9 +396,9 @@ class AutoMix(
     private fun matchLoudness(a: DeckModel, b: DeckModel) {
         val la = a.loudness() + 20f * log10(a.gain.coerceAtLeast(0.01f))
         val lb = b.loudness()
-        if (la < -60f || lb < -60f) { b.setGain(1f); return }
+        if (la < -60f || lb < -60f) { b.applyGain(1f); return }
         val db = (la - lb).coerceIn(-9f, 4f)
-        b.setGain(10f.pow(db / 20f))
+        b.applyGain(10f.pow(db / 20f))
         log("Lautheit: A ${"%.1f".format(la)} dB, B ${"%.1f".format(lb)} dB → B ${"%+.1f".format(db)} dB")
     }
 
