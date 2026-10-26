@@ -187,7 +187,8 @@ void Engine::renderMain(float* out, int channels, int frames) {
         float ga = curXa_ + (xa - curXa_) * k;
         float gb = curXb_ + (xb - curXb_) * k;
         for (int ch = 0; ch < 2; ch++) {
-            float m = softClip((a_[i * 2 + ch] * ga + b_[i * 2 + ch] * gb) * mv);
+            // 0.8 = etwas Reserve, damit zwei laute Titel nicht verzerren
+            float m = softClip((a_[i * 2 + ch] * ga + b_[i * 2 + ch] * gb) * mv * 0.8f);
             master_[i * 2 + ch] = m;
             peak = std::max(peak, std::fabs(m));
             float c = ca_[i * 2 + ch] + cb_[i * 2 + ch];

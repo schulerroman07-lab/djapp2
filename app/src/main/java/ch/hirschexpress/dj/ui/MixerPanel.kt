@@ -72,7 +72,7 @@ private fun ChannelStrip(d: DeckModel) {
             .fillMaxHeight(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        PadButton("🎧", Modifier.fillMaxWidth().height(34.dp), DjColors.Cue, active = d.pfl, fontSize = 16) { d.togglePfl() }
+        PadButton("🎧", Modifier.fillMaxWidth().height(34.dp), DjColors.Cue, active = d.pfl, fontSize = 16, instant = true) { d.togglePfl() }
         Row(
             Modifier
                 .weight(1f)

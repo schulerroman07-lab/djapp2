@@ -120,7 +120,7 @@ fun DeckPanel(d: DeckModel, modifier: Modifier = Modifier) {
                         Knob(d.eq[i], { d.setEq(i, it) }, labels[i], color, dimmed = d.kill[i])
                         PadButton(
                             "KILL", Modifier.width(46.dp).height(24.dp), DjColors.Red,
-                            active = d.kill[i], fontSize = 10,
+                            active = d.kill[i], fontSize = 10, instant = true,
                         ) { d.toggleKill(i) }
                     }
                 }
@@ -139,7 +139,7 @@ fun DeckPanel(d: DeckModel, modifier: Modifier = Modifier) {
                     Knob(d.echoAmount, { d.changeEchoAmount(it) }, "ECHO", DjColors.Play, min = 0f, max = 1f, default = 0.4f)
                     PadButton(
                         "ECHO", Modifier.width(46.dp).height(24.dp), DjColors.Play,
-                        active = d.echoOn, fontSize = 10,
+                        active = d.echoOn, fontSize = 10, instant = true,
                     ) { d.toggleEcho() }
                 }
             }
@@ -151,12 +151,12 @@ fun DeckPanel(d: DeckModel, modifier: Modifier = Modifier) {
                     .height(56.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                PadButton("CUE", Modifier.weight(1f).fillMaxHeight(), DjColors.Cue, fontSize = 18) { d.cuePress() }
+                PadButton("CUE", Modifier.weight(1f).fillMaxHeight(), DjColors.Cue, fontSize = 18, instant = true) { d.cuePress() }
                 PadButton(
                     if (d.playing) "❚❚" else "▶", Modifier.weight(1.3f).fillMaxHeight(), DjColors.Play,
-                    active = d.playing, fontSize = 22,
+                    active = d.playing, fontSize = 22, instant = true,
                 ) { d.togglePlay() }
-                PadButton("SYNC", Modifier.weight(1f).fillMaxHeight(), color, fontSize = 16) { d.sync() }
+                PadButton("SYNC", Modifier.weight(1f).fillMaxHeight(), color, fontSize = 16, instant = true) { d.sync() }
             }
         }
         if (mirrored) TempoColumn(d, color)

@@ -39,6 +39,7 @@ fun PadButton(
     color: Color = DjColors.PanelLight,
     active: Boolean = false,
     fontSize: Int = 16,
+    instant: Boolean = false,  // true = reagiert schon beim Berühren (Play, Cue …)
     onClick: () -> Unit,
 ) {
     val bg = if (active) color else DjColors.PanelLight
@@ -49,7 +50,10 @@ fun PadButton(
             .clip(RoundedCornerShape(10.dp))
             .background(bg)
             .border(1.dp, if (active) bg else color.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
-            .pointerInput(Unit) { detectTapGestures(onTap = { click() }) },
+            .pointerInput(instant) {
+                if (instant) detectTapGestures(onPress = { click() })
+                else detectTapGestures(onTap = { click() })
+            },
         contentAlignment = Alignment.Center,
     ) {
         Text(text, color = fg, fontSize = fontSize.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
