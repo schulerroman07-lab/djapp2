@@ -43,6 +43,11 @@ object NativeEngine {
     external fun stopRecording()
     external fun recordingSeconds(): Double
 
+    external fun getMasterLevel(): Float
+
+    /** Volle Wellenform: 100 Spitzenwerte pro Sekunde */
+    external fun getPeaks(deck: Int): FloatArray
+
     /** Füllt out (4 Werte): Abtastrate, Latenz ms, Kanäle, Master-Pegel */
     external fun getEngineInfo(out: DoubleArray)
 

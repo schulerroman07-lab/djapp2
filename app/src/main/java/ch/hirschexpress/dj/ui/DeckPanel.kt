@@ -85,11 +85,18 @@ fun DeckPanel(d: DeckModel, modifier: Modifier = Modifier) {
             // --- Wellenform ---
             val prog = if (d.duration > 0) (d.position / d.duration).toFloat() else 0f
             val cueProg = if (d.duration > 0) (d.cue / d.duration).toFloat() else 0f
+            ZoomWaveform(
+                d.peaks, d.position, d.bpm, d.firstBeat, d.cue, color,
+                Modifier
+                    .fillMaxWidth()
+                    .height(46.dp),
+            )
+            Spacer(Modifier.height(3.dp))
             Waveform(
                 d.waveform, prog, cueProg, color,
                 Modifier
                     .fillMaxWidth()
-                    .height(54.dp),
+                    .height(28.dp),
                 onSeek = { d.seekFraction(it) },
             )
             Row(Modifier.fillMaxWidth()) {

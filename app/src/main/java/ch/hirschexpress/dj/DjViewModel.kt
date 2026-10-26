@@ -51,6 +51,8 @@ class DeckModel(val index: Int) {
     var cue by mutableStateOf(0.0)
     var level by mutableFloatStateOf(0f)
     var waveform by mutableStateOf(FloatArray(0))
+    var peaks by mutableStateOf(FloatArray(0))     // volle Auflösung (Zoom)
+    var firstBeat by mutableFloatStateOf(0f)
 
     // Bedienelemente
     var tempoRange by mutableIntStateOf(8)      // ±8 % oder ±16 %
@@ -178,8 +180,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- Laufende Aktualisierung ----------------
     private fun startPolling() = viewModelScope.launch {
         val st = DoubleArray(9)
-        val info = DoubleArray(4)
-        var lastLoad = intArrayOf(-1, -1)
+        val lastLoad = intArrayOf(-1, -1)
         while (isActive) {
             for (d in decks) {
                 NativeEngine.getDeckState(d.index, st)
@@ -189,12 +190,14 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
                 d.position = st[2]
                 d.duration = st[3]
                 d.bpm = st[4].toFloat()
+                d.firstBeat = st[5].toFloat()
                 d.cue = st[7]
                 d.level = st[8].toFloat()
                 if (ls != lastLoad[d.index]) {
                     lastLoad[d.index] = ls
                     if (ls == 2) {
                         d.waveform = NativeEngine.getWaveform(d.index, 600)
+                        d.peaks = NativeEngine.getPeaks(d.index)
                         // BPM aus dem Deck auch in der Bibliothek speichern
                         val t = d.track
                         if (t != null && d.bpm > 0 && (t.bpm == null || t.bpm == 0f)) {
@@ -204,8 +207,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
                     if (ls == 3) message = "Titel konnte nicht geladen werden"
                 }
             }
-            NativeEngine.getEngineInfo(info)
-            masterLevel = info[3].toFloat()
+            masterLevel = NativeEngine.getMasterLevel()
             if (recording) recordSeconds = NativeEngine.recordingSeconds()
             delay(40)
         }
@@ -256,6 +258,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
                     withContext(Dispatchers.Main) {
                         d.track = t
                         d.waveform = FloatArray(0)
+                        d.peaks = FloatArray(0)
                     }
                     NativeEngine.loadTrack(deck, fd, len)
                 }

@@ -110,6 +110,16 @@ JNIEXPORT jboolean JNICALL FN(startRecording)(JNIEnv*, jobject, jint fd) {
 JNIEXPORT void JNICALL FN(stopRecording)(JNIEnv*, jobject) { if (g) g->recorder.stop(); }
 JNIEXPORT jdouble JNICALL FN(recordingSeconds)(JNIEnv*, jobject) { return g ? g->recorder.seconds() : 0; }
 
+JNIEXPORT jfloat JNICALL FN(getMasterLevel)(JNIEnv*, jobject) { return g ? g->masterLevel() : 0.f; }
+
+// Volle Wellenform (100 Werte pro Sekunde) für die Zoom-Ansicht
+JNIEXPORT jfloatArray JNICALL FN(getPeaks)(JNIEnv* env, jobject, jint d) {
+    std::vector<float> p = g ? DECK(d).peaks() : std::vector<float>();
+    jfloatArray arr = env->NewFloatArray((jsize)p.size());
+    if (!p.empty()) env->SetFloatArrayRegion(arr, 0, (jsize)p.size(), p.data());
+    return arr;
+}
+
 // [Abtastrate, Latenz ms, Kanäle, Master-Pegel]
 JNIEXPORT void JNICALL FN(getEngineInfo)(JNIEnv* env, jobject, jdoubleArray out) {
     if (!g) return;

@@ -66,6 +66,8 @@ class LibraryRepository(private val context: Context) {
 
     /** Analysiert den nächsten Titel ohne BPM. Gibt false zurück, wenn alle fertig sind. */
     suspend fun analyzeNext(): Boolean = withContext(Dispatchers.IO) {
+        // Niedrige Priorität, damit die Musik nie stockt
+        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
         val t = dao.nextUnanalyzed() ?: return@withContext false
         var bpm = 0f
         try {

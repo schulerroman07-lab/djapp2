@@ -268,3 +268,64 @@ fun Waveform(
         drawLine(Color.White, Offset(w * progress, 0f), Offset(w * progress, h), 4f)
     }
 }
+
+/**
+ * Gezoomte Wellenform (±3 Sekunden) mit Beat-Raster. Die Mitte ist die aktuelle Position.
+ * Hilft beim Angleichen der Beats von Hand.
+ */
+@Composable
+fun ZoomWaveform(
+    peaks: FloatArray,
+    position: Double,
+    bpm: Float,
+    firstBeat: Float,
+    cue: Double,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(
+        modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFF0A0A0E)),
+    ) {
+        val w = size.width
+        val h = size.height
+        val span = 6.0                 // Sekunden sichtbar
+        val start = position - span / 2
+        val pxPerSec = w / span
+        // Wellenform (100 Werte pro Sekunde)
+        if (peaks.isNotEmpty()) {
+            val first = (start * 100).toInt().coerceAtLeast(0)
+            val last = ((start + span) * 100).toInt().coerceAtMost(peaks.size - 1)
+            val barW = (pxPerSec / 100.0).toFloat().coerceAtLeast(1f)
+            for (i in first..last) {
+                val x = ((i / 100.0 - start) * pxPerSec).toFloat()
+                val ph = peaks[i] * h * 0.95f
+                drawRect(color.copy(alpha = 0.85f), Offset(x, (h - ph) / 2), Size(barW, ph))
+            }
+        }
+        // Beat-Raster: jeder 4. Beat dicker
+        if (bpm > 0) {
+            val beat = 60.0 / bpm
+            var k = kotlin.math.floor((start - firstBeat) / beat).toLong()
+            while (true) {
+                val t = firstBeat + k * beat
+                if (t > start + span) break
+                if (t >= 0) {
+                    val x = ((t - start) * pxPerSec).toFloat()
+                    val down = Math.floorMod(k, 4L) == 0L
+                    drawLine(
+                        if (down) Color.White.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.3f),
+                        Offset(x, 0f), Offset(x, if (down) h else h * 0.25f), if (down) 3f else 2f,
+                    )
+                }
+                k++
+            }
+        }
+        // Cue-Punkt
+        val cx = ((cue - start) * pxPerSec).toFloat()
+        if (cx in 0f..w) drawLine(DjColors.Cue, Offset(cx, 0f), Offset(cx, h), 3f)
+        // Abspielposition (Mitte)
+        drawLine(DjColors.Red, Offset(w / 2, 0f), Offset(w / 2, h), 3f)
+    }
+}

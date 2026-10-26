@@ -54,6 +54,10 @@ public:
     bool pfl() const { return pfl_.load(); }
     float level() const { return level_.load(); }
     std::vector<float> waveform(int points);
+    std::vector<float> peaks() {
+        std::lock_guard<std::mutex> lk(peaksMutex_);
+        return peaks_;
+    }
 
     // --- Audio-Thread ---
     // Rendert numFrames Stereo-Frames. 'main' = nach Lautstärkeregler, 'cue' = vor Regler.

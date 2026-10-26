@@ -1,5 +1,6 @@
 package ch.hirschexpress.dj.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +39,12 @@ private const val VIEW_SETTINGS = 3
 @Composable
 fun MainScreen(vm: DjViewModel) {
     var view by rememberSaveable { mutableIntStateOf(VIEW_MIXER) }
+
+    // Zurück-Taste: Fenster schliessen – aber die App nie aus Versehen beenden
+    BackHandler {
+        if (view != VIEW_MIXER) view = VIEW_MIXER
+        else vm.message = "Zum Beenden die Home-Taste benutzen (Musik läuft weiter)"
+    }
 
     Box(
         Modifier

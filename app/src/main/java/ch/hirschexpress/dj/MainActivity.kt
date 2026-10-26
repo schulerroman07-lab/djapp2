@@ -1,6 +1,7 @@
 package ch.hirschexpress.dj
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -34,6 +35,13 @@ class MainActivity : ComponentActivity() {
         WindowInsetsControllerCompat(window, window.decorView).apply {
             hide(WindowInsetsCompat.Type.systemBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+
+        // Vordergrund-Dienst starten (Musik läuft auch im Hintergrund weiter)
+        try {
+            startForegroundService(Intent(this, DjService::class.java))
+        } catch (e: Exception) {
+            android.util.Log.e("HirschDJ", "Dienst konnte nicht starten", e)
         }
 
         setContent {
