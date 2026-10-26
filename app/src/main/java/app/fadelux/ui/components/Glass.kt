@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
@@ -58,6 +59,9 @@ fun Modifier.glass(
     val shape = RoundedCornerShape(corner)
     return this
         .glow(glowColor ?: Color.Transparent, corner = corner, alpha = 0.35f, enabled = glowColor != null)
+        // Eigene Grafik-Ebene: wenn sich der Inhalt ändert (z.B. Wellenform 60×/s),
+        // muss das Leuchten nicht jedes Mal neu berechnet werden → flüssiger
+        .graphicsLayer {}
         .clip(shape)
         .background(
             Brush.verticalGradient(
