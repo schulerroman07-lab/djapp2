@@ -79,18 +79,76 @@ class AutoMix(
     }
 
     // ---------- Warteschlange ----------
-    fun add(t: Track) { if (queue.none { it.id == t.id }) queue += t }
-    fun addAll(tracks: List<Track>) = tracks.forEach { add(it) }
-    fun remove(index: Int) { if (index in queue.indices) queue.removeAt(index) }
+    /** Songs, die der DJ selbst platziert hat (verschoben, "Als Nächstes", "Ans Ende") – bleiben, wo sie sind. */
+    val pinned = mutableStateListOf<Long>()
+
+    /** Song, nach dem die Warteschlange beginnt (schon vorbereiteter nächster Song oder der laufende). */
+    private fun flowRef(): Track? =
+        nextTrack ?: decks.firstOrNull { it.playing }?.track ?: decks.getOrNull(currentDeck)?.track
+
+    fun add(t: Track) = addAll(listOf(t))
+
+    /**
+     * Songs hinzufügen. Mit automatischer Sortierung (Einstellung) wird jeder Song dort
+     * eingereiht, wo er am besten passt (Genre, BPM, Energie); sonst ans Ende.
+     */
+    fun addAll(tracks: List<Track>, sorted: Boolean = settings.queueAutoSort) {
+        val fresh = tracks.distinctBy { it.id }.filter { t -> queue.none { it.id == t.id } }
+        if (!sorted) { queue.addAll(fresh); return }
+        for (t in fresh) {
+            val headPinned = queue.firstOrNull()?.id?.let { it in pinned } == true
+            queue.add(QueueFlow.bestGap(queue, flowRef(), t, headPinned), t)
+        }
+    }
+
+    /** In genau dieser Reihenfolge ans Ende (z.B. Playlist zufällig gemischt). */
+    fun addInOrder(tracks: List<Track>) = addAll(tracks, sorted = false)
+
+    fun remove(index: Int) {
+        if (index in queue.indices) pinned.remove(queue.removeAt(index).id)
+    }
+
+    /** Vom DJ verschoben → angeheftet. */
     fun move(from: Int, to: Int) {
         if (from !in queue.indices || to !in queue.indices || from == to) return
-        queue.add(to, queue.removeAt(from))
+        val t = queue.removeAt(from)
+        queue.add(to, t)
+        if (t.id !in pinned) pinned += t.id
     }
-    fun clear() = queue.clear()
-    fun optimize() {
-        val sorted = TrackAnalysis.optimizeOrder(queue.toList())
+
+    /** "Als Nächstes spielen" */
+    fun playNext(index: Int) {
+        if (index !in queue.indices) return
+        if (index == 0) { if (queue[0].id !in pinned) pinned += queue[0].id; return }
+        move(index, 0)
+    }
+
+    /** "Ans Ende" */
+    fun moveToEnd(index: Int) {
+        if (index !in queue.indices) return
+        if (index == queue.lastIndex) { if (queue[index].id !in pinned) pinned += queue[index].id; return }
+        move(index, queue.lastIndex)
+    }
+
+    fun clear() { queue.clear(); pinned.clear() }
+
+    /** Ganze Warteschlange für den besten Flow ordnen (angeheftete Songs bleiben). */
+    fun optimize() = rearrange(QueueFlow.arrange(queue.toList(), flowRef(), pinned.toSet()))
+
+    /** Smart Shuffle: zufällig, aber mit gutem Flow (BPM/Energie/Genre). */
+    fun smartShuffle() = rearrange(QueueFlow.arrange(queue.toList(), flowRef(), pinned.toSet(), kotlin.random.Random(System.nanoTime())))
+
+    private fun rearrange(order: List<Track>) {
+        if (order.map { it.id } == queue.map { it.id }) return
         queue.clear()
-        queue.addAll(sorted)
+        queue.addAll(order)
+    }
+
+    /** Ersten Song aus der Warteschlange nehmen (wird jetzt gespielt). */
+    private fun takeNext(): Track {
+        val t = queue.removeAt(0)
+        pinned.remove(t.id)
+        return t
     }
 
     // ---------- Eingriffe ----------
@@ -188,7 +246,7 @@ class AutoMix(
         // Start: läuft schon ein Deck? Sonst ersten Titel auf Deck A starten.
         var cur = decks.indexOfFirst { it.playing }
         if (cur < 0) {
-            val first = queue.removeAt(0)
+            val first = takeNext()
             load(0, first)
             if (!waitLoaded(decks[0])) { status = UiText(R.string.automix_load_error); return }
             mixer.moveCrossfader(side(0))
@@ -215,7 +273,7 @@ class AutoMix(
 
             // ---- 1) Nächsten Titel laden ----
             // (Die Tempo-Rückführung von A läuft dabei weiter – sie wird NICHT abgebrochen.)
-            val next = queue.removeAt(0)
+            val next = takeNext()
             nextTrack = next
             status = UiText(R.string.automix_next, next.title)
             load(nxt, next)

@@ -223,4 +223,8 @@ Tocca «Nuova playlist» – oppure tieni premuto un brano nella libreria.</stri
     <string name="io_no_playlists">Nessuna playlist – creane una nella pagina Playlist.</string>
     <string name="am_log">Registro (%1$d)</string>
     <string name="am_log_empty">Nessuna voce – avvia l\'Auto-Mix.</string>
+    <string name="am_sort_title">Coda</string>
+    <string name="am_sort_on">Ordina automaticamente i nuovi brani: sì</string>
+    <string name="am_sort_off">Ordina automaticamente i nuovi brani: no</string>
+    <string name="am_sort_help">I nuovi brani vanno dove si adattano meglio (genere, BPM, energia). I brani che sposti tu (📌) restano dove li metti.</string>
 </resources>

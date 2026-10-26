@@ -67,6 +67,8 @@ data class AutoMixUi(
     val enabled: Set<TransitionType> = TransitionType.entries.toSet(),
     val suggestions: List<Track> = emptyList(),
     val log: List<String> = emptyList(),
+    val pinned: Set<Long> = emptySet(),
+    val autoSort: Boolean = true,
 )
 
 /** Alle Aktionen der Auto-Mix-Anzeige. */
@@ -83,6 +85,7 @@ data class AutoMixActions(
     val setStyle: (Int) -> Unit = {},
     val setLength: (Int) -> Unit = {},
     val toggleType: (TransitionType) -> Unit = {},
+    val setAutoSort: (Boolean) -> Unit = {},
     val close: () -> Unit = {},
 )
 
@@ -99,6 +102,8 @@ fun AutoMixScreen(vm: DjViewModel, onClose: () -> Unit) {
             style = vm.settings.mixStyle, lengthBars = vm.settings.transitionBars, enabled = ps.enabled,
             suggestions = remember(am.queue.size, vm.decks[0].track, vm.decks[1].track) { vm.queueSuggestions() },
             log = am.logLines,
+            pinned = am.pinned.toSet(),
+            autoSort = vm.settings.queueAutoSort,
         ),
         AutoMixActions(
             startStop = {
@@ -118,6 +123,7 @@ fun AutoMixScreen(vm: DjViewModel, onClose: () -> Unit) {
             setStyle = { vm.settings.mixStyle = it },
             setLength = { vm.settings.transitionBars = it },
             toggleType = { vm.toggleTransitionType(it) },
+            setAutoSort = { vm.settings.queueAutoSort = it },
             close = onClose,
         ),
     )
@@ -142,7 +148,7 @@ fun AutoMixContent(ui: AutoMixUi, act: AutoMixActions) {
     val accent = LocalAccent.current
     OverlayScaffold(stringResource(R.string.nav_automix), act.close) {
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            QueueList(ui.queue, act.remove, act.move, Modifier.weight(1f).fillMaxHeight())
+            QueueList(ui.queue, act.remove, act.move, Modifier.weight(1f).fillMaxHeight(), pinned = ui.pinned)
             Column(Modifier.width(280.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 NeonButton(
                     Modifier.fillMaxWidth().height(56.dp),
@@ -155,7 +161,7 @@ fun AutoMixContent(ui: AutoMixUi, act: AutoMixActions) {
                 NeonButton(Modifier.fillMaxWidth().height(44.dp), text = stringResource(R.string.am_optimize), icon = AppIcons.Shuffle, color = AppColors.Violet, fontSize = 13, iconSize = 18.dp) {
                     act.optimize()
                 }
-                AutoMixSettings(ui.style, ui.lengthBars, ui.enabled, act.setStyle, act.setLength, act.toggleType)
+                AutoMixSettings(ui.style, ui.lengthBars, ui.enabled, act.setStyle, act.setLength, act.toggleType, ui.autoSort, act.setAutoSort)
                 if (ui.suggestions.isNotEmpty()) {
                     SectionTitle(stringResource(R.string.lib_tab_suggest))
                     ui.suggestions.forEach { t ->
@@ -240,7 +246,18 @@ fun AutoMixSettings(
     onStyle: (Int) -> Unit,
     onLength: (Int) -> Unit,
     onToggle: (TransitionType) -> Unit,
+    autoSort: Boolean? = null,
+    onAutoSort: (Boolean) -> Unit = {},
 ) {
+    if (autoSort != null) {
+        SectionTitle(stringResource(R.string.am_sort_title))
+        NeonButton(
+            Modifier.fillMaxWidth().height(40.dp),
+            text = stringResource(if (autoSort) R.string.am_sort_on else R.string.am_sort_off),
+            icon = AppIcons.Auto, active = autoSort, fontSize = 12, iconSize = 16.dp,
+        ) { onAutoSort(!autoSort) }
+        Text(stringResource(R.string.am_sort_help), style = AppType.tiny)
+    }
     SectionTitle(stringResource(R.string.am_style))
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         listOf(R.string.style_calm, R.string.style_balanced, R.string.style_club).forEachIndexed { i, label ->
@@ -269,7 +286,13 @@ fun AutoMixSettings(
 
 /** Warteschlange mit Drag & Drop (am Griff ziehen). */
 @Composable
-fun QueueList(queue: List<Track>, onRemove: (Int) -> Unit, onMove: (Int, Int) -> Unit, modifier: Modifier = Modifier) {
+fun QueueList(
+    queue: List<Track>,
+    onRemove: (Int) -> Unit,
+    onMove: (Int, Int) -> Unit,
+    modifier: Modifier = Modifier,
+    pinned: Set<Long> = emptySet(),
+) {
     val accent = LocalAccent.current
     Column(modifier) {
         Text(stringResource(R.string.am_queue, queue.size), style = AppType.small)
@@ -322,7 +345,11 @@ fun QueueList(queue: List<Track>, onRemove: (Int) -> Unit, onMove: (Int, Int) ->
                             },
                             contentAlignment = Alignment.Center,
                         ) { Icon(AppIcons.Drag, null, tint = AppColors.TextDim) }
-                        Text("${index + 1}", style = AppType.small, modifier = Modifier.width(22.dp))
+                        Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
+                            // Angeheftet (vom DJ platziert) → Stecknadel statt Nummer
+                            if (t.id in pinned) Icon(AppIcons.Pin, null, tint = accent, modifier = Modifier.size(16.dp))
+                            else Text("${index + 1}", style = AppType.small)
+                        }
                         CoverThumb(t, 40.dp)
                         Column(Modifier.weight(1f)) {
                             Text(t.title, style = AppType.bodyBold, maxLines = 1, overflow = TextOverflow.Ellipsis)

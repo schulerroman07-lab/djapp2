@@ -65,15 +65,49 @@ class LibraryRepository(private val context: Context) {
                 )
             }
         }
+        // Genres (ID3-Tag) nachtragen
+        val genres = readGenres()
+        if (genres.isNotEmpty()) for (i in found.indices) genres[found[i].id]?.let { found[i] = found[i].copy(genre = it) }
         val existing = dao.allOnce().associateBy { it.id }
         dao.insertAll(found.filter { it.id !in existing })
         found.filter { it.id in existing }.forEach {
-            dao.updateInfo(it.id, it.uri, it.title, it.artist, it.durationMs, it.folder)
+            dao.updateInfo(it.id, it.uri, it.title, it.artist, it.durationMs, it.folder, it.genre)
         }
         val foundIds = found.map { it.id }.toSet()
         val removed = existing.keys.filter { it !in foundIds }
         if (removed.isNotEmpty()) dao.deleteIds(removed)
         found.size to folders.toList()
+    }
+
+    /**
+     * Genre pro Titel aus dem Medienspeicher. Ab Android 11 direkt als Spalte,
+     * bei Android 10 über die Genre-Tabelle (jedes Genre mit seinen Titeln).
+     */
+    private fun readGenres(): Map<Long, String> {
+        val out = HashMap<Long, String>()
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                val uri = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+                context.contentResolver.query(uri, arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.AudioColumns.GENRE), null, null, null)?.use { c ->
+                    while (c.moveToNext()) c.getString(1)?.takeIf { it.isNotBlank() }?.let { out[c.getLong(0)] = it.trim() }
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                val gUri = MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI
+                context.contentResolver.query(gUri, arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME), null, null, null)?.use { g ->
+                    while (g.moveToNext()) {
+                        val name = g.getString(1)?.trim()?.takeIf { it.isNotEmpty() } ?: continue
+                        val members = MediaStore.Audio.Genres.Members.getContentUri("external", g.getLong(0))
+                        context.contentResolver.query(members, arrayOf(MediaStore.Audio.Genres.Members.AUDIO_ID), null, null, null)?.use { m ->
+                            while (m.moveToNext()) out[m.getLong(0)] = name
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("Fadelux", "Genres nicht lesbar", e)
+        }
+        return out
     }
 
     /** Analysiert den nächsten Titel (BPM + Energie). false = alle fertig. */

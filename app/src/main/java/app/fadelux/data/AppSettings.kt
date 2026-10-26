@@ -24,6 +24,8 @@ class AppSettings(context: Context) {
     var disabledTransitions by prefS("disabledTransitions", "")   // abgeschaltete Typen (Komma-getrennt)
     var eventId by prefS("eventId", "")
     var wishMode by pref("wishMode", 0)                  // 0 = Internet, 1 = lokales WLAN
+    var queueAutoSort by prefB("queueAutoSort", true)    // neue Songs passend einreihen (Genre, BPM, Energie)
+    var bgAnimation by pref("bgAnimation", 2)            // Hintergrund: 0 aus, 1 Energiesparen, 2 voll
 
     // --- kleine Helfer: Compose-Zustand + automatisches Speichern ---
     private fun pref(key: String, def: Int) = object {

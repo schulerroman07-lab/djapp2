@@ -62,6 +62,7 @@ fun SettingsScreen(vm: DjViewModel, onLanguageChanged: () -> Unit, onClose: () -
                     3 -> AutoMixSettings(
                         vm.settings.mixStyle, vm.settings.transitionBars, vm.autoMix.plannerSettings().enabled,
                         { vm.settings.mixStyle = it }, { vm.settings.transitionBars = it }, { vm.toggleTransitionType(it) },
+                        autoSort = vm.settings.queueAutoSort, onAutoSort = { vm.settings.queueAutoSort = it },
                     )
                     4 -> LibrarySection(vm)
                     5 -> ImportExportSection(vm)

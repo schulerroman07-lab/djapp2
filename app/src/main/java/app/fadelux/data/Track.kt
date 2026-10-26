@@ -23,6 +23,7 @@ data class Track(
     val bpm: Float? = null,        // null = noch nicht analysiert, 0 = nicht erkannt
     val energy: Float? = null,     // 0..1 Lautheit/Intensität, null = noch nicht analysiert
     val folder: String = "",       // Ordner auf dem Handy (z.B. "Music/Party/")
+    val genre: String = "",        // Genre aus dem ID3-Tag (leer = unbekannt)
 )
 
 @Dao
@@ -42,8 +43,8 @@ interface TrackDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(tracks: List<Track>)
 
-    @Query("UPDATE tracks SET title = :title, artist = :artist, durationMs = :durationMs, uri = :uri, folder = :folder WHERE id = :id")
-    suspend fun updateInfo(id: Long, uri: String, title: String, artist: String, durationMs: Long, folder: String)
+    @Query("UPDATE tracks SET title = :title, artist = :artist, durationMs = :durationMs, uri = :uri, folder = :folder, genre = :genre WHERE id = :id")
+    suspend fun updateInfo(id: Long, uri: String, title: String, artist: String, durationMs: Long, folder: String, genre: String)
 
     @Query("UPDATE tracks SET bpm = :bpm, energy = :energy WHERE id = :id")
     suspend fun setAnalysis(id: Long, bpm: Float, energy: Float)
@@ -90,7 +91,14 @@ private val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
     }
 }
 
-@Database(entities = [Track::class, TrackAnalysis::class, Playlist::class, PlaylistTrack::class], version = 3, exportSchema = false)
+// Version 4: Genre pro Titel (für die automatische Sortierung der Warteschlange)
+private val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE tracks ADD COLUMN genre TEXT NOT NULL DEFAULT ''")
+    }
+}
+
+@Database(entities = [Track::class, TrackAnalysis::class, Playlist::class, PlaylistTrack::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun tracks(): TrackDao
     abstract fun analysis(): AnalysisDao
@@ -102,7 +110,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context, AppDatabase::class.java, "fadelux.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build().also { instance = it }
         }
     }

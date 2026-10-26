@@ -223,4 +223,8 @@ Tippe auf „Neue Playlist“ – oder halte in der Bibliothek einen Song gedrü
     <string name="io_no_playlists">Noch keine Playlists – erstelle eine auf der Seite Playlists.</string>
     <string name="am_log">Protokoll (%1$d)</string>
     <string name="am_log_empty">Noch keine Einträge – Auto-Mix starten.</string>
+    <string name="am_sort_title">Warteschlange</string>
+    <string name="am_sort_on">Neue Songs automatisch einreihen: an</string>
+    <string name="am_sort_off">Neue Songs automatisch einreihen: aus</string>
+    <string name="am_sort_help">Neue Songs kommen dorthin, wo sie am besten passen (Genre, BPM, Energie). Songs, die du selbst verschiebst (📌), bleiben, wo du sie hinsetzt.</string>
 </resources>

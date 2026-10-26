@@ -237,4 +237,8 @@ Tap “New playlist” – or long-press a song in the library.</string>
     <string name="io_no_playlists">No playlists yet – create one on the Playlists page.</string>
     <string name="am_log">Log (%1$d)</string>
     <string name="am_log_empty">No entries yet – start Auto-Mix.</string>
+    <string name="am_sort_title">Queue</string>
+    <string name="am_sort_on">Sort new songs automatically: on</string>
+    <string name="am_sort_off">Sort new songs automatically: off</string>
+    <string name="am_sort_help">New songs go where they fit best (genre, BPM, energy). Songs you move yourself (📌) stay where you put them.</string>
 </resources>

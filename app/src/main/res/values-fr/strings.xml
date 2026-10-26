@@ -223,4 +223,8 @@ Touchez « Nouvelle playlist » – ou appui long sur un titre dans la biblioth�
     <string name="io_no_playlists">Pas encore de playlist – créez-en une dans Playlists.</string>
     <string name="am_log">Journal (%1$d)</string>
     <string name="am_log_empty">Aucune entrée – lancez l\'Auto-Mix.</string>
+    <string name="am_sort_title">File d\'attente</string>
+    <string name="am_sort_on">Classer automatiquement les nouveaux titres : oui</string>
+    <string name="am_sort_off">Classer automatiquement les nouveaux titres : non</string>
+    <string name="am_sort_help">Les nouveaux titres sont placés là où ils conviennent le mieux (genre, BPM, énergie). Les titres que vous déplacez (📌) restent à leur place.</string>
 </resources>
