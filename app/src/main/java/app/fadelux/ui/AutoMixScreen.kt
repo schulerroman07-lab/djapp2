@@ -60,9 +60,9 @@ fun AutoMixScreen(vm: DjViewModel, onClose: () -> Unit) {
         onMixNow = { am.mixNow() },
         onOptimize = { am.optimize(); vm.message = UiText(R.string.am_optimized) },
         onBars = { vm.settings.transitionBars = it },
-        onClear = { onClear() },
+        onClear = { am.clear() },
         onRemove = { am.remove(it) },
-        onMove = { from, to -> onMove(from, to) },
+        onMove = { from, to -> am.move(from, to) },
         onClose = onClose,
     )
 }
