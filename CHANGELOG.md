@@ -1,5 +1,92 @@
 # Changelog
 
+## 1.2 – Bessere Auto-Mix-Übergänge, Warteschlange, Design
+
+### Prio 1 – Auto-Mix
+1. **Übergang erst am Liedende**
+   - Stille am Schluss wird erkannt (Wellenform und Beat-Merkmale) und ignoriert.
+   - Der Übergang startet im Outro bzw. in den letzten 32 Takten, nie mitten im Song. Er ist fertig, bevor der alte Song natürlich endet.
+   - Ohne erkanntes Outro: Start rechtzeitig vor dem Ende, auf einer Phrasengrenze (16/8, notfalls 4 Takte).
+   - Wird Auto-Mix erst kurz vor Schluss gestartet, wird kürzer überblendet oder Echo/Schnitt verwendet.
+2. **Tempo zurück aufs Original** *(Fehler behoben)*
+   - Die Rückführung wurde bisher sofort abgebrochen, sobald der nächste Song geladen wurde – der Song lief deshalb dauerhaft schneller oder langsamer.
+   - Jetzt geht das Tempo nach jedem Übergang in einer weichen S-Kurve über 8–16 Takte auf 100 % zurück. Der Fortschritt richtet sich nach der Song-Position, nicht nach der Uhr.
+   - Keylock wird dafür eingeschaltet: Die Tonhöhe bleibt gleich.
+   - Der nächste Übergang wird mit dem Originaltempo geplant.
+   - Getestet: Engine-Test (keine Klicks, kein Pegeleinbruch, Tonhöhe exakt) und eine Kette von 7 Songs mit 63–128 BPM.
+3. **Flüssigere Übergänge**
+   - **Equal-Power**-Kurve am Crossfader bei Blends: Die Gesamtlautstärke bleibt gleich, ohne Loch und ohne Buckel.
+   - Bass-Tausch weich über 1 Beat genau auf dem Takt. Die Mitten des neuen Songs öffnen langsam. Beim Filter-Übergang öffnet sich zuerst der neue Song, dann schliesst der alte.
+   - Filterbewegungen werden in der Engine geglättet (kein „Zirpen“).
+   - **Lautheit pro Song** wird beim Laden gemessen (wie EBU R128, vereinfacht). Der neue Song wird an den alten angeglichen (−9 bis +4 dB). Ein **Begrenzer** am Master verhindert Übersteuern.
+   - Länge passend zum Song-Paar: ruhige Songs länger (bis 32 Takte), Club-Tracks knapp (max. 16), kurzes Intro → kürzer.
+   - **Protokoll** auf der Auto-Mix-Seite: welcher Übergang wann und warum gewählt wurde. Zusätzlich in Logcat unter „AutoMix“.
+4. **Warteschlange automatisch sortieren**
+   - Neue Songs werden dort eingereiht, wo Genre (ID3-Tag), BPM und Energie am besten passen. Die Energie steigt sanft an, und es gibt nie eine Meldung „passt nicht“.
+   - Vom DJ verschobene Songs sind angeheftet 📌 und bleiben an ihrem Platz.
+   - „Optimieren“ respektiert angeheftete Songs. Die automatische Sortierung lässt sich ausschalten (Einstellungen → Auto-Mix).
+   - Datenbank v4: neue Spalte „Genre“ (Migration ohne Datenverlust). Das Genre wird beim Einlesen gelesen (Android 10 über die Genre-Tabelle).
+5. **Crossfader im Auto-Mix gesperrt**
+   - Der Crossfader bewegt sich nur automatisch; ein Schloss-Symbol zeigt die Sperre. Wischgesten (App verlassen) verschieben nichts mehr und stoppen den Auto-Mix nicht.
+   - Knopf **„Manuell übernehmen“** unter den Lautstärkereglern beendet Auto-Mix bewusst.
+   - Mehr Abstand zum Bildschirmrand: unten so viel wie die Startbildschirm-Geste braucht, seitlich wegen Zurück-Geste und Kamera-Aussparung.
+
+### Prio 2 – Bedienung
+6. **Warteschlange verschieben**
+   - Drag & Drop mit **Auto-Scroll** am oberen/unteren Rand.
+   - Menü ⋮ pro Song: Als Nächstes spielen, Ans Ende, Entfernen.
+   - In der Bibliothek (Song lange drücken): „Als Nächstes spielen“ / „Ans Ende der Warteschlange“.
+7. **Shuffle**
+   - Playlist → „Zufällig“: spielt die Playlist in zufälliger Reihenfolge im Auto-Mix.
+   - Auto-Mix → **„Smart Shuffle“**: zufällig, aber mit gutem Flow (wählt jeweils unter den 3 bestpassenden).
+
+### Prio 3 – Design & Name
+8. **Animierter Hintergrund**
+   - Weiches Leuchten in Schwarz/Smaragd (bzw. der Akzentfarbe). Es wandert langsam, pulsiert im Beat und wird mit der Energie der Musik heller.
+   - Es zeichnet nur den Hintergrund neu und stoppt automatisch, wenn die App im Hintergrund ist.
+   - Einstellungen → Design: **Aus / Energiesparen (ca. 15 Bilder/s, dezenter) / Voll (60 Bilder/s)**.
+9. **App-Name an einer Stelle**
+   - Name und Version stehen nur noch in `gradle.properties` (`appName=…`, `appVersion=…`). App, Aufnahme-Ordner, Benachrichtigung und die Download-Dateien (`<Name>.apk/.aab`, Release-Titel) übernehmen ihn automatisch.
+   - Nur der Download-Link im README muss dann von Hand angepasst werden.
+   - Versionsnummer ab jetzt **1.2.x**.
+
+### Tests
+- Neue Unit-Tests (lokal alle grün):
+  - Stille am Ende, Start in den letzten Phrasen, Fallback ohne Outro, später Start (`TransitionPlannerTest`)
+  - Tempo-Rückführung über mehrere BPM-Paare (`TempoRampTest`)
+  - Sortierung/Pins/Smart Shuffle (`QueueFlowTest`)
+  - Länge pro Song-Paar und Begründungen
+- C++-Tests am PC:
+  - Tempo-Rampe mit Keylock (keine Klicks, Tonhöhe exakt)
+  - Lautheitsmessung (±0,1 dB genau)
+- Neuer Screenshot: Mischpult mit gesperrtem Crossfader. Test-Checkliste `TESTEN.md` Abschnitte N–P.
+
+### Offene Punkte (1.2)
+1. **Nicht auf einem echten Handy getestet** – bitte `TESTEN.md` N–P (und J–M) durchgehen.
+2. Genre kommt nur aus dem ID3-Tag. Fehlt es, sortiert die App nur nach BPM/Energie.
+3. Lautheit wird beim Laden in ein Deck gemessen (nicht in der Datenbank). Der allererste Song einer Session gilt als Referenz.
+4. Der Abstand zum Rand richtet sich nach der Gestennavigation. Wie sich das auf deinem Samsung anfühlt, muss ausprobiert werden.
+5. Animierter Hintergrund „Voll“ braucht etwas mehr Akku. Bei langen Events „Energiesparen“ wählen.
+6. Unverändert aus 1.1: Gesangs-/Downbeat-Erkennung grob, kein Android-Auto-Browser, kein Neustart per Bluetooth-Taste nach komplettem Beenden.
+
+### 10 Namensvorschläge (noch NICHT umbenannt)
+Grob geprüft per Suche im Google Play Store (Stand Oktober 2026). „frei“ heisst: keine App mit genau diesem Namen gefunden. Vor der Entscheidung bitte nochmals selbst im Play Store und auf Markenrechte prüfen (z.B. swissreg.ch, EUIPO).
+
+| # | Name | Idee | Play Store |
+|---|------|------|-----------|
+| 1 | **Seamix** | „seamless mix“ – Songs fliessen nahtlos ineinander. | frei |
+| 2 | **Segue** | Musiker-Begriff für einen nahtlosen Übergang zum nächsten Stück. | frei (als App-Name) |
+| 3 | **Djinn** | DJ + Flaschengeist: der Party-Geist, der von selbst auflegt. | frei |
+| 4 | **Groovepilot** | Autopilot für den Groove – die Party fliegt von selbst. | frei |
+| 5 | **Floorfiller** | DJ-Wort für einen Song, der die Tanzfläche füllt. | frei (nur als Wort in Radio-Apps) |
+| 6 | **Autoblend** | Sagt genau, was die App tut: automatisch überblenden. | frei |
+| 7 | **Blendo** | Kurz, verspielt, leicht zu merken – „blend“ mit Party-Endung. | frei |
+| 8 | **Beatdrift** | Beats gleiten sanft ineinander. | frei |
+| 9 | **Flowmix** | Flow + Mix: guter Ablauf ohne Pausen. | Name frei, Paketname „com.flowmix“ von einem Spiel belegt |
+| 10 | **Vibemix** | Mischt nach Stimmung/Energie. | nur als Funktionsname in einer Foto-App |
+
+Belegt (deshalb nicht in der Liste): PartyPilot, Mixmate, MixPilot, Nightflow, Beatpilot.
+
 ## 1.1 – Hintergrund, DJ-Übergänge, Playlists, Import/Export
 
 ### 1. Hintergrund-Wiedergabe & Steuerung über Benachrichtigung
