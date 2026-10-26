@@ -131,7 +131,11 @@ class DeckModel(val index: Int) {
 
 /** Zustand des Mischpults in der Mitte (Crossfader, Master, Kopfhörer). */
 class MixerModel {
-    val mixer = MixerModel()
+    var crossfader by mutableFloatStateOf(0f)
+    var masterVolume by mutableFloatStateOf(0.9f)
+    var headphoneVolume by mutableFloatStateOf(0.8f)
+    var cueMix by mutableFloatStateOf(0f)
+    var masterLevel by mutableFloatStateOf(0f)
 
     fun applyAll() {
         mixer.applyAll()
@@ -154,11 +158,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
 
     val decks = listOf(DeckModel(0), DeckModel(1))
     var engineOk by mutableStateOf(false)
-    var crossfader by mutableFloatStateOf(0f)
-    var masterVolume by mutableFloatStateOf(0.9f)
-    var headphoneVolume by mutableFloatStateOf(0.8f)
-    var cueMix by mutableFloatStateOf(0f)
-    var masterLevel by mutableFloatStateOf(0f)
+    val mixer = MixerModel()
     var message by mutableStateOf<String?>(null)
 
     // Einstellungen
