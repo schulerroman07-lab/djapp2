@@ -1,0 +1,26 @@
+# Baut die App automatisch auf GitHub bei jedem Hochladen (Push).
+# Die fertige APK-Datei findest du unter "Actions" -> letzter Lauf -> "Artifacts".
+name: App bauen
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: APK bauen
+        run: ./gradlew assembleDebug --stacktrace
+      - name: APK umbenennen
+        run: cp app/build/outputs/apk/debug/app-debug.apk HirschExpressDJ.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HirschExpressDJ-APK
+          path: HirschExpressDJ.apk

@@ -1,0 +1,105 @@
+#include "BpmAnalyzer.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace dj {
+
+void BpmAnalyzer::ensureRate(int sampleRate) {
+    if (rate_ == sampleRate) return;
+    rate_ = sampleRate;
+    hop_ = std::max(64, sampleRate / 200);  // ca. 200 Punkte pro Sekunde
+    envRate_ = (double)sampleRate / hop_;
+    lpCoef_ = 1.f - std::exp(-2.f * 3.14159265f * 150.f / sampleRate);
+}
+
+void BpmAnalyzer::feed(const int16_t* stereo, size_t frames, int sampleRate) {
+    ensureRate(sampleRate);
+    for (size_t i = 0; i < frames; i++) {
+        float m = (stereo[i * 2] + stereo[i * 2 + 1]) * (0.5f / 32768.f);
+        lp_ += lpCoef_ * (m - lp_);
+        accLow_ += lp_ * lp_;
+        accAll_ += m * m;
+        if (++accCount_ >= hop_) {
+            low_.push_back((float)std::log(1e-6 + accLow_ / hop_));
+            all_.push_back((float)std::log(1e-6 + accAll_ / hop_));
+            accLow_ = accAll_ = 0;
+            accCount_ = 0;
+        }
+    }
+}
+
+BpmResult BpmAnalyzer::result() const {
+    BpmResult res;
+    size_t n = low_.size();
+    if (n < (size_t)(envRate_ * 8)) return res;  // weniger als 8 Sekunden: zu kurz
+
+    // 1) Onset-Kurve: nur Anstiege der Lautstärke zählen
+    std::vector<float> onset(n, 0.f);
+    for (size_t i = 1; i < n; i++) {
+        float d1 = std::max(0.f, low_[i] - low_[i - 1]);
+        float d2 = std::max(0.f, all_[i] - all_[i - 1]);
+        onset[i] = d1 + 0.5f * d2;
+    }
+    // Mittelwert abziehen
+    double mean = 0;
+    for (float v : onset) mean += v;
+    mean /= n;
+    for (float& v : onset) v = std::max(0.f, (float)(v - mean));
+
+    // 2) Bewertung eines Tempos: Kammfilter über alle Beats (mit bester Phase)
+    auto score = [&](double bpm, double* bestPhase) -> double {
+        double period = envRate_ * 60.0 / bpm;  // Punkte pro Beat
+        int steps = 48;
+        double best = -1;
+        for (int p = 0; p < steps; p++) {
+            double phase = period * p / steps;
+            double s = 0;
+            int cnt = 0;
+            for (double t = phase; t < n - 1; t += period) {
+                size_t i = (size_t)t;
+                // kleine Toleranz: Nachbarpunkte mitnehmen
+                float v = onset[i];
+                if (i + 1 < n) v = std::max(v, onset[i + 1]);
+                if (i > 0) v = std::max(v, onset[i - 1]);
+                s += v;
+                cnt++;
+            }
+            if (cnt > 0) s /= cnt;
+            if (s > best) {
+                best = s;
+                if (bestPhase) *bestPhase = phase;
+            }
+        }
+        return best;
+    };
+
+    // 3) Grobe Suche 70–180 BPM, dann Feinsuche
+    double bestBpm = 0, bestScore = -1;
+    for (double bpm = 70; bpm <= 180; bpm += 0.5) {
+        double s = score(bpm, nullptr);
+        if (s > bestScore) {
+            bestScore = s;
+            bestBpm = bpm;
+        }
+    }
+    for (double bpm = bestBpm - 0.5; bpm <= bestBpm + 0.5; bpm += 0.02) {
+        double s = score(bpm, nullptr);
+        if (s > bestScore) {
+            bestScore = s;
+            bestBpm = bpm;
+        }
+    }
+
+    // 4) Halbes/doppeltes Tempo: Bereich 78–160 bevorzugen (typisch für Partymusik)
+    if (bestBpm < 78) bestBpm *= 2;
+    if (bestBpm > 160) bestBpm /= 2;
+
+    double phase = 0;
+    score(bestBpm, &phase);
+    res.bpm = (float)(std::round(bestBpm * 10.0) / 10.0);
+    res.firstBeat = (float)(phase / envRate_);
+    return res;
+}
+
+}  // namespace dj
