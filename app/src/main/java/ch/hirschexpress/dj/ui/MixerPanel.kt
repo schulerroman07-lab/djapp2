@@ -42,10 +42,10 @@ fun MixerPanel(vm: DjViewModel, modifier: Modifier = Modifier) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
-                Knob(vm.masterVolume, { vm.changeMasterVolume(it) }, "MASTER", DjColors.Text, min = 0f, max = 1f, default = 0.9f, knobSize = 40.dp)
+                Knob(vm.masterVolume, { vm.changeMasterVolume(it) }, "MASTER", DjColors.Text, min = 0f, max = 1f, default = 0.9f, knobSize = 38.dp)
                 LevelMeter(vm.masterLevel, Modifier.width(10.dp).weight(1f).padding(vertical = 4.dp))
-                Knob(vm.headphoneVolume, { vm.changeHeadphoneVolume(it) }, "🎧 LAUT", DjColors.Cue, min = 0f, max = 1f, default = 0.8f, knobSize = 40.dp)
-                Knob(vm.cueMix, { vm.changeCueMix(it) }, "CUE↔MIX", DjColors.Cue, min = 0f, max = 1f, default = 0f, knobSize = 40.dp)
+                Knob(vm.headphoneVolume, { vm.changeHeadphoneVolume(it) }, "🎧 LAUT", DjColors.Cue, min = 0f, max = 1f, default = 0.8f, knobSize = 38.dp)
+                Knob(vm.cueMix, { vm.changeCueMix(it) }, "CUE/MIX", DjColors.Cue, min = 0f, max = 1f, default = 0f, knobSize = 38.dp)
             }
             ChannelStrip(vm.decks[1])
         }
@@ -68,7 +68,7 @@ private fun ChannelStrip(d: DeckModel) {
     val color = DjColors.deck(d.index)
     Column(
         Modifier
-            .width(64.dp)
+            .width(54.dp)
             .fillMaxHeight(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -79,7 +79,7 @@ private fun ChannelStrip(d: DeckModel) {
                 .padding(top = 4.dp),
         ) {
             if (d.index == 1) LevelMeter(d.level, Modifier.width(8.dp).fillMaxHeight().padding(vertical = 13.dp))
-            VFader(d.volume, { d.changeVolume(it) }, color, Modifier.width(52.dp).fillMaxHeight())
+            VFader(d.volume, { d.changeVolume(it) }, color, Modifier.width(44.dp).fillMaxHeight())
             if (d.index == 0) LevelMeter(d.level, Modifier.width(8.dp).fillMaxHeight().padding(vertical = 13.dp))
         }
     }

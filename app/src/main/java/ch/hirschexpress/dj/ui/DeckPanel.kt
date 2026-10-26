@@ -46,7 +46,7 @@ fun DeckPanel(d: DeckModel, modifier: Modifier = Modifier) {
             Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .padding(horizontal = 6.dp),
+                .padding(horizontal = 4.dp),
         ) {
             // --- Titelinfo ---
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -116,21 +116,21 @@ fun DeckPanel(d: DeckModel, modifier: Modifier = Modifier) {
             // --- Effekte und EQ ---
             Row(
                 Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment = Alignment.Top,
             ) {
                 val labels = listOf("HOCH", "MITTE", "TIEF")
                 for (i in 0..2) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Knob(d.eq[i], { d.setEq(i, it) }, labels[i], color, dimmed = d.kill[i])
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Knob(d.eq[i], { d.setEq(i, it) }, labels[i], color, dimmed = d.kill[i], knobSize = 38.dp)
                         PadButton(
-                            "KILL", Modifier.width(46.dp).height(24.dp), DjColors.Red,
+                            "KILL", Modifier.width(38.dp).height(24.dp), DjColors.Red,
                             active = d.kill[i], fontSize = 10, instant = true,
                         ) { d.toggleKill(i) }
                     }
                 }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Knob(d.filter, { d.changeFilter(it) }, "FILTER", DjColors.Cue)
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Knob(d.filter, { d.changeFilter(it) }, "FILTER", DjColors.Cue, knobSize = 38.dp)
                     Text(
                         when {
                             d.filter < -0.02f -> "Tief"
@@ -140,10 +140,10 @@ fun DeckPanel(d: DeckModel, modifier: Modifier = Modifier) {
                         color = DjColors.TextDim, fontSize = 10.sp,
                     )
                 }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Knob(d.echoAmount, { d.changeEchoAmount(it) }, "ECHO", DjColors.Play, min = 0f, max = 1f, default = 0.4f)
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Knob(d.echoAmount, { d.changeEchoAmount(it) }, "ECHO", DjColors.Play, min = 0f, max = 1f, default = 0.4f, knobSize = 38.dp)
                     PadButton(
-                        "ECHO", Modifier.width(46.dp).height(24.dp), DjColors.Play,
+                        "ECHO", Modifier.width(38.dp).height(24.dp), DjColors.Play,
                         active = d.echoOn, fontSize = 10, instant = true,
                     ) { d.toggleEcho() }
                 }
@@ -173,7 +173,7 @@ fun DeckPanel(d: DeckModel, modifier: Modifier = Modifier) {
 private fun TempoColumn(d: DeckModel, color: androidx.compose.ui.graphics.Color) {
     Column(
         Modifier
-            .width(58.dp)
+            .width(50.dp)
             .fillMaxHeight(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -191,8 +191,8 @@ private fun TempoColumn(d: DeckModel, color: androidx.compose.ui.graphics.Color)
         )
         Text("−", color = DjColors.TextDim, fontSize = 14.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            HoldButton("‹", Modifier.width(27.dp).height(32.dp), { d.nudge(-1) }, { d.changeTempo(d.tempoSlider) })
-            HoldButton("›", Modifier.width(27.dp).height(32.dp), { d.nudge(1) }, { d.changeTempo(d.tempoSlider) })
+            HoldButton("‹", Modifier.width(23.dp).height(32.dp), { d.nudge(-1) }, { d.changeTempo(d.tempoSlider) })
+            HoldButton("›", Modifier.width(23.dp).height(32.dp), { d.nudge(1) }, { d.changeTempo(d.tempoSlider) })
         }
     }
 }

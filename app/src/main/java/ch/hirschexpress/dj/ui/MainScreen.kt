@@ -56,7 +56,7 @@ fun MainScreen(vm: DjViewModel) {
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 DeckPanel(vm.decks[0], Modifier.weight(1f).fillMaxHeight())
-                MixerPanel(vm, Modifier.width(230.dp).fillMaxHeight())
+                MixerPanel(vm, Modifier.width(204.dp).fillMaxHeight())
                 DeckPanel(vm.decks[1], Modifier.weight(1f).fillMaxHeight())
             }
         }
@@ -92,18 +92,18 @@ private fun TopBar(vm: DjViewModel, onLibrary: () -> Unit, onWishes: () -> Unit,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text("HIRSCH EXPRESS DJ", color = DjColors.DeckA, fontSize = 16.sp, fontWeight = FontWeight.Black)
+        Text("HIRSCH EXPRESS DJ", color = DjColors.DeckA, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 1)
         if (!vm.engineOk) Text("⚠ Audio-Fehler", color = DjColors.Red, fontSize = 13.sp)
         Spacer(Modifier.weight(1f))
-        PadButton("♫ Bibliothek", Modifier.width(130.dp).fillMaxHeight(), DjColors.DeckA, fontSize = 14) { onLibrary() }
+        PadButton("♫ Bibliothek", Modifier.width(116.dp).fillMaxHeight(), DjColors.DeckA, fontSize = 14) { onLibrary() }
         PadButton(
             if (vm.newWishes > 0) "★ Wünsche (${vm.newWishes})" else "★ Wünsche",
-            Modifier.width(140.dp).fillMaxHeight(), DjColors.Cue, active = vm.newWishes > 0, fontSize = 14,
+            Modifier.width(128.dp).fillMaxHeight(), DjColors.Cue, active = vm.newWishes > 0, fontSize = 14,
         ) { onWishes() }
         PadButton(
             if (vm.recording) "● REC " + formatTime(vm.recordSeconds) else "● Aufnahme",
-            Modifier.width(130.dp).fillMaxHeight(), DjColors.Red, active = vm.recording, fontSize = 14,
+            Modifier.width(124.dp).fillMaxHeight(), DjColors.Red, active = vm.recording, fontSize = 14,
         ) { vm.toggleRecording() }
-        PadButton("⚙", Modifier.width(48.dp).fillMaxHeight(), fontSize = 18) { onSettings() }
+        PadButton("⚙", Modifier.width(44.dp).fillMaxHeight(), fontSize = 18) { onSettings() }
     }
 }

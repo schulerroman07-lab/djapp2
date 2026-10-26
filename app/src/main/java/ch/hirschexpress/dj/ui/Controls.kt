@@ -142,7 +142,7 @@ fun Knob(
                 strokeWidth = 5f, cap = StrokeCap.Round,
             )
         }
-        Text(label, color = DjColors.TextDim, fontSize = 11.sp)
+        Text(label, color = DjColors.TextDim, fontSize = 10.sp, maxLines = 1)
     }
 }
 
