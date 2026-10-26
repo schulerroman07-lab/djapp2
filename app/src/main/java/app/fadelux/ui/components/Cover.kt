@@ -14,6 +14,9 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,7 +74,14 @@ fun CoverThumb(track: Track?, size: Dp, modifier: Modifier = Modifier) {
  * nicht im Audio-Thread.
  */
 @Composable
-fun VinylCover(track: Track?, playing: Boolean, speed: Float, size: Dp, modifier: Modifier = Modifier) {
+fun VinylCover(
+    track: Track?,
+    playing: Boolean,
+    speed: Float,
+    size: Dp,
+    modifier: Modifier = Modifier,
+    onJog: ((Int) -> Unit)? = null,     // Wischen: -1 langsamer, +1 schneller, 0 = losgelassen
+) {
     val img = rememberCover(track)
     val angle = remember { mutableFloatStateOf(0f) }
     LaunchedEffect(playing, speed) {
@@ -83,9 +93,21 @@ fun VinylCover(track: Track?, playing: Boolean, speed: Float, size: Dp, modifier
             }
         }
     }
+    val jog by rememberUpdatedState(onJog)
     Box(
         modifier
             .size(size)
+            // Jog: seitlich wischen = Deck kurz schneller/langsamer (Beats von Hand angleichen)
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = { jog?.invoke(0) },
+                    onDragCancel = { jog?.invoke(0) },
+                ) { change, amount ->
+                    change.consume()
+                    jog?.invoke(if (amount > 0) 1 else -1)
+                    angle.floatValue = (angle.floatValue + amount) % 360f
+                }
+            }
             .graphicsLayer { rotationZ = angle.floatValue }
             .clip(CircleShape),
         contentAlignment = Alignment.Center,

@@ -79,7 +79,9 @@ fun DeckPanel(d: DeckModel, color: Color, modifier: Modifier = Modifier) {
 private fun DeckHeader(d: DeckModel, color: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(contentAlignment = Alignment.Center) {
-            VinylCover(d.track, d.playing, d.tempo, 50.dp)
+            VinylCover(d.track, d.playing, d.tempo, 50.dp) { dir ->
+                if (dir == 0) d.changeTempo(d.tempoSlider) else d.nudge(dir)
+            }
         }
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
