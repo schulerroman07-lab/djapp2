@@ -129,6 +129,20 @@ class DeckModel(val index: Int) {
     fun toggleKeylock() { keylock = !keylock; NativeEngine.setKeylock(index, keylock) }
 }
 
+/** Zustand des Mischpults in der Mitte (Crossfader, Master, Kopfhörer). */
+class MixerModel {
+    val mixer = MixerModel()
+
+    fun applyAll() {
+        mixer.applyAll()
+    }
+
+    fun changeCrossfader(x: Float) { crossfader = x.coerceIn(-1f, 1f); NativeEngine.setCrossfader(crossfader) }
+    fun changeMasterVolume(v: Float) { masterVolume = v.coerceIn(0f, 1f); NativeEngine.setMasterVolume(masterVolume) }
+    fun changeHeadphoneVolume(v: Float) { headphoneVolume = v.coerceIn(0f, 1f); NativeEngine.setHeadphoneVolume(headphoneVolume) }
+    fun changeCueMix(v: Float) { cueMix = v.coerceIn(0f, 1f); NativeEngine.setCueMix(cueMix) }
+}
+
 /** Ein Audio-Ausgabegerät (z.B. Lautsprecher, Kopfhörer, Bluetooth, USB). */
 data class OutputDevice(val id: Int, val label: String)
 
@@ -207,7 +221,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
                     if (ls == 3) message = "Titel konnte nicht geladen werden"
                 }
             }
-            masterLevel = NativeEngine.getMasterLevel()
+            mixer.masterLevel = NativeEngine.getMasterLevel()
             if (recording) recordSeconds = NativeEngine.recordingSeconds()
             delay(40)
         }
@@ -267,12 +281,6 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
-
-    // ---------------- Mixer ----------------
-    fun changeCrossfader(x: Float) { crossfader = x.coerceIn(-1f, 1f); NativeEngine.setCrossfader(crossfader) }
-    fun changeMasterVolume(v: Float) { masterVolume = v.coerceIn(0f, 1f); NativeEngine.setMasterVolume(masterVolume) }
-    fun changeHeadphoneVolume(v: Float) { headphoneVolume = v.coerceIn(0f, 1f); NativeEngine.setHeadphoneVolume(headphoneVolume) }
-    fun changeCueMix(v: Float) { cueMix = v.coerceIn(0f, 1f); NativeEngine.setCueMix(cueMix) }
 
     // ---------------- Ausgabe / Einstellungen ----------------
     fun outputDevices(): List<OutputDevice> {

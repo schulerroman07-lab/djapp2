@@ -18,6 +18,8 @@ import ch.hirschexpress.dj.data.Track
 import ch.hirschexpress.dj.ui.DeckPanel
 import ch.hirschexpress.dj.ui.DjColors
 import ch.hirschexpress.dj.ui.DjTheme
+import ch.hirschexpress.dj.ui.MixerPanel
+import ch.hirschexpress.dj.ui.TopBar
 import com.android.resources.Density
 import com.android.resources.ScreenOrientation
 import org.junit.Rule
@@ -51,6 +53,8 @@ class LayoutTest {
         peaks = FloatArray(21500) { abs(sin(it * 0.21f)) * if (it % 48 < 6) 1f else 0.4f }
         kill[1] = i == 1
         echoOn = i == 0
+        pfl = i == 1
+        level = 0.6f
     }
 
     @Test
@@ -58,11 +62,14 @@ class LayoutTest {
         paparazzi.snapshot {
             DjTheme {
                 Column(Modifier.fillMaxSize().background(DjColors.Background).padding(6.dp)) {
-                    Box(Modifier.height(48.dp))  // Platz der oberen Leiste
+                    TopBar(true, 3, true, 754.0, {}, {}, {}, {})
+                    Box(Modifier.height(6.dp))
+                    val decks = listOf(demoDeck(0), demoDeck(1))
+                    val mixer = MixerModel().apply { crossfader = -0.3f; masterLevel = 0.7f }
                     Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        DeckPanel(demoDeck(0), Modifier.weight(1f).fillMaxHeight())
-                        Box(Modifier.width(204.dp).fillMaxHeight().background(DjColors.Panel))
-                        DeckPanel(demoDeck(1), Modifier.weight(1f).fillMaxHeight())
+                        DeckPanel(decks[0], Modifier.weight(1f).fillMaxHeight())
+                        MixerPanel(decks, mixer, Modifier.width(204.dp).fillMaxHeight())
+                        DeckPanel(decks[1], Modifier.weight(1f).fillMaxHeight())
                     }
                 }
             }

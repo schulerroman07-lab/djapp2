@@ -18,11 +18,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.hirschexpress.dj.DeckModel
-import ch.hirschexpress.dj.DjViewModel
+import ch.hirschexpress.dj.MixerModel
 
 /** Mitte: Lautstärke pro Deck, Kopfhörer-Vorhören, Master, Crossfader. */
 @Composable
-fun MixerPanel(vm: DjViewModel, modifier: Modifier = Modifier) {
+fun MixerPanel(decks: List<DeckModel>, m: MixerModel, modifier: Modifier = Modifier) {
     Column(
         modifier
             .clip(RoundedCornerShape(12.dp))
@@ -36,23 +36,23 @@ fun MixerPanel(vm: DjViewModel, modifier: Modifier = Modifier) {
                 .weight(1f),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            ChannelStrip(vm.decks[0])
+            ChannelStrip(decks[0])
             Column(
                 Modifier.fillMaxHeight(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
-                Knob(vm.masterVolume, { vm.changeMasterVolume(it) }, "MASTER", DjColors.Text, min = 0f, max = 1f, default = 0.9f, knobSize = 38.dp)
-                LevelMeter(vm.masterLevel, Modifier.width(10.dp).weight(1f).padding(vertical = 4.dp))
-                Knob(vm.headphoneVolume, { vm.changeHeadphoneVolume(it) }, "🎧 LAUT", DjColors.Cue, min = 0f, max = 1f, default = 0.8f, knobSize = 38.dp)
-                Knob(vm.cueMix, { vm.changeCueMix(it) }, "CUE/MIX", DjColors.Cue, min = 0f, max = 1f, default = 0f, knobSize = 38.dp)
+                Knob(m.masterVolume, { m.changeMasterVolume(it) }, "MASTER", DjColors.Text, min = 0f, max = 1f, default = 0.9f, knobSize = 38.dp)
+                LevelMeter(m.masterLevel, Modifier.width(10.dp).weight(1f).padding(vertical = 4.dp))
+                Knob(m.headphoneVolume, { m.changeHeadphoneVolume(it) }, "🎧 LAUT", DjColors.Cue, min = 0f, max = 1f, default = 0.8f, knobSize = 38.dp)
+                Knob(m.cueMix, { m.changeCueMix(it) }, "CUE/MIX", DjColors.Cue, min = 0f, max = 1f, default = 0f, knobSize = 38.dp)
             }
-            ChannelStrip(vm.decks[1])
+            ChannelStrip(decks[1])
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("A", color = DjColors.DeckA, fontSize = 14.sp)
             HFader(
-                vm.crossfader, { vm.changeCrossfader(it) },
+                m.crossfader, { m.changeCrossfader(it) },
                 Modifier
                     .weight(1f)
                     .height(46.dp)

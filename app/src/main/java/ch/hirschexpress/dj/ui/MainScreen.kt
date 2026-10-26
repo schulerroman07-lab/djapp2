@@ -52,11 +52,15 @@ fun MainScreen(vm: DjViewModel) {
             .background(DjColors.Background),
     ) {
         Column(Modifier.fillMaxSize().padding(6.dp)) {
-            TopBar(vm, onLibrary = { view = VIEW_LIBRARY }, onWishes = { view = VIEW_WISHES }, onSettings = { view = VIEW_SETTINGS })
+            TopBar(
+                vm.engineOk, vm.newWishes, vm.recording, vm.recordSeconds,
+                onLibrary = { view = VIEW_LIBRARY }, onWishes = { view = VIEW_WISHES },
+                onRecord = { vm.toggleRecording() }, onSettings = { view = VIEW_SETTINGS },
+            )
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 DeckPanel(vm.decks[0], Modifier.weight(1f).fillMaxHeight())
-                MixerPanel(vm, Modifier.width(204.dp).fillMaxHeight())
+                MixerPanel(vm.decks, vm.mixer, Modifier.width(204.dp).fillMaxHeight())
                 DeckPanel(vm.decks[1], Modifier.weight(1f).fillMaxHeight())
             }
         }
@@ -84,7 +88,16 @@ fun MainScreen(vm: DjViewModel) {
 }
 
 @Composable
-private fun TopBar(vm: DjViewModel, onLibrary: () -> Unit, onWishes: () -> Unit, onSettings: () -> Unit) {
+fun TopBar(
+    engineOk: Boolean,
+    newWishes: Int,
+    recording: Boolean,
+    recordSeconds: Double,
+    onLibrary: () -> Unit,
+    onWishes: () -> Unit,
+    onRecord: () -> Unit,
+    onSettings: () -> Unit,
+) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -93,17 +106,17 @@ private fun TopBar(vm: DjViewModel, onLibrary: () -> Unit, onWishes: () -> Unit,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text("HIRSCH EXPRESS DJ", color = DjColors.DeckA, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 1)
-        if (!vm.engineOk) Text("⚠ Audio-Fehler", color = DjColors.Red, fontSize = 13.sp)
+        if (!engineOk) Text("⚠ Audio-Fehler", color = DjColors.Red, fontSize = 13.sp)
         Spacer(Modifier.weight(1f))
         PadButton("♫ Bibliothek", Modifier.width(116.dp).fillMaxHeight(), DjColors.DeckA, fontSize = 14) { onLibrary() }
         PadButton(
-            if (vm.newWishes > 0) "★ Wünsche (${vm.newWishes})" else "★ Wünsche",
-            Modifier.width(128.dp).fillMaxHeight(), DjColors.Cue, active = vm.newWishes > 0, fontSize = 14,
+            if (newWishes > 0) "★ Wünsche (${newWishes})" else "★ Wünsche",
+            Modifier.width(128.dp).fillMaxHeight(), DjColors.Cue, active = newWishes > 0, fontSize = 14,
         ) { onWishes() }
         PadButton(
-            if (vm.recording) "● REC " + formatTime(vm.recordSeconds) else "● Aufnahme",
-            Modifier.width(124.dp).fillMaxHeight(), DjColors.Red, active = vm.recording, fontSize = 14,
-        ) { vm.toggleRecording() }
+            if (recording) "● REC " + formatTime(recordSeconds) else "● Aufnahme",
+            Modifier.width(124.dp).fillMaxHeight(), DjColors.Red, active = recording, fontSize = 14,
+        ) { onRecord() }
         PadButton("⚙", Modifier.width(44.dp).fillMaxHeight(), fontSize = 18) { onSettings() }
     }
 }
