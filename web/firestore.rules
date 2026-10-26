@@ -1,0 +1,41 @@
+rules_version = '2';
+// Sicherheitsregeln für die Gästewünsche.
+// - Nur der DJ (Besitzer des Events) darf Wünsche lesen, abhaken und löschen.
+// - Gäste dürfen nur Wünsche schicken – max. 1 Wunsch pro Gerät alle 5 Minuten.
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /events/{eid} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.ownerUid == request.auth.uid;
+
+      function isOwner() {
+        return request.auth != null &&
+          get(/databases/$(db)/documents/events/$(eid)).data.ownerUid == request.auth.uid;
+      }
+
+      match /requests/{rid} {
+        allow read, update, delete: if isOwner();
+        allow create: if request.auth != null
+          && get(/databases/$(db)/documents/events/$(eid)).data.active == true
+          && request.resource.data.keys().hasOnly(['text', 'song', 'createdAt', 'uid', 'done'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() <= 200
+          && request.resource.data.song is string && request.resource.data.song.size() <= 200
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.done == false
+          && getAfter(/databases/$(db)/documents/events/$(eid)/limits/$(request.auth.uid)).data.last == request.time;
+      }
+
+      // Merkt sich pro Gerät, wann zuletzt ein Wunsch geschickt wurde (Spam-Schutz)
+      match /limits/{uid} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.last == request.time;
+        allow update: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.last == request.time
+          && resource.data.last < request.time - duration.value(5, 'm');
+      }
+    }
+  }
+}
