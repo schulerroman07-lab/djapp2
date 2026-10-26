@@ -57,7 +57,7 @@
 
 ### Qualität & Tests
 - Automatische Tests (laufen bei jedem Bau auf GitHub): Tempo-Angleichung, Intro/Outro-Erkennung, Reihenfolge optimieren, Vorschläge, lokaler Wunsch-Server inkl. Spam-Schutz.
-- Automatische Bildschirmfotos (Mischpult, Bibliothek, Auto-Mix, Wunschliste, Einführung) zur Layout-Kontrolle.
+- Automatische Bildschirmfotos (Mischpult, Bibliothek, Auto-Mix, Wunschliste, Einstellungen, Einführung) zur Layout-Kontrolle.
 - Leistung: Glas-Flächen in eigener Grafik-Ebene, Anzeigen lesen schnelle Werte erst beim Zeichnen.
 
 ## Offene Punkte / bekannte Grenzen
@@ -68,6 +68,17 @@
 5. **Name „Fadelux“**: kurz im Web gesucht, keine gleichnamige App gefunden – vor Veröffentlichung im Play Store und Markenregister (z.B. swissreg.ch, EUIPO) nochmals prüfen.
 6. **SoundTouch** ist nicht eingebaut (Quelle war hier nicht erreichbar); Tempo ohne Tonhöhe läuft über einen eigenen WSOLA-Algorithmus.
 7. Aufnahme nur als **WAV** (MP3-Encoder fehlt noch).
-8. Bildschirmfotos gibt es für Mischpult, Bibliothek, Auto-Mix, Wunschliste und Einführung; das Einstellungs-Fenster ist nur im Code geprüft.
+8. Bildschirmfotos gibt es für Mischpult, Bibliothek, Auto-Mix, Wunschliste, Einstellungen (Navigation/Farbe) und Einführung; die übrigen Einstellungs-Seiten sind nur im Code geprüft.
 9. Der lokale Wunsch-Server läuft nur, solange die App offen ist; Wünsche aus dem lokalen Modus werden nicht dauerhaft gespeichert.
 10. `CLAUDE.md` (Arbeitsanweisungen für Claude) enthält noch die alte Projektbeschreibung – sie gehört nicht zur App.
+11. Alte GitHub-Releases (v0.1.x, „HirschExpressDJ.apk“) sind noch vorhanden; bei Bedarf auf GitHub unter „Releases“ löschen.
+12. Die Bildschirmfotos (Release „screenshots“) können als Vorlage für Play-Store-Screenshots dienen.
+
+## Namensvorschläge
+1. **Fadelux** (gewählt) – „fade“ (Überblenden) + „lux“ (Licht, Neon)
+2. **Spindra** – „spin“ (Platte drehen), weich und international
+3. **Beatlume** – Beat + Licht
+4. **Neonfade** – beschreibt Design und Funktion
+5. **Mixalto** – „Mix“ + „alto“ (hoch), klingt in DE/EN/FR/IT gut
+
+Kurz im Web gesucht: „Glowdeck“, „Mixora“ und „Deckora“ sind schon als Apps vergeben. Für „Fadelux“, „Spindra“ und „Beatlume“ wurde keine gleichnamige App gefunden (vor Veröffentlichung nochmals prüfen).
