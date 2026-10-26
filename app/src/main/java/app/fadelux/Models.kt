@@ -145,6 +145,8 @@ class DeckModel(val index: Int) {
     /** Merkmale pro Beat des geladenen Titels (für die Struktur-Analyse). */
     fun features(): ByteArray = NativeEngine.getDeckFeatures(index)
     fun toggleKeylock() { keylock = !keylock; NativeEngine.setKeylock(index, keylock) }
+    /** Keylock einschalten (Tempo ändern ohne Tonhöhe) – für Auto-Mix. */
+    fun ensureKeylock() { if (!keylock) toggleKeylock() }
 }
 
 /** Zustand des Mischpults in der Mitte (Crossfader, Master, Kopfhörer). */

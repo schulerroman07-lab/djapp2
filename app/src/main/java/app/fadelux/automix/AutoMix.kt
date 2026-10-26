@@ -20,7 +20,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.math.abs
 
 /**
  * Auto-Mix: spielt die Warteschlange ab und mischt wie ein DJ.
@@ -55,8 +54,12 @@ class AutoMix(
     var forcedType by mutableStateOf<TransitionType?>(null)
         private set
 
+    /** Protokoll zum Testen: welcher Übergang wann und warum (neueste zuerst). */
+    val logLines = mutableStateListOf<String>()
+
     private var job: Job? = null
     private var tempoJob: Job? = null
+    private var rampDeck = -1           // Deck, dessen Tempo gerade zurückgeführt wird
     private var mixNow = false
     private var replan = false
     private var skip = false
@@ -205,7 +208,7 @@ class AutoMix(
             }
 
             // ---- 1) Nächsten Titel laden ----
-            tempoJob?.cancel()
+            // (Die Tempo-Rückführung von A läuft dabei weiter – sie wird NICHT abgebrochen.)
             val next = queue.removeAt(0)
             nextTrack = next
             status = UiText(R.string.automix_next, next.title)
@@ -240,10 +243,15 @@ class AutoMix(
                     NativeEngine.cancelSchedule()
                     b.play(false)
                     b.resetEffects()
+                    // Läuft A noch in der Tempo-Rückführung? Dann gilt für die Planung das Zieltempo (Original),
+                    // ausser "Jetzt mixen": dann Rückführung anhalten und mit dem aktuellen Tempo planen.
+                    if (mixNow && rampRunning(a)) stopRamp()
+                    val aTempo = if (rampRunning(a)) 1f else a.tempo
                     plan = if (aStruct != null && bStruct != null) {
-                        TransitionPlanner.plan(aStruct, a.livePosition(), a.tempo, bStruct, plannerSettings(), history, mixNow, forcedType)
+                        TransitionPlanner.plan(aStruct, a.livePosition(), aTempo, bStruct, plannerSettings(), history, mixNow, forcedType)
                     } else fallbackPlan(a, mixNow)
-                    // Tempo des neuen Songs angleichen (nur bei kleinem Unterschied)
+                    // Tempo des neuen Songs angleichen (nur bei kleinem Unterschied) – Tonhöhe bleibt (Keylock)
+                    if (TempoRamp.needed(plan.tempoRatio)) b.ensureKeylock()
                     b.setTempoRatio(plan.tempoRatio)
                     b.seek(plan.bStartSec)
                     transition = Transitions.create(plan.type)
@@ -257,6 +265,8 @@ class AutoMix(
                 }
                 // Vor-Phase (z.B. Hall aufbauen, Echo einschalten)
                 val aPos = a.livePosition()
+                // Sicherheit (sehr kurze Songs): Rückführung kurz vor dem Einsatz abschliessen
+                if (rampRunning(a) && aPos >= plan.mixSec - 2 * ctx.aBarSec) { stopRamp(); a.setTempoRatio(1f) }
                 val preStart = plan.mixSec - transition.preBars * ctx.aBarSec
                 if (transition.preBars > 0 && aPos >= preStart) {
                     transition.pre(ctx, ((aPos - preStart) / (transition.preBars * ctx.aBarSec)).toFloat().coerceIn(0f, 1f))
@@ -295,22 +305,48 @@ class AutoMix(
             nextPlan = null
             nextTrack = null
             cur = nxt
-            // Tempo des neuen Songs langsam (über ~16 Takte) zurück zum Original
-            if (plan.matchTempo && abs(plan.tempoRatio - 1f) > 0.005f) rampTempoHome(b, 16 * bBarSec)
+            // Tempo des neuen Songs fliessend (über 8–16 Takte) zurück zum Original
+            if (TempoRamp.needed(b.tempo)) {
+                val bars = bStruct?.let { TempoRamp.bars(it.endBar - 32 - it.barAt(b.livePosition())) } ?: 16
+                rampTempoHome(b, bars, bBarSec)
+            }
         }
     }
 
-    /** Tempo unhörbar langsam auf das Originaltempo zurückführen (Keylock: Tonhöhe bleibt). */
-    private fun rampTempoHome(d: DeckModel, seconds: Double) {
+    /** Eintrag ins Protokoll (auch in Logcat unter "AutoMix"). */
+    internal fun log(text: String) {
+        val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date())
+        android.util.Log.i("AutoMix", text)
+        logLines.add(0, "$time  $text")
+        if (logLines.size > 60) logLines.removeAt(logLines.lastIndex)
+    }
+
+    private fun rampRunning(d: DeckModel) = rampDeck == d.index && tempoJob?.isActive == true
+
+    private fun stopRamp() {
         tempoJob?.cancel()
+        rampDeck = -1
+    }
+
+    /**
+     * Tempo unhörbar auf das Originaltempo zurückführen (Keylock: Tonhöhe bleibt).
+     * Der Fortschritt richtet sich nach der Song-Position (nicht nach der Uhr):
+     * so stimmt die Länge in Takten, und bei Pause wartet die Rückführung einfach.
+     */
+    private fun rampTempoHome(d: DeckModel, bars: Int, barSec: Double) {
+        stopRamp()
+        val start = d.tempo
+        val startPos = d.livePosition()
+        val length = bars * barSec          // in Song-Sekunden
+        rampDeck = d.index
         tempoJob = scope.launch {
-            val start = d.tempo
-            val steps = (seconds * 10).toInt().coerceAtLeast(10)
-            for (i in 1..steps) {
-                delay(100)
-                if (!d.playing) { delay(100); continue }
-                d.setTempoRatio(start + (1f - start) * i / steps)
+            while (true) {
+                val p = ((d.livePosition() - startPos) / length).toFloat()
+                d.setTempoRatio(TempoRamp.value(start, p))
+                if (p >= 1f) break
+                delay(50)
             }
+            log("Tempo zurück auf 100 % (${"%.1f".format((start - 1f) * 100)} % über $bars Takte)")
         }
     }
 }
