@@ -163,8 +163,8 @@ class MixerModel {
     var masterLevel by mutableFloatStateOf(0f)
     var spectrum by mutableStateOf(FloatArray(28))
 
-    /** Wird gesetzt, wenn der DJ selbst am Crossfader dreht (Auto-Mix gibt dann ab). */
-    var onManualCrossfader: (() -> Unit)? = null
+    /** Crossfader gesperrt? (während Auto-Mix: bewegt sich nur automatisch) */
+    var locked: () -> Boolean = { false }
 
     /** Equal-Power-Kurve aktiv (nur während automatischer Überblendungen). */
     var equalPower = false
@@ -186,7 +186,7 @@ class MixerModel {
 
     /** Vom Menschen bedient (Finger). */
     fun changeCrossfader(x: Float) {
-        onManualCrossfader?.invoke()
+        if (locked()) return          // z.B. Wischgeste über den Fader während Auto-Mix → nichts passiert
         moveCrossfader(x)
         // Nach Auto-Mix: am Ende des Wegs wieder auf die normale DJ-Kurve wechseln
         if (equalPower && abs(crossfader) >= 0.98f) setCurve(false)

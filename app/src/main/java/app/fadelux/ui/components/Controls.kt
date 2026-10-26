@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -129,11 +130,12 @@ fun VFader(
 
 /** Waagrechter Regler (Crossfader). value -1..1. Doppeltippen = Mitte. */
 @Composable
-fun HFader(value: Float, onChange: (Float) -> Unit, colorA: Color, colorB: Color, modifier: Modifier = Modifier) {
+fun HFader(value: Float, onChange: (Float) -> Unit, colorA: Color, colorB: Color, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val v by rememberUpdatedState(value)
     val change by rememberUpdatedState(onChange)
     Canvas(
-        modifier
+        if (!enabled) modifier.graphicsLayer { alpha = 0.75f }   // gesperrt: nur Anzeige, keine Berührung
+        else modifier
             .pointerInput(Unit) { detectTapGestures(onDoubleTap = { change(0f) }) }
             .pointerInput(Unit) {
                 detectDragGestures { c, drag ->

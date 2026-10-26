@@ -194,7 +194,7 @@
     <string name="am_skip_song">Skip song</string>
     <string name="am_tempo_note">Tempo differs a lot – no beat blend</string>
     <string name="am_settings">Auto-Mix settings</string>
-    <string name="am_help2">Each song pair is analysed (beats, phrases, intro/outro, breaks, vocals). Auto-Mix picks a fitting transition, starts the next song exactly on the downbeat and never puts two vocal parts on top of each other. Move the crossfader yourself at any time to take over.</string>
+    <string name="am_help2">Each song pair is analysed (beats, phrases, intro/outro, breaks, vocals). Auto-Mix picks a fitting transition, starts the next song exactly on the downbeat and never puts two vocal parts on top of each other. While Auto-Mix runs, the crossfader is locked (it only moves automatically) – tap “Take over manually” to stop Auto-Mix on purpose. It keeps playing when you leave the app.</string>
     <string name="nav_playlists">Playlists</string>
     <string name="pl_new">New playlist</string>
     <string name="pl_name">Name</string>
@@ -241,4 +241,5 @@ Tap “New playlist” – or long-press a song in the library.</string>
     <string name="am_sort_on">Sort new songs automatically: on</string>
     <string name="am_sort_off">Sort new songs automatically: off</string>
     <string name="am_sort_help">New songs go where they fit best (genre, BPM, energy). Songs you move yourself (📌) stay where you put them.</string>
+    <string name="am_take_over">Take over manually</string>
 </resources>

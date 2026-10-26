@@ -180,7 +180,7 @@
     <string name="am_skip_song">Song überspringen</string>
     <string name="am_tempo_note">Tempo zu unterschiedlich – kein Überblenden der Beats</string>
     <string name="am_settings">Auto-Mix-Einstellungen</string>
-    <string name="am_help2">Jedes Song-Paar wird analysiert (Beats, Phrasen, Intro/Outro, Breaks, Gesang). Auto-Mix wählt einen passenden Übergang, startet den nächsten Song genau auf dem Downbeat und legt nie zwei Gesangsteile übereinander. Du kannst jederzeit selbst am Crossfader übernehmen.</string>
+    <string name="am_help2">Jedes Song-Paar wird analysiert (Beats, Phrasen, Intro/Outro, Breaks, Gesang). Auto-Mix wählt einen passenden Übergang, startet den nächsten Song genau auf dem Downbeat und legt nie zwei Gesangsteile übereinander. Während Auto-Mix läuft, ist der Crossfader gesperrt (er bewegt sich nur automatisch) – mit „Manuell übernehmen“ beendest du Auto-Mix bewusst. Beim Verlassen der App läuft er weiter.</string>
     <string name="nav_playlists">Playlists</string>
     <string name="pl_new">Neue Playlist</string>
     <string name="pl_name">Name</string>
@@ -227,4 +227,5 @@ Tippe auf „Neue Playlist“ – oder halte in der Bibliothek einen Song gedrü
     <string name="am_sort_on">Neue Songs automatisch einreihen: an</string>
     <string name="am_sort_off">Neue Songs automatisch einreihen: aus</string>
     <string name="am_sort_help">Neue Songs kommen dorthin, wo sie am besten passen (Genre, BPM, Energie). Songs, die du selbst verschiebst (📌), bleiben, wo du sie hinsetzt.</string>
+    <string name="am_take_over">Manuell übernehmen</string>
 </resources>

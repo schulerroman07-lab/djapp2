@@ -7,6 +7,12 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.mandatorySystemGestures
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,6 +41,7 @@ fun OverlayScaffold(
         Modifier
             .fillMaxSize()
             .background(Color(0xE6050608))
+            .safeEdges()
             .padding(Dimens.gapLarge),
     ) {
         Row(Modifier.fillMaxWidth().height(Dimens.button), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.gap)) {
@@ -57,3 +64,14 @@ fun SectionTitle(text: String, color: Color = AppColors.TextDim) {
 /** Leerer Platzhalter-Abstand. */
 @Composable
 fun HSpace(w: Int) = Spacer(Modifier.width(w.dp))
+
+/**
+ * Abstand zum Bildschirmrand: unten so viel, wie die Wischgeste "Startbildschirm" braucht,
+ * seitlich mindestens 10 dp (Zurück-Geste) bzw. die Kamera-Aussparung. So verschiebt ein
+ * Wischen zum Verlassen der App keine Regler mehr.
+ */
+@Composable
+fun Modifier.safeEdges(): Modifier = this
+    .windowInsetsPadding(WindowInsets.mandatorySystemGestures.only(WindowInsetsSides.Bottom))
+    .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+    .padding(start = 10.dp, end = 10.dp, bottom = 6.dp)

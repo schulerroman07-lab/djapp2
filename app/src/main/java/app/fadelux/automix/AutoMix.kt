@@ -69,13 +69,9 @@ class AutoMix(
     private val structureCache = HashMap<Long, TrackStructure?>()
 
     init {
-        // DJ greift während eines Übergangs ein → Auto-Mix beenden
-        mixer.onManualCrossfader = {
-            if (running && (transitioning || NativeEngine.isScheduled())) {
-                stop()
-                status = UiText(R.string.automix_manual)
-            }
-        }
+        // Während Auto-Mix ist der Crossfader gesperrt (versehentliche Wischgesten stoppen nichts mehr).
+        // Übernehmen nur bewusst über "Manuell übernehmen" → takeOver().
+        mixer.locked = { running }
     }
 
     // ---------- Warteschlange ----------
@@ -191,6 +187,14 @@ class AutoMix(
                 nextTrack = null
             }
         }
+    }
+
+    /** DJ übernimmt bewusst: Auto-Mix endet, alles bleibt so, wie es gerade klingt. */
+    fun takeOver() {
+        if (!running) return
+        log("DJ übernimmt manuell")
+        stop()
+        status = UiText(R.string.automix_manual)
     }
 
     fun stop() {

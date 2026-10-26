@@ -1,6 +1,10 @@
 package app.fadelux.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,7 +36,14 @@ import app.fadelux.ui.theme.AppType
 
 /** Mitte: Lautstärke pro Deck, Vorhören, Master, Live-Spektrum, Crossfader. */
 @Composable
-fun MixerPanel(decks: List<DeckModel>, m: MixerModel, colors: List<Color>, modifier: Modifier = Modifier) {
+fun MixerPanel(
+    decks: List<DeckModel>,
+    m: MixerModel,
+    colors: List<Color>,
+    modifier: Modifier = Modifier,
+    autoMix: Boolean = false,
+    onTakeOver: () -> Unit = {},
+) {
     Column(modifier.glass().padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.SpaceEvenly) {
             ChannelStrip(decks[0], colors[0])
@@ -48,10 +59,22 @@ fun MixerPanel(decks: List<DeckModel>, m: MixerModel, colors: List<Color>, modif
             }
             ChannelStrip(decks[1], colors[1])
         }
-        SpectrumBars({ m.spectrum }, colors[0], Modifier.fillMaxWidth().height(30.dp).padding(vertical = 2.dp))
+        if (autoMix) {
+            // Auto-Mix läuft: Crossfader gesperrt, Übernehmen nur bewusst per Knopf
+            NeonButton(
+                Modifier.fillMaxWidth().height(34.dp).padding(vertical = 2.dp),
+                text = stringResource(R.string.am_take_over), icon = AppIcons.Hand,
+                color = AppColors.Amber, fontSize = 11, iconSize = 14.dp,
+            ) { onTakeOver() }
+        } else {
+            SpectrumBars({ m.spectrum }, colors[0], Modifier.fillMaxWidth().height(30.dp).padding(vertical = 2.dp))
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("A", style = AppType.bodyBold, color = colors[0])
-            HFader(m.crossfader, { m.changeCrossfader(it) }, colors[0], colors[1], Modifier.weight(1f).height(42.dp).padding(horizontal = 4.dp))
+            Box(Modifier.weight(1f).height(42.dp).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
+                HFader(m.crossfader, { m.changeCrossfader(it) }, colors[0], colors[1], Modifier.fillMaxSize(), enabled = !autoMix)
+                if (autoMix) Icon(AppIcons.Lock, null, tint = AppColors.Amber, modifier = Modifier.align(Alignment.TopCenter).size(12.dp))
+            }
             Text("B", style = AppType.bodyBold, color = colors[1])
         }
     }

@@ -37,6 +37,7 @@ import app.fadelux.ui.components.AppBackground
 import app.fadelux.ui.components.AppIcons
 import app.fadelux.ui.components.NeonButton
 import app.fadelux.ui.components.glass
+import app.fadelux.ui.components.safeEdges
 import app.fadelux.ui.theme.AppColors
 import app.fadelux.ui.theme.AppType
 import app.fadelux.ui.theme.Dimens
@@ -68,7 +69,7 @@ fun MainScreen(vm: DjViewModel, onLanguageChanged: () -> Unit) {
             OnboardingScreen { vm.settings.onboardingDone = true }
             return@AppBackground
         }
-        Column(Modifier.fillMaxSize().padding(Dimens.gap)) {
+        Column(Modifier.fillMaxSize().safeEdges().padding(Dimens.gap)) {
             TopBar(
                 vm.engineOk, vm.newWishes, vm.recording, vm.recordSeconds, vm.autoMix.running,
                 onLibrary = { view = VIEW_LIBRARY }, onPlaylists = { view = VIEW_PLAYLISTS }, onAutoMix = { view = VIEW_AUTOMIX },
@@ -78,7 +79,10 @@ fun MainScreen(vm: DjViewModel, onLanguageChanged: () -> Unit) {
             Spacer(Modifier.height(Dimens.gap))
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(Dimens.gap)) {
                 DeckPanel(vm.decks[0], colors[0], Modifier.weight(1f).fillMaxHeight())
-                MixerPanel(vm.decks, vm.mixer, colors, Modifier.width(204.dp).fillMaxHeight())
+                MixerPanel(
+                    vm.decks, vm.mixer, colors, Modifier.width(204.dp).fillMaxHeight(),
+                    autoMix = vm.autoMix.running, onTakeOver = { vm.autoMix.takeOver() },
+                )
                 DeckPanel(vm.decks[1], colors[1], Modifier.weight(1f).fillMaxHeight())
             }
         }

@@ -69,7 +69,13 @@ class LayoutTest {
     }
 
     @Test
-    fun mixer() {
+    fun mixer() = mixerShot(false)
+
+    /** Auto-Mix läuft: Crossfader gesperrt, Knopf "Manuell übernehmen". */
+    @Test
+    fun mixerAutoMixLocked() = mixerShot(true)
+
+    private fun mixerShot(autoMix: Boolean) {
         paparazzi.snapshot {
             AppTheme(AppColors.Emerald) {
                 AppBackground {
@@ -84,7 +90,7 @@ class LayoutTest {
                         val colors = listOf(AppColors.Emerald, AppColors.Cyan)
                         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             DeckPanel(decks[0], colors[0], Modifier.weight(1f).fillMaxHeight())
-                            MixerPanel(decks, mixer, colors, Modifier.width(204.dp).fillMaxHeight())
+                            MixerPanel(decks, mixer, colors, Modifier.width(204.dp).fillMaxHeight(), autoMix = autoMix)
                             DeckPanel(decks[1], colors[1], Modifier.weight(1f).fillMaxHeight())
                         }
                     }
