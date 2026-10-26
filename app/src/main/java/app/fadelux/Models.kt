@@ -133,11 +133,11 @@ class MixerModel {
     /** Vom Menschen bedient (Finger). */
     fun changeCrossfader(x: Float) {
         onManualCrossfader?.invoke()
-        setCrossfader(x)
+        moveCrossfader(x)
     }
 
     /** Von der App gesteuert (Auto-Mix). */
-    fun setCrossfader(x: Float) { crossfader = x.coerceIn(-1f, 1f); NativeEngine.setCrossfader(crossfader) }
+    fun moveCrossfader(x: Float) { crossfader = x.coerceIn(-1f, 1f); NativeEngine.setCrossfader(crossfader) }
     fun changeMasterVolume(v: Float) { masterVolume = v.coerceIn(0f, 1f); NativeEngine.setMasterVolume(masterVolume) }
     fun changeHeadphoneVolume(v: Float) { headphoneVolume = v.coerceIn(0f, 1f); NativeEngine.setHeadphoneVolume(headphoneVolume) }
     fun changeCueMix(v: Float) { cueMix = v.coerceIn(0f, 1f); NativeEngine.setCueMix(cueMix) }

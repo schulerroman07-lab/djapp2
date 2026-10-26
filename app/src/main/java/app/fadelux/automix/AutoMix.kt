@@ -111,7 +111,7 @@ class AutoMix(
             val first = queue.removeAt(0)
             load(0, first)
             if (!waitLoaded(decks[0])) { status = UiText(R.string.automix_load_error); return }
-            mixer.setCrossfader(side(0))
+            mixer.moveCrossfader(side(0))
             decks[0].seek(0.0)
             decks[0].play(true)
             cur = 0
@@ -171,7 +171,7 @@ class AutoMix(
                 val p = ((System.nanoTime() - startNs) / 1e9 / realSec).toFloat().coerceIn(0f, 1f)
                 delay(16)   // ca. 60 Schritte pro Sekunde
                 if (!transitioning) return  // abgebrochen
-                mixer.setCrossfader(from + (to - from) * p)
+                mixer.moveCrossfader(from + (to - from) * p)
                 if (!swapped && p >= 0.5f) {
                     // Bass-Tausch in der Mitte: sauberer Übergang ohne "Bass-Matsch"
                     b.setEq(2, 0f)

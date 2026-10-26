@@ -1,0 +1,157 @@
+<resources>
+    <string name="notif_text">Läuft – antippen zum Öffnen</string>
+
+    <string name="nav_library">Bibliothek</string>
+    <string name="nav_automix">Auto-Mix</string>
+    <string name="nav_wishes">Wünsche</string>
+    <string name="nav_settings">Einstellungen</string>
+
+    <string name="deck_empty">Kein Titel geladen</string>
+    <string name="deck_empty_hint">Bibliothek öffnen und Titel laden</string>
+    <string name="deck_loading">Lädt…</string>
+    <string name="eq_high">Hoch</string>
+    <string name="eq_mid">Mitte</string>
+    <string name="eq_low">Tief</string>
+    <string name="fx_filter">Filter</string>
+    <string name="fx_echo">Echo</string>
+    <string name="mix_master">Master</string>
+    <string name="mix_phones">Kopfhörer</string>
+    <string name="mix_cue_mix">Cue/Mix</string>
+
+    <string name="msg_tracks_found">%1$d Titel gefunden</string>
+    <string name="msg_scan_error">Musik konnte nicht gelesen werden</string>
+    <string name="msg_load_failed">Titel konnte nicht geladen werden</string>
+    <string name="msg_deck_playing">Deck %1$s spielt gerade – erst anhalten</string>
+    <string name="msg_rec_started">Aufnahme läuft: %1$s</string>
+    <string name="msg_rec_saved">Aufnahme gespeichert in %1$s</string>
+    <string name="msg_rec_failed">Aufnahme nicht möglich</string>
+    <string name="msg_permission">Ohne Erlaubnis kann die App deine Musik nicht lesen</string>
+    <string name="msg_use_home">Zum Verlassen die Home-Taste benutzen (Musik läuft weiter)</string>
+    <string name="msg_queued">Zum Auto-Mix hinzugefügt: %1$s</string>
+
+    <string name="lib_tab_all">Alle Titel</string>
+    <string name="lib_tab_suggest">Passt als nächstes</string>
+    <string name="lib_search">Titel oder Interpret suchen</string>
+    <string name="lib_rescan">Neu einlesen</string>
+    <string name="lib_count">%1$d Titel</string>
+    <string name="lib_analyzing">BPM und Energie werden analysiert (noch %1$d)</string>
+    <string name="lib_empty">Noch keine Musik gefunden.\nKopiere MP3s aufs Handy (z.B. in den Ordner „Music“) und tippe auf „Neu einlesen“.</string>
+    <string name="lib_suggest_hint">Zuerst Gästewünsche aus deiner Bibliothek, dann Titel mit ähnlichem Tempo (±6 Prozent) und ähnlicher Energie wie der laufende Titel.</string>
+    <string name="lib_suggest_empty">Lade zuerst einen Titel und spiele ihn ab – dann erscheinen hier Vorschläge.</string>
+    <string name="lib_folder">Musik-Ordner</string>
+    <string name="lib_folder_all">Alle Ordner</string>
+
+    <string name="am_queue">Warteschlange (%1$d)</string>
+    <string name="am_queue_empty">Warteschlange ist leer.\nFüge in der Bibliothek Titel mit dem Warteschlangen-Knopf hinzu.</string>
+    <string name="am_start">Auto-Mix starten</string>
+    <string name="am_stop">Auto-Mix stoppen</string>
+    <string name="am_mix_now">Jetzt überblenden</string>
+    <string name="am_optimize">Reihenfolge optimieren</string>
+    <string name="am_optimized">Reihenfolge nach BPM und Energie sortiert</string>
+    <string name="am_length">Übergangslänge</string>
+    <string name="am_bars">%1$d Takte</string>
+    <string name="am_seconds">%1$d s</string>
+    <string name="am_clear">Warteschlange leeren</string>
+    <string name="am_help">Am Griff ziehen zum Umsortieren. Auto-Mix gleicht die Beats an und überblendet am Ende jedes Titels. Du kannst jederzeit selbst am Crossfader übernehmen.</string>
+    <string name="automix_empty">Zuerst Titel zur Warteschlange hinzufügen</string>
+    <string name="automix_next">Bereite vor: %1$s</string>
+    <string name="automix_waiting">Als nächstes: %1$s – warte auf das Outro</string>
+    <string name="automix_mixing">Überblende zu: %1$s</string>
+    <string name="automix_last">Letzter Titel läuft</string>
+    <string name="automix_done">Auto-Mix beendet</string>
+    <string name="automix_load_error">Titel konnte nicht geladen werden – übersprungen</string>
+    <string name="automix_manual">Du hast übernommen – Auto-Mix gestoppt</string>
+
+    <string name="wish_step1">Event starten</string>
+    <string name="wish_step2">Gäste scannen den QR-Code mit der Handy-Kamera</string>
+    <string name="wish_step3">Wünsche erscheinen hier live – abhaken oder löschen</string>
+    <string name="wish_mode">Verbindung</string>
+    <string name="wish_mode_online">Internet</string>
+    <string name="wish_mode_local">Lokales WLAN</string>
+    <string name="wish_mode_online_hint">Gäste nutzen ihre mobilen Daten. Dein Handy braucht Internet. Events laufen nach 24 Stunden ab.</string>
+    <string name="wish_mode_local_hint">Kein Internet nötig: Gäste verbinden sich mit dem gleichen WLAN oder deinem Handy-Hotspot.</string>
+    <string name="wish_online_unavailable">Internet-Modus ist in dieser Version nicht verfügbar – nutze Lokales WLAN</string>
+    <string name="wish_event_name">Name des Events</string>
+    <string name="wish_start">Event starten</string>
+    <string name="wish_starting">Startet…</string>
+    <string name="wish_end">Event beenden</string>
+    <string name="wish_scan_hint">Gäste scannen diesen Code mit der Kamera.</string>
+    <string name="wish_local_same_wifi">Gäste müssen im gleichen WLAN / Hotspot sein.</string>
+    <string name="wish_count">%1$d offen · %2$d total</string>
+    <string name="wish_err_server">Lokaler Server konnte nicht starten</string>
+    <string name="wish_err_no_wifi">Kein WLAN gefunden – mit WLAN verbinden oder Hotspot einschalten</string>
+    <string name="wish_err_online">Event konnte nicht gestartet werden – Internet prüfen</string>
+    <string name="wish_err_connection">Keine Verbindung – versuche erneut…</string>
+
+    <string name="guest_title">Musikwunsch</string>
+    <string name="guest_search">Song oder Interpret suchen…</string>
+    <string name="guest_free">Oder eigenen Wunsch schreiben (optional)</string>
+    <string name="guest_send">Wunsch senden</string>
+    <string name="guest_thanks">Danke! Dein Wunsch ist beim DJ angekommen.</string>
+    <string name="guest_wait">Nur ein Wunsch alle 5 Minuten – bitte warten.</string>
+    <string name="guest_empty">Bitte einen Song wählen oder etwas schreiben.</string>
+
+    <string name="set_design">Design</string>
+    <string name="set_language">Sprache</string>
+    <string name="set_audio">Audio</string>
+    <string name="set_library">Bibliothek</string>
+    <string name="set_help">Hilfe &amp; FAQ</string>
+    <string name="set_about">Über die App</string>
+    <string name="set_privacy">Datenschutz</string>
+    <string name="set_accent">Akzentfarbe</string>
+    <string name="lang_system">Sprache des Handys</string>
+    <string name="audio_info">%1$d Hz · Latenz ca. %2$d ms · %3$d Kanäle</string>
+    <string name="audio_mode">Ausgabe-Modus</string>
+    <string name="audio_mode_stereo">Normal: alles auf ein Gerät (kein Vorhören)</string>
+    <string name="audio_mode_split">Splitter-Kabel: links = Master, rechts = Kopfhörer (je Mono)</string>
+    <string name="audio_mode_4ch">USB-Audio-Interface (4 Kanäle): 1/2 Master, 3/4 Kopfhörer</string>
+    <string name="audio_mode_2dev">Zwei Geräte: Master auf Gerät 1, Kopfhörer auf Gerät 2</string>
+    <string name="audio_master_device">Master (Lautsprecher / Box)</string>
+    <string name="audio_cue_device">Kopfhörer</string>
+    <string name="audio_auto">Automatisch</string>
+    <string name="audio_refresh">Geräte aktualisieren</string>
+    <string name="audio_latency">Kopfhörer-Verzögerung (Latenz-Korrektur)</string>
+    <string name="audio_latency_hint">Bluetooth-Boxen spielen ca. 150–300 ms verspätet. Verzögere den Kopfhörer um denselben Wert, damit beide gleich klingen. Mit Kabel: 0 ms.</string>
+    <string name="audio_quality">Qualität / Stabilität</string>
+    <string name="audio_quality_hint">Kleiner Puffer = schnellere Reaktion. Wenn es knackt, „Sicher“ wählen.</string>
+    <string name="audio_q_fast">Schnellste</string>
+    <string name="audio_q_normal">Normal</string>
+    <string name="audio_q_safe">Sicher</string>
+    <string name="dev_speaker">Handy-Lautsprecher</string>
+    <string name="dev_wired">Kabel</string>
+    <string name="dev_bluetooth">Bluetooth</string>
+    <string name="dev_usb">USB-Audio</string>
+    <string name="dev_other">Gerät</string>
+
+    <string name="faq_q1">Wie lade ich Musik?</string>
+    <string name="faq_a1">MP3s aufs Handy kopieren, Bibliothek öffnen und „Neu einlesen“ tippen. Mit A oder B lädst du einen Titel ins Deck.</string>
+    <string name="faq_q2">Was macht SYNC?</string>
+    <string name="faq_a2">SYNC passt Tempo und Takt dieses Decks an das andere Deck an, damit beide im Takt laufen.</string>
+    <string name="faq_q3">Wie höre ich mit Kopfhörern vor?</string>
+    <string name="faq_a3">Du brauchst ein Splitter-Kabel, ein USB-Audio-Interface oder zwei Ausgabegeräte. Modus unter Einstellungen → Audio wählen, dann beim Deck auf den Kopfhörer-Knopf tippen.</string>
+    <string name="faq_q4">Warum ist meine Bluetooth-Box verspätet?</string>
+    <string name="faq_a4">Bluetooth hat immer eine Verzögerung. Stelle unter Einstellungen → Audio die Kopfhörer-Verzögerung ein, damit Kopfhörer und Box zusammenpassen.</string>
+    <string name="faq_q5">Wie funktionieren Gästewünsche?</string>
+    <string name="faq_a5">Wünsche öffnen, Event starten und QR-Code zeigen. Gäste brauchen keine App. Mit „Lokales WLAN“ ist kein Internet nötig.</string>
+    <string name="faq_q6">Wo sind meine Aufnahmen?</string>
+    <string name="faq_a6">Im Ordner „Music“ auf dem Handy, in einem Unterordner mit dem App-Namen, als WAV-Dateien.</string>
+
+    <string name="about_version">Version %1$s (%2$d)</string>
+    <string name="about_text">DJ-App mit zwei Decks für deine eigene Musik: Beat-Sync, EQ, Effekte, Auto-Mix und Gästewünsche per QR-Code.</string>
+    <string name="about_licenses">Open-Source-Lizenzen</string>
+    <string name="about_timestretch">Time-Stretching (Tempo ohne Tonhöhenänderung): eigener WSOLA-Algorithmus</string>
+    <string name="privacy_text">Datenschutz kurz erklärt:\n\n• Deine Musik bleibt auf deinem Handy. Sie wird nie hochgeladen.\n• Die App hat keine Werbung, kein Tracking und keine Benutzerkonten.\n• Gästewünsche (Internet-Modus): Event-Name, Titel der Songliste und die Wünsche werden auf unserem Server (Google Firebase, EU) gespeichert und nach 24 Stunden automatisch gelöscht. Gäste werden nur mit einer anonymen ID für den Spam-Schutz erkannt.\n• Modus „Lokales WLAN“: Nichts verlässt dein Handy.\n\nVollständige Datenschutzerklärung: siehe Store-Eintrag der App.</string>
+
+    <string name="onb1_title">Deine Musik, zwei Decks</string>
+    <string name="onb1_text">Öffne die Bibliothek, lade Titel in Deck A und B und mische mit dem Crossfader.</string>
+    <string name="onb2_title">Perfekt im Takt</string>
+    <string name="onb2_text">BPM werden automatisch erkannt. SYNC gleicht Tempo und Takt an. EQ, Filter und Echo für saubere Übergänge.</string>
+    <string name="onb3_title">Auto-Mix</string>
+    <string name="onb3_text">Fülle die Warteschlange – die App mischt selbstständig im Takt. Du kannst jederzeit übernehmen.</string>
+    <string name="onb4_title">Gästewünsche</string>
+    <string name="onb4_text">QR-Code zeigen – Gäste schicken Wünsche vom eigenen Handy. Klappt sogar ohne Internet.</string>
+    <string name="onb_next">Weiter</string>
+    <string name="onb_skip">Überspringen</string>
+    <string name="onb_start">Los geht’s</string>
+    <string name="onb_show_again">Einführung nochmals zeigen</string>
+</resources>

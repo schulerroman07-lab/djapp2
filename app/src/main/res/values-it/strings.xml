@@ -1,0 +1,157 @@
+<resources>
+    <string name="notif_text">In esecuzione – tocca per aprire</string>
+
+    <string name="nav_library">Libreria</string>
+    <string name="nav_automix">Auto-Mix</string>
+    <string name="nav_wishes">Richieste</string>
+    <string name="nav_settings">Impostazioni</string>
+
+    <string name="deck_empty">Nessun brano caricato</string>
+    <string name="deck_empty_hint">Apri la libreria per caricare un brano</string>
+    <string name="deck_loading">Caricamento…</string>
+    <string name="eq_high">Alti</string>
+    <string name="eq_mid">Medi</string>
+    <string name="eq_low">Bassi</string>
+    <string name="fx_filter">Filtro</string>
+    <string name="fx_echo">Eco</string>
+    <string name="mix_master">Master</string>
+    <string name="mix_phones">Cuffie</string>
+    <string name="mix_cue_mix">Cue/Mix</string>
+
+    <string name="msg_tracks_found">%1$d brani trovati</string>
+    <string name="msg_scan_error">Impossibile leggere la musica</string>
+    <string name="msg_load_failed">Impossibile caricare il brano</string>
+    <string name="msg_deck_playing">Il deck %1$s sta suonando – fermalo prima</string>
+    <string name="msg_rec_started">Registrazione in %1$s</string>
+    <string name="msg_rec_saved">Registrazione salvata in %1$s</string>
+    <string name="msg_rec_failed">Registrazione non possibile</string>
+    <string name="msg_permission">Senza autorizzazione l’app non può leggere la tua musica</string>
+    <string name="msg_use_home">Usa il tasto Home per uscire (la musica continua)</string>
+    <string name="msg_queued">Aggiunto all’Auto-Mix: %1$s</string>
+
+    <string name="lib_tab_all">Tutti i brani</string>
+    <string name="lib_tab_suggest">Perfetto dopo</string>
+    <string name="lib_search">Cerca titolo o artista</string>
+    <string name="lib_rescan">Aggiorna</string>
+    <string name="lib_count">%1$d brani</string>
+    <string name="lib_analyzing">analisi BPM ed energia (ancora %1$d)</string>
+    <string name="lib_empty">Nessuna musica trovata.\nCopia degli MP3 sul telefono (p. es. cartella «Music») e tocca «Aggiorna».</string>
+    <string name="lib_suggest_hint">Prima le richieste degli ospiti presenti nella libreria, poi brani con tempo (±6 per cento) ed energia simili al brano in onda.</string>
+    <string name="lib_suggest_empty">Carica e avvia prima un brano – qui appariranno i suggerimenti.</string>
+    <string name="lib_folder">Cartella musica</string>
+    <string name="lib_folder_all">Tutte le cartelle</string>
+
+    <string name="am_queue">Coda (%1$d)</string>
+    <string name="am_queue_empty">La coda è vuota.\nAggiungi brani dalla libreria con il pulsante coda.</string>
+    <string name="am_start">Avvia Auto-Mix</string>
+    <string name="am_stop">Ferma Auto-Mix</string>
+    <string name="am_mix_now">Mixa ora</string>
+    <string name="am_optimize">Ottimizza ordine</string>
+    <string name="am_optimized">Ordine per BPM ed energia</string>
+    <string name="am_length">Durata transizione</string>
+    <string name="am_bars">%1$d battute</string>
+    <string name="am_seconds">%1$d s</string>
+    <string name="am_clear">Svuota coda</string>
+    <string name="am_help">Trascina la maniglia per riordinare. L’Auto-Mix sincronizza i battiti e sfuma alla fine di ogni brano. Muovi tu il crossfader per riprendere il controllo.</string>
+    <string name="automix_empty">Aggiungi prima dei brani alla coda</string>
+    <string name="automix_next">Preparo: %1$s</string>
+    <string name="automix_waiting">Prossimo: %1$s – attendo l’outro</string>
+    <string name="automix_mixing">Transizione verso: %1$s</string>
+    <string name="automix_last">Ultimo brano in riproduzione</string>
+    <string name="automix_done">Auto-Mix terminato</string>
+    <string name="automix_load_error">Brano non caricato – saltato</string>
+    <string name="automix_manual">Hai preso il controllo – Auto-Mix fermato</string>
+
+    <string name="wish_step1">Avvia un evento</string>
+    <string name="wish_step2">Gli ospiti scansionano il codice QR con la fotocamera</string>
+    <string name="wish_step3">Le richieste appaiono qui in diretta – spuntale o eliminale</string>
+    <string name="wish_mode">Connessione</string>
+    <string name="wish_mode_online">Internet</string>
+    <string name="wish_mode_local">Wi-Fi locale</string>
+    <string name="wish_mode_online_hint">Gli ospiti usano i dati mobili. Il tuo telefono ha bisogno di Internet. Gli eventi scadono dopo 24 ore.</string>
+    <string name="wish_mode_local_hint">Niente Internet: gli ospiti si collegano allo stesso Wi-Fi o al tuo hotspot.</string>
+    <string name="wish_online_unavailable">La modalità Internet non è disponibile in questa versione – usa il Wi-Fi locale</string>
+    <string name="wish_event_name">Nome dell’evento</string>
+    <string name="wish_start">Avvia evento</string>
+    <string name="wish_starting">Avvio…</string>
+    <string name="wish_end">Termina evento</string>
+    <string name="wish_scan_hint">Gli ospiti scansionano questo codice con la fotocamera.</string>
+    <string name="wish_local_same_wifi">Gli ospiti devono essere nello stesso Wi-Fi / hotspot.</string>
+    <string name="wish_count">%1$d aperte · %2$d totali</string>
+    <string name="wish_err_server">Impossibile avviare il server locale</string>
+    <string name="wish_err_no_wifi">Nessun Wi-Fi – collegati o attiva l’hotspot</string>
+    <string name="wish_err_online">Impossibile avviare l’evento – controlla Internet</string>
+    <string name="wish_err_connection">Nessuna connessione – nuovo tentativo…</string>
+
+    <string name="guest_title">Richiesta musicale</string>
+    <string name="guest_search">Cerca canzone o artista…</string>
+    <string name="guest_free">Oppure scrivi la tua richiesta (facoltativo)</string>
+    <string name="guest_send">Invia richiesta</string>
+    <string name="guest_thanks">Grazie! La tua richiesta è arrivata al DJ.</string>
+    <string name="guest_wait">Una richiesta ogni 5 minuti – attendi per favore.</string>
+    <string name="guest_empty">Scegli una canzone o scrivi qualcosa.</string>
+
+    <string name="set_design">Design</string>
+    <string name="set_language">Lingua</string>
+    <string name="set_audio">Audio</string>
+    <string name="set_library">Libreria</string>
+    <string name="set_help">Aiuto &amp; FAQ</string>
+    <string name="set_about">Informazioni</string>
+    <string name="set_privacy">Privacy</string>
+    <string name="set_accent">Colore principale</string>
+    <string name="lang_system">Lingua del telefono</string>
+    <string name="audio_info">%1$d Hz · latenza ca. %2$d ms · %3$d canali</string>
+    <string name="audio_mode">Modalità di uscita</string>
+    <string name="audio_mode_stereo">Normale: tutto su un dispositivo (niente preascolto)</string>
+    <string name="audio_mode_split">Cavo splitter: sinistra = master, destra = cuffie (mono)</string>
+    <string name="audio_mode_4ch">Interfaccia audio USB (4 canali): 1/2 master, 3/4 cuffie</string>
+    <string name="audio_mode_2dev">Due dispositivi: master sul dispositivo 1, cuffie sul dispositivo 2</string>
+    <string name="audio_master_device">Master (altoparlante / cassa)</string>
+    <string name="audio_cue_device">Cuffie</string>
+    <string name="audio_auto">Automatico</string>
+    <string name="audio_refresh">Aggiorna dispositivi</string>
+    <string name="audio_latency">Ritardo cuffie (correzione latenza)</string>
+    <string name="audio_latency_hint">Le casse Bluetooth suonano con circa 150–300 ms di ritardo. Ritarda le cuffie dello stesso valore. Con cavo: 0 ms.</string>
+    <string name="audio_quality">Qualità / stabilità</string>
+    <string name="audio_quality_hint">Buffer piccolo = risposta più rapida. Se senti scricchiolii, scegli «Sicuro».</string>
+    <string name="audio_q_fast">Rapido</string>
+    <string name="audio_q_normal">Normale</string>
+    <string name="audio_q_safe">Sicuro</string>
+    <string name="dev_speaker">Altoparlante</string>
+    <string name="dev_wired">Cavo</string>
+    <string name="dev_bluetooth">Bluetooth</string>
+    <string name="dev_usb">Audio USB</string>
+    <string name="dev_other">Dispositivo</string>
+
+    <string name="faq_q1">Come carico la musica?</string>
+    <string name="faq_a1">Copia degli MP3 sul telefono, apri la libreria e tocca «Aggiorna». Con A o B carichi un brano su un deck.</string>
+    <string name="faq_q2">A cosa serve SYNC?</string>
+    <string name="faq_a2">SYNC allinea tempo e battito di questo deck all’altro, così suonano a tempo.</string>
+    <string name="faq_q3">Come faccio il preascolto in cuffia?</string>
+    <string name="faq_a3">Serve un cavo splitter, un’interfaccia audio USB o due uscite. Scegli la modalità in Impostazioni → Audio, poi tocca il pulsante cuffie di un deck.</string>
+    <string name="faq_q4">Perché la cassa Bluetooth è in ritardo?</string>
+    <string name="faq_a4">Il Bluetooth aggiunge sempre un ritardo. Imposta il ritardo cuffie in Impostazioni → Audio.</string>
+    <string name="faq_q5">Come funzionano le richieste?</string>
+    <string name="faq_a5">Apri Richieste, avvia un evento e mostra il codice QR. Gli ospiti non hanno bisogno di app. Con «Wi-Fi locale» non serve Internet.</string>
+    <string name="faq_q6">Dove sono le mie registrazioni?</string>
+    <string name="faq_a6">Nella cartella «Music» del telefono, in una sottocartella con il nome dell’app, come file WAV.</string>
+
+    <string name="about_version">Versione %1$s (%2$d)</string>
+    <string name="about_text">App DJ a due deck per la tua musica: beat sync, EQ, effetti, Auto-Mix e richieste degli ospiti tramite codice QR.</string>
+    <string name="about_licenses">Licenze open source</string>
+    <string name="about_timestretch">Time-stretching (tempo senza cambiare l’intonazione): algoritmo WSOLA proprio</string>
+    <string name="privacy_text">Privacy in breve:\n\n• La tua musica resta sul telefono. Non viene mai caricata.\n• Nessuna pubblicità, nessun tracciamento, nessun account.\n• Richieste (modalità Internet): nome dell’evento, titoli della lista e richieste vengono salvati sul nostro server (Google Firebase, UE) e cancellati automaticamente dopo 24 ore. Gli ospiti sono riconosciuti solo con un ID anonimo anti-spam.\n• Modalità Wi-Fi locale: nulla lascia il telefono.\n\nInformativa completa: vedi la scheda dell’app nello store.</string>
+
+    <string name="onb1_title">La tua musica, due deck</string>
+    <string name="onb1_text">Apri la libreria, carica brani sui deck A e B e mixa con il crossfader.</string>
+    <string name="onb2_title">Perfettamente a tempo</string>
+    <string name="onb2_text">Il BPM viene rilevato automaticamente. SYNC allinea tempo e battito. EQ, filtro ed eco per transizioni pulite.</string>
+    <string name="onb3_title">Auto-Mix</string>
+    <string name="onb3_text">Riempi la coda – l’app mixa da sola a tempo. Puoi riprendere il controllo quando vuoi.</string>
+    <string name="onb4_title">Richieste degli ospiti</string>
+    <string name="onb4_text">Mostra un codice QR – gli ospiti inviano richieste dal loro telefono. Funziona anche senza Internet.</string>
+    <string name="onb_next">Avanti</string>
+    <string name="onb_skip">Salta</string>
+    <string name="onb_start">Iniziamo</string>
+    <string name="onb_show_again">Mostra di nuovo l’introduzione</string>
+</resources>
