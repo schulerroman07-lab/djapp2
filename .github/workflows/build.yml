@@ -34,26 +34,30 @@ jobs:
         run: ./gradlew assembleRelease bundleRelease
       - name: Datenbank-Schema anzeigen (Kontrolle der Migration)
         run: grep -rhoE "CREATE (TABLE|INDEX) IF NOT EXISTS [^\"]*" app/build/generated/ksp/release | sort -u || true
-      - name: Dateien umbenennen
+      - name: Dateien umbenennen (App-Name aus gradle.properties)
         run: |
-          cp app/build/outputs/apk/release/app-release.apk Fadelux.apk
-          cp app/build/outputs/bundle/release/app-release.aab Fadelux.aab
+          APP_NAME=$(grep '^appName=' gradle.properties | cut -d= -f2- | tr -d '\r')
+          APP_VERSION=$(grep '^appVersion=' gradle.properties | cut -d= -f2- | tr -d '\r')
+          echo "APP_NAME=$APP_NAME" >> "$GITHUB_ENV"
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
+          cp app/build/outputs/apk/release/app-release.apk "$APP_NAME.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "$APP_NAME.aab"
       - uses: actions/upload-artifact@v4
         with:
-          name: Fadelux-AAB
-          path: Fadelux.aab
+          name: ${{ env.APP_NAME }}-AAB
+          path: ${{ env.APP_NAME }}.aab
       # Direkter Download-Link (immer die neueste Version):
-      # https://github.com/<besitzer>/<projekt>/releases/latest/download/Fadelux.apk
+      # https://github.com/<besitzer>/<projekt>/releases/latest/download/<App-Name>.apk
       - name: Als Release veröffentlichen
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: Fadelux 1.0.${{ github.run_number }}
+          tag_name: v${{ env.APP_VERSION }}.${{ github.run_number }}
+          name: ${{ env.APP_NAME }} ${{ env.APP_VERSION }}.${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           body: "Automatisch gebaut aus: ${{ github.event.head_commit.message }}"
           files: |
-            Fadelux.apk
-            Fadelux.aab
+            ${{ env.APP_NAME }}.apk
+            ${{ env.APP_NAME }}.aab
           make_latest: true
 
   # Bildschirmfotos der Oberfläche (zum Prüfen des Layouts, ohne Handy)

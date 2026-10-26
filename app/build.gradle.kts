@@ -6,6 +6,10 @@ plugins {
     id("app.cash.paparazzi")
 }
 
+// App-Name und Version stehen in gradle.properties (nur dort ändern)
+val appName: String = providers.gradleProperty("appName").getOrElse("Fadelux")
+val appVersion: String = providers.gradleProperty("appVersion").getOrElse("1.0")
+
 android {
     namespace = "app.fadelux"
     compileSdk = 35
@@ -17,7 +21,9 @@ android {
         // Auf GitHub zählt die Versionsnummer automatisch hoch
         val build = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
         versionCode = build
-        versionName = "1.0.$build"
+        versionName = "$appVersion.$build"
+        // Sichtbarer App-Name (R.string.app_name) – kommt aus gradle.properties
+        resValue("string", "app_name", appName)
 
         externalNativeBuild {
             cmake {
@@ -85,6 +91,7 @@ android {
         compose = true
         prefab = true
         buildConfig = true
+        resValues = true      // für den App-Namen aus gradle.properties
     }
 }
 

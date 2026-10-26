@@ -1,6 +1,5 @@
 <resources>
     <!-- Der App-Name steht NUR hier. Zum Umbenennen nur diese Zeile ändern. -->
-    <string name="app_name" translatable="false">Fadelux</string>
 
     <string name="notif_text">Running – tap to open</string>
 
