@@ -138,7 +138,10 @@ class MixerModel {
     var masterLevel by mutableFloatStateOf(0f)
 
     fun applyAll() {
-        mixer.applyAll()
+        NativeEngine.setCrossfader(crossfader)
+        NativeEngine.setMasterVolume(masterVolume)
+        NativeEngine.setHeadphoneVolume(headphoneVolume)
+        NativeEngine.setCueMix(cueMix)
     }
 
     fun changeCrossfader(x: Float) { crossfader = x.coerceIn(-1f, 1f); NativeEngine.setCrossfader(crossfader) }
@@ -182,10 +185,7 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         engineOk = NativeEngine.create()
         applyOutput()
         NativeEngine.setCueDelayMs(cueDelayMs)
-        NativeEngine.setCrossfader(crossfader)
-        NativeEngine.setMasterVolume(masterVolume)
-        NativeEngine.setHeadphoneVolume(headphoneVolume)
-        NativeEngine.setCueMix(cueMix)
+        mixer.applyAll()
         decks.forEach { it.applyAll() }
         startPolling()
         restoreEvent()
