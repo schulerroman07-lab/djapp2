@@ -314,12 +314,15 @@ class DjViewModel private constructor(private val app: Application) {
     fun removeFromPlaylist(entryId: Long) { scope.launch { playlists.removeEntry(entryId) } }
     fun reorderPlaylist(entryIds: List<Long>) { scope.launch { playlists.reorder(entryIds) } }
 
-    /** Ganze Playlist in die Auto-Mix-Warteschlange; optional Auto-Mix gleich starten. */
-    fun queuePlaylist(id: Long, start: Boolean) {
+    /**
+     * Ganze Playlist in die Auto-Mix-Warteschlange; optional Auto-Mix gleich starten.
+     * shuffle = zufällige Reihenfolge (wird dann nicht automatisch sortiert).
+     */
+    fun queuePlaylist(id: Long, start: Boolean, shuffle: Boolean = false) {
         scope.launch {
             val list = playlists.tracks(id)
             val before = autoMix.queue.size
-            autoMix.addAll(list)
+            if (shuffle) autoMix.addInOrder(list.shuffled()) else autoMix.addAll(list)
             message = UiText(R.string.msg_queue_added, autoMix.queue.size - before)
             if (start && !autoMix.running) {
                 autoMix.start()

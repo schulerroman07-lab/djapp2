@@ -46,7 +46,7 @@
     <string name="am_start">Auto-Mix starten</string>
     <string name="am_stop">Auto-Mix stoppen</string>
     <string name="am_mix_now">Jetzt überblenden</string>
-    <string name="am_optimize">Reihenfolge optimieren</string>
+    <string name="am_optimize">Optimieren</string>
     <string name="am_optimized">Reihenfolge nach BPM und Energie sortiert</string>
     <string name="am_length">Übergangslänge</string>
     <string name="am_bars">%1$d Takte</string>
@@ -235,4 +235,5 @@ Tippe auf „Neue Playlist“ – oder halte in der Bibliothek einen Song gedrü
     <string name="msg_queued_next">Kommt als Nächstes: %1$s</string>
     <string name="am_smart_shuffle">Smart Shuffle</string>
     <string name="am_shuffled">Gemischt – mit gutem Flow</string>
+    <string name="pl_shuffle">Zufällig</string>
 </resources>

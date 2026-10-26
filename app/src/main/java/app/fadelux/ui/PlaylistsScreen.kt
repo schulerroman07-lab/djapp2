@@ -173,8 +173,10 @@ private fun PlaylistDetail(vm: DjViewModel, p: PlaylistSummary, onBack: () -> Un
             NeonButton(Modifier.weight(1f).height(42.dp), text = stringResource(R.string.pl_add_songs), icon = AppIcons.Add, fontSize = 12, iconSize = 16.dp) { adding = true }
             NeonButton(Modifier.weight(1f).height(42.dp), text = stringResource(R.string.pl_all_to_queue), icon = AppIcons.Queue, color = AppColors.Violet, fontSize = 12, iconSize = 16.dp) { vm.queuePlaylist(p.id, false) }
             NeonButton(Modifier.weight(1f).height(42.dp), text = stringResource(R.string.pl_start_automix), icon = AppIcons.Auto, active = true, fontSize = 12, iconSize = 16.dp) { vm.queuePlaylist(p.id, true) }
-            NeonButton(Modifier.width(110.dp).height(42.dp), text = stringResource(R.string.io_export), color = AppColors.Cyan, fontSize = 12) { exporting = true }
-            NeonButton(Modifier.width(110.dp).height(42.dp), text = stringResource(R.string.pl_rename), fontSize = 12) { renaming = true }
+            // Zufällige Reihenfolge (nicht sortiert) und gleich losspielen
+            NeonButton(Modifier.weight(0.8f).height(42.dp), text = stringResource(R.string.pl_shuffle), icon = AppIcons.Shuffle, color = AppColors.Pink, fontSize = 12, iconSize = 16.dp) { vm.queuePlaylist(p.id, true, shuffle = true) }
+            NeonButton(Modifier.width(96.dp).height(42.dp), text = stringResource(R.string.io_export), color = AppColors.Cyan, fontSize = 12) { exporting = true }
+            NeonButton(Modifier.width(96.dp).height(42.dp), text = stringResource(R.string.pl_rename), fontSize = 12) { renaming = true }
             NeonButton(Modifier.size(42.dp), icon = AppIcons.Delete, color = AppColors.Red, iconSize = 18.dp) { deleting = true }
         }
         if (entries.isEmpty()) {

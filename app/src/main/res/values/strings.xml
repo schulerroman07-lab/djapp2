@@ -54,7 +54,7 @@
     <string name="am_start">Start Auto-Mix</string>
     <string name="am_stop">Stop Auto-Mix</string>
     <string name="am_mix_now">Mix now</string>
-    <string name="am_optimize">Optimise order</string>
+    <string name="am_optimize">Optimise</string>
     <string name="am_optimized">Order sorted by BPM and energy</string>
     <string name="am_length">Transition length</string>
     <string name="am_bars">%1$d bars</string>
@@ -249,4 +249,5 @@ Tap “New playlist” – or long-press a song in the library.</string>
     <string name="msg_queued_next">Plays next: %1$s</string>
     <string name="am_smart_shuffle">Smart Shuffle</string>
     <string name="am_shuffled">Shuffled – with a good flow</string>
+    <string name="pl_shuffle">Shuffle</string>
 </resources>

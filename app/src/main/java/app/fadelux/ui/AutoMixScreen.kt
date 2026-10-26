@@ -175,8 +175,14 @@ fun AutoMixContent(ui: AutoMixUi, act: AutoMixActions) {
                 ) { act.startStop() }
                 ui.status?.let { Text(it, style = AppType.small.copy(color = AppColors.Text)) }
                 if (ui.nextPlan != null && ui.nextTrack != null) NextTransitionCard(ui, act)
-                NeonButton(Modifier.fillMaxWidth().height(44.dp), text = stringResource(R.string.am_optimize), icon = AppIcons.Shuffle, color = AppColors.Violet, fontSize = 13, iconSize = 18.dp) {
-                    act.optimize()
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    NeonButton(Modifier.weight(1f).height(44.dp), text = stringResource(R.string.am_optimize), icon = AppIcons.Auto, color = AppColors.Violet, fontSize = 12, iconSize = 16.dp) {
+                        act.optimize()
+                    }
+                    // Smart Shuffle: zufällig, aber mit gutem Flow (BPM/Energie/Genre)
+                    NeonButton(Modifier.weight(1f).height(44.dp), text = stringResource(R.string.am_smart_shuffle), icon = AppIcons.Shuffle, color = AppColors.Pink, fontSize = 12, iconSize = 16.dp) {
+                        act.smartShuffle()
+                    }
                 }
                 AutoMixSettings(ui.style, ui.lengthBars, ui.enabled, act.setStyle, act.setLength, act.toggleType, ui.autoSort, act.setAutoSort)
                 if (ui.suggestions.isNotEmpty()) {
