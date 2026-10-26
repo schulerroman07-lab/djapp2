@@ -237,7 +237,9 @@ void Deck::renderSource(TrackData* t, float* out, int numFrames, double& pos) {
         out[i * 2 + 1] = outFifo_[fifoRead_ * 2 + 1];
         fifoRead_++;
     }
-    pos = wsolaIn_;
+    // Hörbare Position = Start des aktuellen Korns + bereits ausgegebene Samples
+    // (wsolaIn_ liegt ein Korn voraus – wichtig für genaues Beat-Sync)
+    pos = prevGrain_ >= 0 ? prevGrain_ + fifoRead_ * (double)tempo_.load() : wsolaIn_;
 }
 
 void Deck::render(float* main, float* cue, int numFrames, int engineRate) {
