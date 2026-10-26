@@ -179,6 +179,15 @@ class DjViewModel(app: Application) : AndroidViewModel(app) {
         return Suggestions.suggest(live?.track, live?.effectiveBpm ?: 0f, tracks.value, wishTexts, exclude)
     }
 
+    /** Vorschläge für die Auto-Mix-Warteschlange: passend zum letzten Titel der Warteschlange. */
+    fun queueSuggestions(): List<Track> {
+        val ref = autoMix.queue.lastOrNull() ?: liveDeck()?.track
+        val refBpm = ref?.bpm ?: 0f
+        val exclude = decks.mapNotNull { it.track?.id }.toSet() + autoMix.queue.map { it.id }
+        val wishTexts = wishes.filter { !it.done }.map { if (it.song.isNotBlank()) it.song else it.text }
+        return Suggestions.suggest(ref, refBpm, tracks.value, wishTexts, exclude).take(6).map { it.track }
+    }
+
     // ---------------- Ausgabe / Einstellungen ----------------
     fun outputDevices(): List<OutputDevice> {
         val am = getApplication<Application>().getSystemService(Context.AUDIO_SERVICE) as AudioManager

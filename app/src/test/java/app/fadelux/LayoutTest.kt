@@ -116,7 +116,7 @@ class LayoutTest {
         paparazzi.snapshot {
             AppTheme(AppColors.Emerald) {
                 AppBackground {
-                    AutoMixContent(q, true, "Next: Sunset Groove – waiting for the outro", 8, {}, {}, {}, {}, {}, {}, { _, _ -> }, {})
+                    AutoMixContent(q, true, "Next: Sunset Groove – waiting for the outro", 8, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, suggestions = q.take(2))
                 }
             }
         }

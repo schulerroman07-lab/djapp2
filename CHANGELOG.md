@@ -30,6 +30,7 @@
 - Warteschlange mit Drag & Drop, Entfernen, Leeren.
 - Intro/Outro-Erkennung aus der Wellenform, Start am Outro (auf den Takt gerundet), BPM-Angleichung + Beat-Sync, Bass-Tausch in der Mitte.
 - Übergangslänge 4/8/16 Takte oder 10/20 Sekunden.
+- Vorschläge „Passt als nächstes“ direkt im Auto-Mix-Fenster (passend zum letzten Titel der Warteschlange), mit einem Tipp hinzufügen.
 - „Reihenfolge optimieren“ (ähnliche BPM nebeneinander, Energie steigt langsam).
 - Intro des neuen Titels wird erkannt: Er startet so, dass sein Hauptteil genau am Ende der Überblendung einsetzt.
 - „Jetzt überblenden“; wer selbst am Crossfader dreht, übernimmt sofort.

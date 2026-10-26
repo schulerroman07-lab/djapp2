@@ -64,6 +64,8 @@ fun AutoMixScreen(vm: DjViewModel, onClose: () -> Unit) {
         onRemove = { am.remove(it) },
         onMove = { from, to -> am.move(from, to) },
         onClose = onClose,
+        suggestions = remember(am.queue.size, vm.decks[0].track, vm.decks[1].track) { vm.queueSuggestions() },
+        onAdd = { am.add(it) },
     )
 }
 
@@ -82,6 +84,8 @@ fun AutoMixContent(
     onRemove: (Int) -> Unit,
     onMove: (Int, Int) -> Unit,
     onClose: () -> Unit,
+    suggestions: List<Track> = emptyList(),
+    onAdd: (Track) -> Unit = {},
 ) {
     val accent = LocalAccent.current
     OverlayScaffold(stringResource(R.string.nav_automix), onClose) {
@@ -177,6 +181,19 @@ fun AutoMixContent(
                             ) { onBars(o) }
                         }
                         repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+                if (suggestions.isNotEmpty()) {
+                    SectionTitle(stringResource(R.string.lib_tab_suggest))
+                    suggestions.forEach { t ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            CoverThumb(t, 32.dp)
+                            Column(Modifier.weight(1f)) {
+                                Text(t.title, style = AppType.small.copy(color = AppColors.Text), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(t.bpm?.takeIf { it > 0 }?.let { String.format(Locale.US, "%.0f BPM", it) } ?: t.artist, style = AppType.tiny, maxLines = 1)
+                            }
+                            NeonButton(Modifier.size(36.dp), icon = AppIcons.Add, iconSize = 18.dp) { onAdd(t) }
+                        }
                     }
                 }
                 NeonButton(Modifier.fillMaxWidth().height(40.dp), text = stringResource(R.string.am_clear), icon = AppIcons.Delete, color = AppColors.Red, fontSize = 12, iconSize = 16.dp) { onClear() }
