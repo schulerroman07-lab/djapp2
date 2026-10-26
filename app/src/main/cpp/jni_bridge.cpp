@@ -66,6 +66,9 @@ JNIEXPORT void JNICALL FN(setEcho)(JNIEnv*, jobject, jint d, jboolean on, jfloat
 JNIEXPORT void JNICALL FN(setPfl)(JNIEnv*, jobject, jint d, jboolean on) { if (g) DECK(d).setPfl(on); }
 
 JNIEXPORT void JNICALL FN(setCrossfader)(JNIEnv*, jobject, jfloat x) { if (g) g->setCrossfader(x); }
+JNIEXPORT void JNICALL FN(setCrossfaderCurve)(JNIEnv*, jobject, jint c) { if (g) g->setCrossfaderCurve(c); }
+JNIEXPORT void JNICALL FN(setGain)(JNIEnv*, jobject, jint d, jfloat v) { if (g) DECK(d).setGain(v); }
+JNIEXPORT jfloat JNICALL FN(getLoudness)(JNIEnv*, jobject, jint d) { return g ? DECK(d).loudnessDb() : -14.f; }
 JNIEXPORT void JNICALL FN(setMasterVolume)(JNIEnv*, jobject, jfloat v) { if (g) g->setMasterVolume(v); }
 JNIEXPORT void JNICALL FN(setHeadphoneVolume)(JNIEnv*, jobject, jfloat v) { if (g) g->setHeadphoneVolume(v); }
 JNIEXPORT void JNICALL FN(setCueMix)(JNIEnv*, jobject, jfloat v) { if (g) g->setCueMix(v); }

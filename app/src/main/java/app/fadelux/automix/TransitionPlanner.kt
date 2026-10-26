@@ -43,6 +43,10 @@ object TransitionPlanner {
             MixStyle.CLUB -> 0.10f
         }
         val matchTempo = ratio != null && abs(ratio - 1f) <= maxStretch
+        val why = mutableListOf<String>()
+        why += if (ratio == null) "Tempo nicht vergleichbar (${fmt(aBpm)} → ${fmt(b.bpm)} BPM)"
+        else if (matchTempo) "Tempo ${fmt(aBpm)} → ${fmt(b.bpm)} BPM: angleichen ${pct(ratio - 1f)}"
+        else "Tempo ${fmt(aBpm)} → ${fmt(b.bpm)} BPM: zu weit (${pct(ratio - 1f)}) → kein Blend"
 
         // --- 2) Länge ---
         var length = when {
@@ -51,14 +55,31 @@ object TransitionPlanner {
             settings.style == MixStyle.BALANCED -> 16
             else -> 8
         }
+        if (settings.lengthBars == 0) {
+            // Länge passend zum Song-Paar: ruhige Songs länger, Club-Tracks knapp und im Takt
+            val calm = (aBpm < 105f && b.bpm < 105f) ||
+                (a.trackEnergy in 0f..0.45f && b.trackEnergy in 0f..0.45f)
+            val club = a.trackEnergy >= 0.7f && b.trackEnergy >= 0.7f && aBpm in 118f..135f
+            if (calm) { length = min(32, length * 2); why += "ruhiges Paar → länger" }
+            else if (club && settings.style != MixStyle.CALM) { length = min(length, 16); why += "Club-Paar → knapp" }
+        }
         val bIntroBars = b.introEndBar
         // Kurzes Intro beim neuen Song → kürzere Überblendung
-        if (settings.lengthBars == 0 && bIntroBars in 1 until length) length = max(4, roundDownPow2(bIntroBars))
+        if (settings.lengthBars == 0 && bIntroBars in 1 until length) {
+            length = max(4, roundDownPow2(bIntroBars))
+            why += "Intro von B nur $bIntroBars Takte"
+        }
 
         // --- 3) Startpunkt in A (Phrasengrenze) ---
         val currentBar = a.barAt(aPos)
         val (mixBar, fitLength) = chooseMixBar(a, currentBar, length, now)
+        if (fitLength < length) why += "wenig Zeit bis zum Ende → $fitLength Takte"
         length = fitLength
+        why += when {
+            now -> "jetzt mixen (Takt $mixBar)"
+            mixBar >= a.outroStartBar - 4 && a.outroStartBar < a.endBar -> "Start im Outro (Takt $mixBar von ${a.endBar})"
+            else -> "Start vor dem Ende, Phrase ${a.phraseLevel(mixBar).takeIf { it > 0 } ?: 4} (Takt $mixBar von ${a.endBar})"
+        }
 
         // --- 4) Startpunkt in B: Intro so legen, dass der Hauptteil am Ende der Überblendung kommt ---
         fun bStartFor(len: Int): Int {
@@ -78,6 +99,8 @@ object TransitionPlanner {
             }
             vocalClash = true
         }
+        if (vocalClash) why += "Gesang in A und B → nicht übereinander"
+        else if (length < fitLength) why += "Gesang → kürzer ($length Takte)"
 
         // --- 6) Typ wählen ---
         val allowed = settings.enabled.ifEmpty { setOf(TransitionType.CUT) }.filter { t ->
@@ -90,7 +113,15 @@ object TransitionPlanner {
             }
         }.ifEmpty { listOf(TransitionType.ECHO_OUT, TransitionType.CUT).filter { it in settings.enabled }.ifEmpty { listOf(TransitionType.CUT) } }
 
-        val type = forced?.takeIf { it in allowed || (it !in blendTypes) } ?: chooseType(a, b, mixBar, length, allowed, settings.style, recent)
+        val forcedOk = forced?.takeIf { it in allowed || (it !in blendTypes) }
+        val type = forcedOk ?: chooseType(a, b, mixBar, length, allowed, settings.style, recent)
+        if (forcedOk != null) why += "vom DJ gewählt"
+        else {
+            val dE = b.energyIn(b.introEndBar, b.introEndBar + 8) - a.energyIn(mixBar - 4, mixBar)
+            if (dE > 0.2f) why += "Energie steigt"
+            if (dE < -0.2f) why += "Energie fällt"
+            if (recent.isNotEmpty()) why += "Abwechslung (zuletzt ${recent.last().name})"
+        }
 
         // Blends brauchen die volle Länge; Echo/Hall/Schnitt sind kurz
         val finalLength = when (type) {
@@ -112,8 +143,12 @@ object TransitionPlanner {
             lengthBars = finalLength,
             tempoRatio = if (matchTempo) ratio!! else 1f,
             matchTempo = matchTempo,
+            reason = why.joinToString(" · "),
         )
     }
+
+    private fun fmt(v: Float) = String.format(java.util.Locale.ROOT, "%.1f", v)
+    private fun pct(v: Float) = String.format(java.util.Locale.ROOT, "%+.1f %%", v * 100)
 
     /**
      * Takt in A, an dem der Übergang beginnt. Regeln:

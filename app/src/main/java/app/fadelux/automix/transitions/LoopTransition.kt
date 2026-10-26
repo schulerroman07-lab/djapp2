@@ -7,6 +7,7 @@ import app.fadelux.automix.TransitionType
  * der neue Song kommt darüber; der Loop wird dabei leiser und dumpfer.
  */
 class LoopTransition : Transition(TransitionType.LOOP) {
+    override val equalPower = true
     private var looping = false
 
     override fun prepare(ctx: TransitionContext) {
@@ -21,9 +22,8 @@ class LoopTransition : Transition(TransitionType.LOOP) {
             ctx.a.setLoop(end - bars * ctx.aBarSec, bars * ctx.aBarSec, true)
             looping = true
         }
-        val e = ctx.ease(p)
-        ctx.a.changeFilter(-0.6f * e)
-        ctx.crossfader(e)
+        ctx.a.changeFilter(-0.6f * ctx.ease(ctx.span(p, 0.25f, 1f)))   // Loop wird langsam dumpfer
+        ctx.crossfader(ctx.ease(p))
     }
 
     override fun finish(ctx: TransitionContext) {

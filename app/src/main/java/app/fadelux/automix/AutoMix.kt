@@ -20,6 +20,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.log10
+import kotlin.math.pow
 
 /**
  * Auto-Mix: spielt die Warteschlange ab und mischt wie ein DJ.
@@ -139,6 +141,9 @@ class AutoMix(
         NativeEngine.cancelSchedule()
         // Automatische Effekte, die "hängen bleiben" könnten, zurücknehmen
         decks.forEach { it.setLoop(0.0, 0.0, false); it.setReverb(0f) }
+        // Steht der Crossfader am Ende, sofort zurück zur DJ-Kurve (sonst erst, wenn der DJ ihn ans Ende zieht)
+        if (kotlin.math.abs(mixer.crossfader) >= 0.98f) mixer.setCurve(false)
+        if (running) log("Auto-Mix gestoppt")
         running = false
         transitioning = false
         nextPlan = null
@@ -162,6 +167,7 @@ class AutoMix(
         val id = d.track?.id ?: return null
         structureCache[id]?.let { return it }
         val s = StructureAnalyzer.analyze(d.bpm, d.firstBeat, d.features(), d.duration, StructureAnalyzer.soundEnd(d.peaks, d.duration))
+            ?.copy(trackEnergy = d.track?.energy ?: -1f)
         if (structureCache.size > 50) structureCache.clear()
         structureCache[id] = s
         return s
@@ -216,6 +222,7 @@ class AutoMix(
             if (!waitLoaded(b)) { status = UiText(R.string.automix_load_error); continue }
             b.resetEffects()
             b.changeVolume(a.volume)
+            matchLoudness(a, b)
             val aStruct = structureOf(a)
             val bStruct = structureOf(b)
 
@@ -234,6 +241,9 @@ class AutoMix(
                 if (skip) {
                     NativeEngine.cancelSchedule()
                     b.resetEffects()
+                    if (centered) mixer.moveCrossfader(side(cur))
+                    mixer.setCurve(false)
+                    log("Übersprungen: ${next.title}")
                     skip = false
                     forcedType = null
                     continue@outer
@@ -243,6 +253,7 @@ class AutoMix(
                     NativeEngine.cancelSchedule()
                     b.play(false)
                     b.resetEffects()
+                    if (centered) mixer.moveCrossfader(side(cur))   // Crossfader zurück zu A (B ist noch stumm)
                     // Läuft A noch in der Tempo-Rückführung? Dann gilt für die Planung das Zieltempo (Original),
                     // ausser "Jetzt mixen": dann Rückführung anhalten und mit dem aktuellen Tempo planen.
                     if (mixNow && rampRunning(a)) stopRamp()
@@ -256,7 +267,11 @@ class AutoMix(
                     b.seek(plan.bStartSec)
                     transition = Transitions.create(plan.type)
                     ctx = TransitionContext(a, b, mixer, plan, aStruct, bStruct)
+                    // Kurve nur umschalten, solange der Crossfader ganz bei A steht (kein Lautstärkesprung)
+                    mixer.setCurve(transition.equalPower)
                     transition.prepare(ctx)
+                    log("Plan ${a.track?.title ?: "?"} → ${next.title}: ${plan.type.name} · ${plan.lengthBars} Takte · " +
+                        "Einsatz bei ${mmss(plan.mixSec)}" + (if (plan.reason.isNotEmpty()) " · ${plan.reason}" else ""))
                     // Sample-genauen Start in der Engine "scharf schalten"
                     NativeEngine.scheduleStart(nxt, cur, plan.mixSec, transition.stopsAAtStart)
                     nextPlan = plan
@@ -282,6 +297,7 @@ class AutoMix(
             // ---- 3) Überblenden ----
             transitioning = true
             status = UiText(R.string.automix_mixing, next.title)
+            log("Übergang startet: ${plan.type.name} bei ${mmss(a.livePosition())} (geplant ${mmss(plan.mixSec)})")
             val bBarSec = bStruct?.barSec ?: 2.0
             val lengthTrackSec = plan.lengthBars * bBarSec
             while (true) {
@@ -298,6 +314,8 @@ class AutoMix(
             a.resetEffects()
             b.resetEffects()
             mixer.moveCrossfader(side(nxt))
+            mixer.setCurve(false)                     // Crossfader steht ganz bei B → Kurve zurück
+            log("Übergang fertig: ${next.title} läuft (Tempo ${"%+.1f".format((b.tempo - 1f) * 100)} %)")
             history += plan.type
             if (history.size > 10) history.removeAt(0)
             forcedType = null
@@ -311,6 +329,24 @@ class AutoMix(
                 rampTempoHome(b, bars, bBarSec)
             }
         }
+    }
+
+    /**
+     * Lautheit angleichen: B so lauter/leiser stellen, dass er so laut klingt wie A gerade
+     * (inkl. dessen Angleichung). Begrenzt auf -9…+4 dB, damit nichts übersteuert.
+     */
+    private fun matchLoudness(a: DeckModel, b: DeckModel) {
+        val la = a.loudness() + 20f * log10(a.gain.coerceAtLeast(0.01f))
+        val lb = b.loudness()
+        if (la < -60f || lb < -60f) { b.setGain(1f); return }
+        val db = (la - lb).coerceIn(-9f, 4f)
+        b.setGain(10f.pow(db / 20f))
+        log("Lautheit: A ${"%.1f".format(la)} dB, B ${"%.1f".format(lb)} dB → B ${"%+.1f".format(db)} dB")
+    }
+
+    private fun mmss(sec: Double): String {
+        val s = sec.coerceAtLeast(0.0).toInt()
+        return "%d:%02d".format(s / 60, s % 60)
     }
 
     /** Eintrag ins Protokoll (auch in Logcat unter "AutoMix"). */

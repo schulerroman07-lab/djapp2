@@ -56,6 +56,7 @@ void Deck::load(int fd, int64_t length, int engineRate) {
         t->bpm = r.bpm;
         t->firstBeat = r.firstBeat;
         t->features = an.beatFeatures(r.bpm, r.firstBeat);
+        loudness_.store(gatedLoudnessDb(t->pcm.data(), t->frames, engineRate));
 
         // Wellenform: 100 Spitzenwerte pro Sekunde
         size_t step = std::max(1, engineRate / 100);
@@ -316,7 +317,11 @@ void Deck::render(float* main, float* cue, int numFrames, int engineRate) {
     // --- Filter-Koeffizienten (einmal pro Block) ---
     eqLow_.setLowpass(250.f, 0.707f, (float)engineRate);
     eqHigh_.setHighpass(3500.f, 0.707f, (float)engineRate);
-    float f = filter_.load();
+    // Filter weich nachführen (ca. 0,15 s), damit schnelle Sprünge nicht "zirpen"
+    float ft = filter_.load();
+    curFilter_ += (ft - curFilter_) * std::min(1.f, numFrames / (0.15f * engineRate));
+    if (std::fabs(ft - curFilter_) < 0.002f) curFilter_ = ft;
+    float f = curFilter_;
     bool useLp = f < -0.02f, useHp = f > 0.02f;
     if (useLp) filterLp_.setLowpass(20000.f * std::pow(0.004f, -f), 1.2f, (float)engineRate);
     else filterLp_.reset();
@@ -329,7 +334,7 @@ void Deck::render(float* main, float* cue, int numFrames, int engineRate) {
         float v = eq_[b].load();
         target[b] = kill_[b].load() ? 0.f : (v < 0 ? dbToGain(v * 26.f) : dbToGain(v * 6.f));
     }
-    float vol = volume_.load();
+    float vol = volume_.load() * gain_.load();
 
     // --- Echo ---
     size_t echoLen = (size_t)engineRate * 2;

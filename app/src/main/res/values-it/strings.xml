@@ -221,4 +221,6 @@ Tocca «Nuova playlist» – oppure tieni premuto un brano nella libreria.</stri
     <string name="io_hint">Le esportazioni vanno in un file o cartella a scelta (p. es. chiavetta USB o scheda SD). All’importazione i brani vengono riconosciuti da percorso, nome file o artista + titolo.</string>
     <string name="io_choose_playlist">Esporta una playlist</string>
     <string name="io_no_playlists">Nessuna playlist – creane una nella pagina Playlist.</string>
+    <string name="am_log">Registro (%1$d)</string>
+    <string name="am_log_empty">Nessuna voce – avvia l\'Auto-Mix.</string>
 </resources>

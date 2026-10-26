@@ -235,4 +235,6 @@ Tap “New playlist” – or long-press a song in the library.</string>
     <string name="io_hint">Exports go to a file or folder you choose (e.g. a USB stick or SD card). Imports match songs by path, file name or artist + title.</string>
     <string name="io_choose_playlist">Export a playlist</string>
     <string name="io_no_playlists">No playlists yet – create one on the Playlists page.</string>
+    <string name="am_log">Log (%1$d)</string>
+    <string name="am_log_empty">No entries yet – start Auto-Mix.</string>
 </resources>

@@ -33,6 +33,12 @@ object NativeEngine {
     external fun sync(deck: Int): Float
 
     external fun setCrossfader(x: Float)
+    /** 0 = DJ-Kurve (Mitte beide voll), 1 = Equal-Power (für automatische Überblendungen) */
+    external fun setCrossfaderCurve(curve: Int)
+    /** Lautheits-Angleichung pro Deck (1 = unverändert) */
+    external fun setGain(deck: Int, gain: Float)
+    /** Lautheit des geladenen Titels in dB */
+    external fun getLoudness(deck: Int): Float
     external fun setMasterVolume(v: Float)
     external fun setHeadphoneVolume(v: Float)
     external fun setCueMix(v: Float)

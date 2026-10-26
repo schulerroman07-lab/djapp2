@@ -33,6 +33,8 @@ public:
     Deck deck[2];
 
     void setCrossfader(float x) { xfader_.store(x); }
+    // Crossfader-Kurve: 0 = DJ (Mitte: beide voll), 1 = Equal-Power (gleichmässige Lautheit beim Überblenden)
+    void setCrossfaderCurve(int c) { xCurve_.store(c); }
     void setMasterVolume(float v) { masterVol_.store(v); }
     void setHeadphoneVolume(float v) { hpVol_.store(v); }
     void setCueMix(float v) { cueMix_.store(v); }
@@ -79,6 +81,8 @@ private:
     std::atomic<float> cueDelayMs_{0};
     std::atomic<float> masterLevel_{0};
     float curXa_ = 1, curXb_ = 1;
+    std::atomic<int> xCurve_{0};
+    float limGain_ = 1.f;      // Begrenzer (verhindert Übersteuern)
 
     static constexpr int kChunk = 1024;
     std::vector<float> a_, b_, ca_, cb_, master_, hp_;

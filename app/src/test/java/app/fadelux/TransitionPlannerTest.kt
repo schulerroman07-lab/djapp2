@@ -195,4 +195,26 @@ class TransitionPlannerTest {
         assertTrue("mixBar=${p.mixBar}", p.mixBar >= 92)
         assertTrue("type=${p.type} len=${p.lengthBars}", p.type !in TransitionPlanner.blendTypes || p.mixBar + p.lengthBars <= a.endBar)
     }
+
+    // ---------- Länge passend zum Song-Paar + Begründung ----------
+
+    @Test
+    fun plan_calmPairLonger_clubPairShort() {
+        val calmA = track(bpm = 92f, bars = 128, intro = 32, outro = 32).copy(trackEnergy = 0.35f)
+        val calmB = track(bpm = 94f, bars = 128, intro = 32, outro = 32).copy(trackEnergy = 0.3f)
+        val bass = PlannerSettings(enabled = setOf(TransitionType.BASS_SWAP))
+        val calm = TransitionPlanner.plan(calmA, 20.0, 1f, calmB, bass)
+        val clubA = track(bpm = 128f, bars = 128, intro = 32, outro = 32).copy(trackEnergy = 0.85f)
+        val clubB = track(bpm = 127f, bars = 128, intro = 32, outro = 32).copy(trackEnergy = 0.8f)
+        val club = TransitionPlanner.plan(clubA, 20.0, 1f, clubB, bass)
+        assertEquals(32, calm.lengthBars)
+        assertTrue("club=${club.lengthBars}", club.lengthBars <= 16)
+        assertTrue(calm.reason, calm.reason.contains("ruhig"))
+    }
+
+    @Test
+    fun plan_hasReason() {
+        val p = TransitionPlanner.plan(track(), 30.0, 1f, track(bpm = 126f), PlannerSettings())
+        assertTrue(p.reason, p.reason.contains("Tempo") && p.reason.contains("Takt"))
+    }
 }

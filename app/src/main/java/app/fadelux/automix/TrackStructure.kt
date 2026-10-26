@@ -24,6 +24,7 @@ data class TrackStructure(
     val outroStartBar: Int,         // erster Takt des Outros (Energie fällt ab)
     val breaks: List<IntRange>,     // Takte ohne Bass (Break)
     val endBar: Int = bars.size,    // erster Takt NACH dem hörbaren Ende (Stille am Schluss zählt nicht)
+    val trackEnergy: Float = -1f,   // Energie des ganzen Titels (0..1, aus der Bibliothek), -1 = unbekannt
 ) {
     val beatSec: Double get() = 60.0 / bpm
     val barSec: Double get() = 4 * beatSec

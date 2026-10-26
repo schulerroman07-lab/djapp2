@@ -27,6 +27,12 @@ class TransitionContext(
         return x * x * (3 - 2 * x)
     }
 
+    /** Teilbereich [from, to] von p auf 0..1 abbilden (davor 0, danach 1). */
+    fun span(p: Float, from: Float, to: Float): Float = ((p - from) / (to - from)).coerceIn(0f, 1f)
+
+    /** Länge eines Beats als Anteil der Überblendung (für Bewegungen, die genau 1 Beat dauern). */
+    val beatFraction: Float get() = 1f / (4f * plan.lengthBars.coerceAtLeast(1))
+
     /** Taktlänge des alten Songs in Sekunden (Titel-Zeit). */
     val aBarSec: Double get() = aStruct?.barSec ?: 2.0
 }
@@ -48,6 +54,11 @@ abstract class Transition(val type: TransitionType) {
     open val stopsAAtStart: Boolean = false
     /** Crossfader schon kurz vor dem Einsatz in die Mitte (B ist bis zum Start stumm). */
     open val centerBeforeStart: Boolean = false
+    /**
+     * Equal-Power-Kurve am Crossfader: Beim Überblenden bleibt die Gesamtlautstärke gleich
+     * (kein Loch, kein Buckel). Für Übergänge, bei denen beide Songs gleichzeitig spielen.
+     */
+    open val equalPower: Boolean = false
 
     open fun prepare(ctx: TransitionContext) {}
     open fun pre(ctx: TransitionContext, p: Float) {}

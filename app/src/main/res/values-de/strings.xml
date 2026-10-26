@@ -221,4 +221,6 @@ Tippe auf „Neue Playlist“ – oder halte in der Bibliothek einen Song gedrü
     <string name="io_hint">Exporte landen in einer Datei oder einem Ordner deiner Wahl (z.B. USB-Stick oder SD-Karte). Beim Import werden Songs über Pfad, Dateiname oder Interpret + Titel zugeordnet.</string>
     <string name="io_choose_playlist">Playlist exportieren</string>
     <string name="io_no_playlists">Noch keine Playlists – erstelle eine auf der Seite Playlists.</string>
+    <string name="am_log">Protokoll (%1$d)</string>
+    <string name="am_log_empty">Noch keine Einträge – Auto-Mix starten.</string>
 </resources>

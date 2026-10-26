@@ -38,6 +38,8 @@ class DeckModel(val index: Int) {
     var echoOn by mutableStateOf(false)
     var echoAmount by mutableFloatStateOf(0.4f)
     var pfl by mutableStateOf(false)
+    /** Lautheits-Angleichung durch Auto-Mix (1 = unverändert). */
+    var gain by mutableFloatStateOf(1f)
 
     val tempo: Float get() = 1f + tempoSlider * tempoRange / 100f
     val effectiveBpm: Float get() = bpm * tempo
@@ -146,6 +148,9 @@ class DeckModel(val index: Int) {
     fun features(): ByteArray = NativeEngine.getDeckFeatures(index)
     fun toggleKeylock() { keylock = !keylock; NativeEngine.setKeylock(index, keylock) }
     /** Keylock einschalten (Tempo ändern ohne Tonhöhe) – für Auto-Mix. */
+    fun setGain(g: Float) { gain = g; NativeEngine.setGain(index, g) }
+    /** Lautheit des geladenen Titels in dB (gemessen beim Laden). */
+    fun loudness(): Float = NativeEngine.getLoudness(index)
     fun ensureKeylock() { if (!keylock) toggleKeylock() }
 }
 
@@ -161,7 +166,18 @@ class MixerModel {
     /** Wird gesetzt, wenn der DJ selbst am Crossfader dreht (Auto-Mix gibt dann ab). */
     var onManualCrossfader: (() -> Unit)? = null
 
+    /** Equal-Power-Kurve aktiv (nur während automatischer Überblendungen). */
+    var equalPower = false
+        private set
+
+    /** Kurve umschalten. Nur an den Enden des Crossfaders umschalten, sonst springt die Lautstärke. */
+    fun setCurve(ep: Boolean) {
+        equalPower = ep
+        NativeEngine.setCrossfaderCurve(if (ep) 1 else 0)
+    }
+
     fun applyAll() {
+        NativeEngine.setCrossfaderCurve(if (equalPower) 1 else 0)
         NativeEngine.setCrossfader(crossfader)
         NativeEngine.setMasterVolume(masterVolume)
         NativeEngine.setHeadphoneVolume(headphoneVolume)
@@ -172,6 +188,8 @@ class MixerModel {
     fun changeCrossfader(x: Float) {
         onManualCrossfader?.invoke()
         moveCrossfader(x)
+        // Nach Auto-Mix: am Ende des Wegs wieder auf die normale DJ-Kurve wechseln
+        if (equalPower && abs(crossfader) >= 0.98f) setCurve(false)
     }
 
     /** Von der App gesteuert (Auto-Mix). */

@@ -170,8 +170,16 @@ void Engine::renderMain(float* out, int channels, int frames) {
 
     // Crossfader: in der Mitte beide voll, aussen wird eine Seite ausgeblendet
     float x = xfader_.load();
-    float xa = x <= 0 ? 1.f : std::cos(x * kPi / 2.f);
-    float xb = x >= 0 ? 1.f : std::cos(-x * kPi / 2.f);
+    float xa, xb;
+    if (xCurve_.load() == 1) {
+        // Equal-Power: Summe der Leistung bleibt gleich (kein Loch, kein Buckel in der Mitte)
+        float p = (x + 1.f) * 0.25f * kPi;   // 0 .. pi/2
+        xa = std::cos(p);
+        xb = std::sin(p);
+    } else {
+        xa = x <= 0 ? 1.f : std::cos(x * kPi / 2.f);
+        xb = x >= 0 ? 1.f : std::cos(-x * kPi / 2.f);
+    }
     float mv = masterVol_.load();
     float hv = hpVol_.load();
     float mix = cueMix_.load();
@@ -189,9 +197,16 @@ void Engine::renderMain(float* out, int channels, int frames) {
         float k = (float)(i + 1) / frames;
         float ga = curXa_ + (xa - curXa_) * k;
         float gb = curXb_ + (xb - curXb_) * k;
+        // Begrenzer: sehr schnell leiser bei Spitzen über 0.9, langsam (ca. 0.3 s) wieder lauter
+        float l = (a_[i * 2] * ga + b_[i * 2] * gb) * mv * 0.8f;
+        float r = (a_[i * 2 + 1] * ga + b_[i * 2 + 1] * gb) * mv * 0.8f;
+        float pk = std::max(std::fabs(l), std::fabs(r)) * limGain_;
+        if (pk > 0.9f) limGain_ *= 0.9f / pk;
+        else limGain_ += (1.f - limGain_) * (1.f / (0.3f * rate));
+        float lr[2] = {l * limGain_, r * limGain_};
         for (int ch = 0; ch < 2; ch++) {
             // 0.8 = etwas Reserve, damit zwei laute Titel nicht verzerren
-            float m = softClip((a_[i * 2 + ch] * ga + b_[i * 2 + ch] * gb) * mv * 0.8f);
+            float m = softClip(lr[ch]);
             master_[i * 2 + ch] = m;
             peak = std::max(peak, std::fabs(m));
             float c = ca_[i * 2 + ch] + cb_[i * 2 + ch];

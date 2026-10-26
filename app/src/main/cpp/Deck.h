@@ -79,6 +79,10 @@ public:
     void setTempo(float ratio) { tempo_.store(ratio); }
     void setKeylock(bool k) { keylock_.store(k); }
     void setVolume(float v) { volume_.store(v); }
+    // Lautheits-Angleichung (Auto-Mix): zusätzlicher Pegel, unabhängig vom Lautstärkeregler
+    void setGain(float g) { gain_.store(g); }
+    float gain() const { return gain_.load(); }
+    float loudnessDb() const { return loudness_.load(); }
     void setEq(int band, float v) { eq_[band].store(v); }
     void setKill(int band, bool k) { kill_[band].store(k); }
     void setFilter(float v) { filter_.store(v); }
@@ -137,6 +141,8 @@ private:
     std::atomic<float> tempo_{1.f};
     std::atomic<bool> keylock_{true};
     std::atomic<float> volume_{1.f};
+    std::atomic<float> gain_{1.f};
+    std::atomic<float> loudness_{-14.f};
     std::atomic<float> eq_[3];
     std::atomic<bool> kill_[3];
     std::atomic<float> filter_{0};
@@ -156,6 +162,7 @@ private:
     Biquad eqLow_, eqHigh_, filterLp_, filterHp_;
     float curGain_[3] = {1, 1, 1};
     float curVol_ = 1;
+    float curFilter_ = 0;      // geglätteter Filter-Wert (langsame, musikalische Bewegung)
     std::vector<float> echoBuf_;
     size_t echoPos_ = 0;
     std::vector<float> tmp_;

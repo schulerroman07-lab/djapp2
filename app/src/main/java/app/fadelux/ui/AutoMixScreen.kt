@@ -66,6 +66,7 @@ data class AutoMixUi(
     val lengthBars: Int = 0,
     val enabled: Set<TransitionType> = TransitionType.entries.toSet(),
     val suggestions: List<Track> = emptyList(),
+    val log: List<String> = emptyList(),
 )
 
 /** Alle Aktionen der Auto-Mix-Anzeige. */
@@ -97,6 +98,7 @@ fun AutoMixScreen(vm: DjViewModel, onClose: () -> Unit) {
             countdown = { am.secondsUntilNext() },
             style = vm.settings.mixStyle, lengthBars = vm.settings.transitionBars, enabled = ps.enabled,
             suggestions = remember(am.queue.size, vm.decks[0].track, vm.decks[1].track) { vm.queueSuggestions() },
+            log = am.logLines,
         ),
         AutoMixActions(
             startStop = {
@@ -169,7 +171,25 @@ fun AutoMixContent(ui: AutoMixUi, act: AutoMixActions) {
                 }
                 NeonButton(Modifier.fillMaxWidth().height(40.dp), text = stringResource(R.string.am_clear), icon = AppIcons.Delete, color = AppColors.Red, fontSize = 12, iconSize = 16.dp) { act.clear() }
                 Text(stringResource(R.string.am_help2), style = AppType.small)
+                LogSection(ui.log)
             }
+        }
+    }
+}
+
+/** Protokoll zum Testen: welcher Übergang wann und warum gewählt wurde (aufklappbar). */
+@Composable
+private fun LogSection(lines: List<String>) {
+    var open by remember { mutableStateOf(false) }
+    NeonButton(
+        Modifier.fillMaxWidth().height(38.dp),
+        text = stringResource(R.string.am_log, lines.size),
+        color = AppColors.TextDim, active = open, fontSize = 11,
+    ) { open = !open }
+    if (open) {
+        Column(Modifier.fillMaxWidth().glass(corner = 10.dp).padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (lines.isEmpty()) Text(stringResource(R.string.am_log_empty), style = AppType.tiny)
+            lines.take(30).forEach { Text(it, style = AppType.tiny.copy(color = AppColors.Text)) }
         }
     }
 }

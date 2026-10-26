@@ -28,4 +28,5 @@ data class TransitionPlan(
     val lengthBars: Int,            // Dauer der Überblendung in Takten
     val tempoRatio: Float,          // Tempo für B (1 = Originaltempo)
     val matchTempo: Boolean,        // Beats laufen synchron?
+    val reason: String = "",        // Begründung (Protokoll zum Testen)
 )
