@@ -20,6 +20,9 @@ import app.fadelux.ui.MixerPanel
 import app.fadelux.ui.OnboardingScreen
 import app.fadelux.ui.TopBar
 import app.fadelux.ui.TrackRow
+import app.fadelux.ui.WishRow
+import app.fadelux.ui.WishStep
+import app.fadelux.wishes.Wish
 import app.fadelux.ui.components.AppBackground
 import app.fadelux.ui.theme.AppColors
 import app.fadelux.ui.theme.AppTheme
@@ -114,6 +117,29 @@ class LayoutTest {
             AppTheme(AppColors.Emerald) {
                 AppBackground {
                     AutoMixContent(q, true, "Next: Sunset Groove – waiting for the outro", 8, {}, {}, {}, {}, {}, {}, { _, _ -> }, {})
+                }
+            }
+        }
+    }
+
+    @Test
+    fun wishes() {
+        val now = java.time.Instant.now()
+        paparazzi.snapshot {
+            AppTheme(AppColors.Emerald) {
+                AppBackground {
+                    Row(Modifier.fillMaxSize().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Column(Modifier.width(320.dp)) {
+                            WishStep(1, app.fadelux.ui.components.AppIcons.Play, "Start an event")
+                            WishStep(2, app.fadelux.ui.components.AppIcons.QrCode, "Guests scan the QR code with their phone camera")
+                            WishStep(3, app.fadelux.ui.components.AppIcons.Star, "Requests appear here live – tick them off or delete them")
+                        }
+                        Column(Modifier.weight(1f)) {
+                            WishRow(Wish("1", "", "Neon Avenue – Midnight Drive", now, false), "21:04", true, {}, {}, {}, {}, {})
+                            WishRow(Wish("2", "Bitte etwas von ABBA, und alles Gute zum Geburtstag an Lisa!", "", now, false), "21:06", false, {}, {}, {}, {}, {})
+                            WishRow(Wish("3", "", "The Waves – Sunset Groove", now, true), "21:10", true, {}, {}, {}, {}, {})
+                        }
+                    }
                 }
             }
         }

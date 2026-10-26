@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import app.fadelux.DjViewModel
 import app.fadelux.R
+import app.fadelux.wishes.Wish
 import app.fadelux.ui.components.AppIcons
 import app.fadelux.ui.components.NeonButton
 import app.fadelux.ui.components.OverlayScaffold
@@ -73,9 +74,9 @@ fun WishesScreen(vm: DjViewModel, onClose: () -> Unit) {
             Column(Modifier.width(320.dp).fillMaxHeight().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (!vm.eventActive) {
                     // 3-Schritte-Anleitung
-                    Step(1, AppIcons.Play, stringResource(R.string.wish_step1))
-                    Step(2, AppIcons.QrCode, stringResource(R.string.wish_step2))
-                    Step(3, AppIcons.Star, stringResource(R.string.wish_step3))
+                    WishStep(1, AppIcons.Play, stringResource(R.string.wish_step1))
+                    WishStep(2, AppIcons.QrCode, stringResource(R.string.wish_step2))
+                    WishStep(3, AppIcons.Star, stringResource(R.string.wish_step3))
                     SectionTitle(stringResource(R.string.wish_mode))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         NeonButton(
@@ -117,33 +118,16 @@ fun WishesScreen(vm: DjViewModel, onClose: () -> Unit) {
                 Text(stringResource(R.string.wish_count, vm.wishes.count { !it.done }, vm.wishes.size), style = AppType.small)
                 LazyColumn(Modifier.fillMaxSize()) {
                     items(vm.wishes, key = { it.id }) { w ->
-                        Row(
-                            Modifier.fillMaxWidth().padding(vertical = 3.dp).glass(corner = 12.dp, glowColor = if (!w.done) AppColors.Amber else null).padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(timeFmt.format(w.createdAt), style = AppType.small, modifier = Modifier.width(48.dp))
-                            Column(Modifier.weight(1f)) {
-                                val deco = if (w.done) TextDecoration.LineThrough else null
-                                if (w.song.isNotBlank()) Text(w.song, style = AppType.bodyBold.copy(color = AppColors.Amber, textDecoration = deco))
-                                if (w.text.isNotBlank()) Text(w.text, style = AppType.body.copy(color = if (w.done) AppColors.TextDim else AppColors.Text, textDecoration = deco))
-                            }
-                            // Wunsch ist in der Bibliothek: direkt laden oder in die Warteschlange
-                            val match = remember(w.id, vm.tracks.value.size) { vm.trackForWish(w) }
-                            if (match != null && !w.done) {
-                                NeonButton(Modifier.size(width = 40.dp, height = 42.dp), text = "A", fontSize = 15) { vm.loadTrack(0, match) }
-                                Spacer(Modifier.width(4.dp))
-                                NeonButton(Modifier.size(width = 40.dp, height = 42.dp), text = "B", color = AppColors.Cyan, fontSize = 15) { vm.loadTrack(1, match) }
-                                Spacer(Modifier.width(4.dp))
-                                NeonButton(Modifier.size(width = 40.dp, height = 42.dp), icon = AppIcons.Queue, color = AppColors.Violet, iconSize = 18.dp) {
-                                    vm.autoMix.add(match)
-                                    vm.message = UiText(R.string.msg_queued, match.title)
-                                }
-                                Spacer(Modifier.width(10.dp))
-                            }
-                            NeonButton(Modifier.size(width = 48.dp, height = 42.dp), icon = AppIcons.Check, color = AppColors.Emerald, active = w.done) { vm.markWish(w) }
-                            Spacer(Modifier.width(6.dp))
-                            NeonButton(Modifier.size(width = 48.dp, height = 42.dp), icon = AppIcons.Delete, color = AppColors.Red) { vm.deleteWish(w) }
-                        }
+                        // Wunsch ist in der Bibliothek: direkt laden oder in die Warteschlange
+                        val match = remember(w.id, vm.tracks.value.size) { vm.trackForWish(w) }
+                        WishRow(
+                            w, timeFmt.format(w.createdAt), match != null,
+                            onA = { match?.let { vm.loadTrack(0, it) } },
+                            onB = { match?.let { vm.loadTrack(1, it) } },
+                            onQueue = { match?.let { vm.autoMix.add(it); vm.message = UiText(R.string.msg_queued, it.title) } },
+                            onDone = { vm.markWish(w) },
+                            onDelete = { vm.deleteWish(w) },
+                        )
                     }
                 }
             }
@@ -151,9 +135,45 @@ fun WishesScreen(vm: DjViewModel, onClose: () -> Unit) {
     }
 }
 
+/** Eine Zeile der Wunschliste. inLibrary = Knöpfe A / B / Warteschlange anzeigen. */
+@Composable
+fun WishRow(
+    w: Wish,
+    time: String,
+    inLibrary: Boolean,
+    onA: () -> Unit,
+    onB: () -> Unit,
+    onQueue: () -> Unit,
+    onDone: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 3.dp).glass(corner = 12.dp, glowColor = if (!w.done) AppColors.Amber else null).padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(time, style = AppType.small, modifier = Modifier.width(44.dp))
+        Column(Modifier.weight(1f)) {
+            val deco = if (w.done) TextDecoration.LineThrough else null
+            if (w.song.isNotBlank()) Text(w.song, style = AppType.bodyBold.copy(color = AppColors.Amber, textDecoration = deco), maxLines = 2)
+            if (w.text.isNotBlank()) Text(w.text, style = AppType.body.copy(color = if (w.done) AppColors.TextDim else AppColors.Text, textDecoration = deco), maxLines = 3)
+        }
+        if (inLibrary && !w.done) {
+            NeonButton(Modifier.size(width = 38.dp, height = 42.dp), text = "A", fontSize = 15) { onA() }
+            Spacer(Modifier.width(4.dp))
+            NeonButton(Modifier.size(width = 38.dp, height = 42.dp), text = "B", color = AppColors.Cyan, fontSize = 15) { onB() }
+            Spacer(Modifier.width(4.dp))
+            NeonButton(Modifier.size(width = 38.dp, height = 42.dp), icon = AppIcons.Queue, color = AppColors.Violet, iconSize = 18.dp) { onQueue() }
+            Spacer(Modifier.width(8.dp))
+        }
+        NeonButton(Modifier.size(width = 44.dp, height = 42.dp), icon = AppIcons.Check, color = AppColors.Emerald, active = w.done) { onDone() }
+        Spacer(Modifier.width(4.dp))
+        NeonButton(Modifier.size(width = 44.dp, height = 42.dp), icon = AppIcons.Delete, color = AppColors.Red) { onDelete() }
+    }
+}
+
 /** Ein Schritt der Anleitung: Nummer, Symbol, Text. */
 @Composable
-private fun Step(n: Int, icon: ImageVector, text: String) {
+fun WishStep(n: Int, icon: ImageVector, text: String) {
     val accent = LocalAccent.current
     Row(
         Modifier.fillMaxWidth().padding(vertical = 3.dp).glass(corner = 12.dp).padding(8.dp),
