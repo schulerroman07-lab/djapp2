@@ -342,7 +342,8 @@ class AutoMix(
                     transition = Transitions.create(plan.type)
                     ctx = TransitionContext(a, b, mixer, plan, aStruct, bStruct)
                     // Kurve nur umschalten, solange der Crossfader ganz bei A steht (kein Lautstärkesprung)
-                    mixer.setCurve(transition.equalPower)
+                    // (steht er nicht am Ende, z.B. weil der DJ vorher von Hand gemischt hat: DJ-Kurve behalten)
+                    mixer.setCurve(transition.equalPower && kotlin.math.abs(mixer.crossfader) >= 0.98f)
                     transition.prepare(ctx)
                     log("Plan ${a.track?.title ?: "?"} → ${next.title}: ${plan.type.name} · ${plan.lengthBars} Takte · " +
                         "Einsatz bei ${mmss(plan.mixSec)}" + (if (plan.reason.isNotEmpty()) " · ${plan.reason}" else ""))
