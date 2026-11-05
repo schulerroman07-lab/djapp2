@@ -1,0 +1,30 @@
+# Tonart- und Tempo-Erkennung an echten, gemeinfreien Aufnahmen (Wikimedia Commons) prüfen.
+# Ergebnis: Artefakt "tonart-test" (bericht.md) und Ausgabe im Protokoll.
+name: Tonart-Test (echte Aufnahmen)
+
+on:
+  push:
+    paths:
+      - 'app/src/main/cpp/**'
+      - 'tools/keytest/**'
+      - '.github/workflows/key-test.yml'
+  workflow_dispatch:
+
+jobs:
+  keys:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Werkzeuge
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
+      - name: Analyse wie in der App bauen
+        run: g++ -std=c++17 -O2 -Iapp/src/main/cpp tools/keytest/analyze_pcm.cpp app/src/main/cpp/BpmAnalyzer.cpp -o analyze_pcm
+      - name: Echte Aufnahmen auswerten
+        working-directory: tools/keytest
+        run: python3 run.py ../../analyze_pcm 40
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tonart-test
+          path: tools/keytest/bericht.md
