@@ -5,17 +5,30 @@ gemeinfreie Aufnahmen von Wikimedia Commons, deren Titel die Tonart nennt ("... 
 werden mit derselben Analyse wie in der App ausgewertet. Ergebnis: bericht.md
 Aufruf: python3 run.py <analyze_pcm-Programm> [Anzahl]
 """
-import json, re, subprocess, sys, urllib.parse, urllib.request, os, tempfile
+import json, re, subprocess, sys, time, urllib.error, urllib.parse, urllib.request, os, tempfile
 
 UA = {"User-Agent": "FadeluxKeyTest/1.0 (automated key-detection test)"}
 API = "https://commons.wikimedia.org/w/api.php"
 NOTES = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11, "H": 11}
 NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
 
+def fetch(url, timeout=120):
+    """Download mit Pausen: Wikimedia begrenzt die Anfragen (HTTP 429) – dann warten und nochmals."""
+    for attempt in range(6):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
+                data = r.read()
+            time.sleep(2)
+            return data
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or attempt == 5: raise
+            wait = int(e.headers.get("Retry-After") or 0) or 20 * (attempt + 1)
+            print(f"  HTTP 429 – warte {wait} s", flush=True)
+            time.sleep(min(wait, 120))
+
 def api(params):
     url = API + "?" + urllib.parse.urlencode({**params, "format": "json"})
-    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
-        return json.load(r)
+    return json.loads(fetch(url, 30))
 
 def key_from_title(t):
     m = re.search(r"\bin ([A-H])[ -]?(flat|sharp|♭|♯|b(?=[ -]))?[ -](major|minor|dur|moll)\b", t, re.I)
@@ -64,7 +77,7 @@ def main():
             if ii["size"] > 40_000_000: continue
             tmp = tempfile.mktemp()
             with open(tmp, "wb") as fh:
-                fh.write(urllib.request.urlopen(urllib.request.Request(ii["url"], headers=UA), timeout=120).read())
+                fh.write(fetch(ii["url"]))
             dec = subprocess.run(["ffmpeg", "-v", "error", "-i", tmp, "-t", "480", "-f", "s16le", "-ac", "2", "-ar", "44100", "-"],
                                  capture_output=True, timeout=300)
             os.remove(tmp)
