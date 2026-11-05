@@ -112,7 +112,11 @@ selbstständig durch. Gästewünsche per QR-Code werden passend eingebaut.
   Tempo-Rückführung, M3U.
 - C++ am PC: Tonart-Erkennung (24/24 Tonarten bei synthetischen Akkordfolgen), Lautheit (±0,1 dB),
   Tempo-Rampe ohne Klicks, **2-Stunden-Dauertest der echten Engine** (beide Decks, Mixer, Begrenzer,
-  geplanter Start, Effekte, Loop, Tempo-Rampen): siehe Ergebnis unten.
+  geplanter Start, Effekte, Loop, Tempo-Rampen) – **Ergebnis:** 2 h simuliert, 55 Übergänge,
+  0 verpasste Starts, 0 NaN/Inf, 0 stille 100-ms-Blöcke (keine Aussetzer), Spitzenpegel 0,64,
+  Speicher stabil (119 MB nach 24 min und nach 2 h). Wiederholbar mit `bash tools/enginetest/run.sh`.
+- Übergangs-Verteilung einer stimmungsgeordneten Party mit 80 Übergängen: Echo-Out 20, Filter 19,
+  Bass-Swap 17, Hall 11, Loop 8, Schnitt 5 – keine direkte Wiederholung.
 - Bildschirmfotos (Hoch- und Querformat): Start-Animation, Player, Startansicht, Früh-Übergang-Frage,
   Als Nächstes, Bibliothek, Wünsche, Playlist, Einstellungen.
 
