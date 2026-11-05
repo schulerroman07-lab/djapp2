@@ -338,11 +338,11 @@ class AutoMix(
             val s = d.liveLoadState()
             if (s == 3) return false
             if (s == 2) {
+                d.syncFromEngine()
                 if (d.peaks.isEmpty()) d.peaks = NativeEngine.getPeaks(d.index)
-                d.loadState = 2
                 if (d.peaks.isNotEmpty()) return true
             }
-            if (playable && s == 4) { d.loadState = 4; return true }
+            if (playable && s == 4) { d.syncFromEngine(); return true }
             if (prevRequest || skip) return false
             delay(30)
         }

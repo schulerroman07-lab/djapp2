@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Erzeugt Test-Songs (MP3) für den Gerätetest – schnell mit numpy:
-Intro/Outro ohne Bassdrum, Hauptteil mit Beat, Hi-Hat auf dem Offbeat, Dur-Dreiklang,
+Intro/Outro nur Schlagzeug, Hauptteil mit Bass + Dur-Dreiklang, ein Break ohne Bassdrum,
 verschiedene Tempi/Tonarten/Lautstärken/Genre-Tags, 3 s Stille am Schluss.
 Aufruf: python3 make_songs.py <Zielordner>
 """
@@ -20,19 +20,27 @@ SONGS = [  # BPM, Grundton (Hz), Lautstärke, Genre, Länge (s)
 RATE = 44100
 
 def song(bpm, f, vol, length, seed):
+    """Aufbau wie ein DJ-Track: Intro/Outro nur Schlagzeug (16 s), Hauptteil mit Bass + Akkord,
+    ein Break (ohne Bassdrum) bei ca. 35-45 %, 3 s Stille am Schluss."""
     rng = np.random.default_rng(seed)
     t = np.arange(int(RATE * length)) / RATE
     p = 60.0 / bpm
     bt = np.mod(t, p)
     body = (t >= 16) & (t < length - 16)
-    kick = 0.55 * body * np.exp(-bt * 14) * np.sin(2 * np.pi * 55 * bt)
-    hats = 0.06 * ((t >= 8) & (t < length - 8)) * (rng.random(t.size) - 0.5) * np.exp(-np.mod(t + p / 2, p) * 60)
-    chord = 0.07 * np.sin(2 * np.pi * f * t) + 0.05 * np.sin(2 * np.pi * f * 1.2599 * t) \
-        + 0.05 * np.sin(2 * np.pi * f * 1.4983 * t) + 0.06 * np.sin(2 * np.pi * f / 2 * t)
-    x = vol * (kick + hats + chord)
+    brk = (t >= length * 0.35) & (t < length * 0.45)
+    drums = (t >= 2) & ~brk
+    kick = 0.55 * drums * np.exp(-bt * 14) * np.sin(2 * np.pi * 55 * bt)
+    hats = 0.06 * drums * (rng.random(t.size) - 0.5) * np.exp(-np.mod(t + p / 2, p) * 60)
+    bass = 0.10 * (body & ~brk) * np.sin(2 * np.pi * f / 4 * t) * (np.mod(t + p / 2, p) < p * 0.4)
+    chord = (0.07 * np.sin(2 * np.pi * f * t) + 0.05 * np.sin(2 * np.pi * f * 1.2599 * t)
+             + 0.05 * np.sin(2 * np.pi * f * 1.4983 * t) + 0.06 * np.sin(2 * np.pi * f / 2 * t))
+    # Akkord als rhythmische Stabs (wie Synth-Pads mit Sidechain), im Break liegend
+    stab = np.where(brk, 1.0, 0.35 + 0.65 * np.clip(np.mod(t, p) / p * 2, 0, 1))
+    x = vol * (kick + hats + bass + chord * body * stab)
     x = np.concatenate([x, np.zeros(RATE * 3)])                   # 3 s Stille am Schluss
     pcm = (np.clip(x, -1, 1) * 32767).astype("<i2")
     return np.repeat(pcm, 2)                                       # Stereo
+
 
 def id3(frames):
     """Minimaler ID3v2.3-Tag (Titel, Interpret, Genre) – Android liest daraus die Song-Infos."""
@@ -47,9 +55,13 @@ def id3(frames):
 
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else "songs"
+    raw = "--raw" in sys.argv          # zusätzlich rohe PCM-Dateien (für den PC-Test der Analyse)
     os.makedirs(out, exist_ok=True)
     for i, (bpm, f, vol, genre, length) in enumerate(SONGS, 1):
         pcm = song(bpm, f, vol, length, i)
+        if raw:
+            pcm.tofile(os.path.join(out, f"soak_{i:02d}.pcm"))
+            continue
         name = os.path.join(out, f"soak_{i:02d}.mp3")
         enc = lameenc.Encoder()
         enc.set_bit_rate(160)

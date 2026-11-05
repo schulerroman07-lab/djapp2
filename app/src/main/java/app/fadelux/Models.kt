@@ -143,6 +143,21 @@ class DeckModel(val index: Int) {
         return liveBuf[0].toInt()
     }
 
+    /**
+     * Ladezustand, Dauer, BPM und ersten Beat sofort aus der Engine übernehmen.
+     * Nötig, weil die Anzeige-Aktualisierung im Hintergrund nur alle 100 ms läuft –
+     * sonst plant der Auto-DJ direkt nach dem Laden mit veralteten Werten (BPM 0).
+     */
+    fun syncFromEngine(): Int {
+        NativeEngine.getDeckState(index, liveBuf)
+        val s = liveBuf[0].toInt()
+        loadState = s
+        duration = liveBuf[3]
+        bpm = liveBuf[4].toFloat()
+        firstBeat = liveBuf[5].toFloat()
+        return s
+    }
+
     /** Spielt das Deck gerade? (direkt aus der Engine) */
     fun livePlaying(): Boolean {
         NativeEngine.getDeckState(index, liveBuf)
