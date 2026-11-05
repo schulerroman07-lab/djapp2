@@ -5,7 +5,8 @@ Intro/Outro ohne Bassdrum, Hauptteil mit Beat, Hi-Hat auf dem Offbeat, Dur-Dreik
 verschiedene Tempi/Tonarten/Lautstärken/Genre-Tags, 3 s Stille am Schluss.
 Aufruf: python3 make_songs.py <Zielordner>
 """
-import os, subprocess, sys
+import os, struct, sys
+import lameenc
 import numpy as np
 
 SONGS = [  # BPM, Grundton (Hz), Lautstärke, Genre, Länge (s)
@@ -33,16 +34,32 @@ def song(bpm, f, vol, length, seed):
     pcm = (np.clip(x, -1, 1) * 32767).astype("<i2")
     return np.repeat(pcm, 2)                                       # Stereo
 
+def id3(frames):
+    """Minimaler ID3v2.3-Tag (Titel, Interpret, Genre) – Android liest daraus die Song-Infos."""
+    body = b""
+    for fid, text in frames.items():
+        data = b"\x00" + text.encode("latin-1")
+        body += fid.encode() + struct.pack(">I", len(data)) + b"\x00\x00" + data
+    n = len(body)
+    size = bytes([(n >> 21) & 0x7F, (n >> 14) & 0x7F, (n >> 7) & 0x7F, n & 0x7F])
+    return b"ID3\x03\x00\x00" + size + body
+
+
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else "songs"
     os.makedirs(out, exist_ok=True)
     for i, (bpm, f, vol, genre, length) in enumerate(SONGS, 1):
         pcm = song(bpm, f, vol, length, i)
         name = os.path.join(out, f"soak_{i:02d}.mp3")
-        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "s16le", "-ar", str(RATE), "-ac", "2", "-i", "-",
-                        "-c:a", "libmp3lame", "-b:a", "160k",
-                        "-metadata", f"title=Soak {i:02d} ({bpm} BPM)", "-metadata", "artist=Generator",
-                        "-metadata", f"genre={genre}", name], input=pcm.tobytes(), check=True)
+        enc = lameenc.Encoder()
+        enc.set_bit_rate(160)
+        enc.set_in_sample_rate(RATE)
+        enc.set_channels(2)
+        enc.set_quality(5)
+        mp3 = enc.encode(pcm.tobytes()) + enc.flush()
+        tag = id3({"TIT2": f"Soak {i:02d} ({bpm} BPM)", "TPE1": "Generator", "TCON": genre})
+        with open(name, "wb") as f:
+            f.write(tag + mp3)
     print(len(os.listdir(out)), "Songs")
 
 if __name__ == "__main__":
