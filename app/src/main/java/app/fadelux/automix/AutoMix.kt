@@ -160,8 +160,16 @@ class AutoMix(
      */
     fun insertWish(t: Track): Boolean {
         val tr = refresh(t)
-        if (tr.id == current?.id || tr.id == nextTrack?.id || queue.any { it.id == tr.id }) return false
+        if (tr.id == current?.id || tr.id == nextTrack?.id) return false
         if (played.takeLast(10).any { it.id == tr.id }) return false
+        // Schon in der Warteschlange? Steht er weit hinten, nach vorne holen (Gäste wollen ihn bald hören)
+        val existing = queue.indexOfFirst { it.id == tr.id }
+        if (existing in 0..4) {
+            if (tr.id !in pinned) pinned += tr.id
+            log("Wunsch schon bald dran: ${tr.title} (Platz ${existing + 1})")
+            return true
+        }
+        if (existing >= 0) { queue.removeAt(existing); pinned.remove(tr.id) }
         val window = queue.take(5)
         val headPinned = queue.firstOrNull()?.id?.let { it in pinned } == true
         val gap = QueueFlow.bestGap(window, flowRef(), tr, headPinned)

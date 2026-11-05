@@ -14,8 +14,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLEncoder
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -140,18 +138,22 @@ class DeviceSoakTest {
         val url = main { vm.wishUrl }
         val wishTrack = main { vm.tracks.value.lastOrNull { t -> t.id != vm.autoMix.current?.id && vm.autoMix.queue.take(6).none { it.id == t.id } } }
         if (url.isNotEmpty() && wishTrack != null) {
-            val wishUrl = URL(url.replace(Regex("https?://[^/:]+"), "http://127.0.0.1").trimEnd('/') + "/wish")
+            // Wie ein Gast-Handy: HTTP-POST direkt über einen Socket (die App selbst darf kein
+            // unverschlüsseltes HTTP benutzen – der Browser des Gastes schon)
+            val port = Regex(":(\\d+)").findAll(url).lastOrNull()?.groupValues?.get(1)?.toInt() ?: 8080
+            val body = "song=" + URLEncoder.encode("${wishTrack.artist} – ${wishTrack.title}", "UTF-8") + "&text="
             val code = runCatching {
-                (wishUrl.openConnection() as HttpURLConnection).run {
-                    requestMethod = "POST"; doOutput = true
-                    setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-                    outputStream.write(("song=" + URLEncoder.encode("${wishTrack.artist} – ${wishTrack.title}", "UTF-8") + "&text=").toByteArray())
-                    responseCode
+                java.net.Socket("127.0.0.1", port).use { sock ->
+                    sock.soTimeout = 10_000
+                    val req = "POST /wish HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/x-www-form-urlencoded\r\n" +
+                        "Content-Length: ${body.toByteArray().size}\r\nConnection: close\r\n\r\n$body"
+                    sock.getOutputStream().apply { write(req.toByteArray()); flush() }
+                    sock.getInputStream().bufferedReader().readLine() ?: "keine Antwort"
                 }
-            }.getOrElse { -1 }
+            }.getOrElse { "Fehler: ${it.message}" }
             val queued = waitFor(15_000, "Wunsch eingereiht") { main { vm.queuedWishIds.isNotEmpty() } }
             val pos = main { vm.autoMix.queue.indexOfFirst { it.id == wishTrack.id } }
-            log("Gästewunsch '${wishTrack.title}': HTTP $code, eingereiht=$queued an Platz ${pos + 1} (von ${main { vm.autoMix.queue.size }})")
+            log("Gästewunsch '${wishTrack.title}': Antwort '$code', eingereiht=$queued an Platz ${pos + 1} (von ${main { vm.autoMix.queue.size }})")
             assertTrue("Wunsch passend unter den nächsten Songs", queued && pos in 0..5)
         } else log("Gästewunsch: übersprungen (url='$url')")
 
