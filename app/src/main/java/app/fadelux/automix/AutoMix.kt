@@ -1,6 +1,7 @@
 package app.fadelux.automix
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -70,6 +71,12 @@ class AutoMix(
         private set
     /** Offene Frage "Jetzt mischen?" (Früh-Übergang) oder null. */
     var earlyOffer by mutableStateOf<EarlyOffer?>(null)
+        private set
+
+    /** Zähler für Diagnose/Gerätetest: fertige Übergänge und gestellte Früh-Übergang-Fragen. */
+    var transitionsDone by mutableIntStateOf(0)
+        private set
+    var earlyOffersShown = 0
         private set
 
     /** Protokoll zum Testen: welcher Übergang wann und warum (neueste zuerst). */
@@ -521,6 +528,7 @@ class AutoMix(
                         earlyAnswer = true
                     } else {
                         earlyOffer = EarlyOffer(next.title, System.currentTimeMillis() + 10_000, eb)
+                        earlyOffersShown++
                         log("Frage: Passt perfekt – jetzt mischen?")
                     }
                 }
@@ -589,6 +597,7 @@ class AutoMix(
         nextTrack = null
         current = next
         currentDeck = nxt
+        transitionsDone++
         log("Übergang fertig: ${next.title} läuft (Tempo ${"%+.1f".format((b.tempo - 1f) * 100)} %)")
         // Tempo des neuen Songs fliessend (über 8–16 Takte) zurück zum Original
         if (TempoRamp.needed(b.tempo)) {

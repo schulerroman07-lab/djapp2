@@ -118,6 +118,13 @@ double Engine::latencyMs() {
     return l ? l.value() : 0;
 }
 
+int Engine::xRuns() {
+    std::lock_guard<std::mutex> lk(streamMutex_);
+    if (!main_) return -1;
+    auto r = main_->getXRunCount();
+    return r ? r.value() : -1;
+}
+
 int Engine::channelCount() {
     std::lock_guard<std::mutex> lk(streamMutex_);
     return main_ ? main_->getChannelCount() : 0;

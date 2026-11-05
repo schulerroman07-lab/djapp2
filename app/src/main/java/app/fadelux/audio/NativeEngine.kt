@@ -57,6 +57,8 @@ object NativeEngine {
 
     /** Füllt out (4 Werte): Abtastrate, Latenz ms, Kanäle, Master-Pegel */
     external fun getEngineInfo(out: DoubleArray)
+    /** Aussetzer (Puffer-Unterläufe) seit Start des Audio-Streams, -1 = unbekannt (für Tests/Diagnose). */
+    external fun getXRuns(): Int
 
     // --- Für Auto-Mix-Übergänge ---
     external fun setEchoFeedback(deck: Int, feedback: Float)

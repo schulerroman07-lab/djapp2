@@ -147,6 +147,9 @@ JNIEXPORT jfloatArray JNICALL FN(getPeaks)(JNIEnv* env, jobject, jint d) {
     return arr;
 }
 
+// Aussetzer (Puffer-Unterläufe) des Audio-Streams, -1 = unbekannt
+JNIEXPORT jint JNICALL FN(getXRuns)(JNIEnv*, jobject) { return g ? g->xRuns() : -1; }
+
 // [Abtastrate, Latenz ms, Kanäle, Master-Pegel]
 JNIEXPORT void JNICALL FN(getEngineInfo)(JNIEnv* env, jobject, jdoubleArray out) {
     if (!g) return;

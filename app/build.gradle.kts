@@ -16,6 +16,8 @@ android {
     defaultConfig {
         applicationId = "app.fadelux"
         minSdk = 29
+        // Gerätetest (Emulator auf GitHub): app/src/androidTest
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         targetSdk = 35
         // Auf GitHub zählt die Versionsnummer automatisch hoch
         val build = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
@@ -127,4 +129,10 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
 
     testImplementation("junit:junit:4.13.2")
+
+    // Gerätetest im Emulator (Dauerbetrieb, Hintergrund, Übergänge, Wünsche)
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
 }

@@ -24,7 +24,8 @@ class AudioStream { public:
   int getSampleRate() const { return rate; } int getChannelCount() const { return ch; }
   int getFramesPerBurst() const { return 192; } Result setBufferSizeInFrames(int) { return Result::OK; }
   Result requestStart() { return Result::OK; } Result stop() { return Result::OK; } Result close() { return Result::OK; }
-  ResultWithValue<double> calculateLatencyMillis() { return {20.0}; } };
+  ResultWithValue<double> calculateLatencyMillis() { return {20.0}; }
+  ResultWithValue<int32_t> getXRunCount() { return {0}; } };
 class AudioStreamBuilder { public:
   int ch = 2;
   AudioStreamBuilder* setDirection(Direction) { return this; } AudioStreamBuilder* setPerformanceMode(PerformanceMode) { return this; }

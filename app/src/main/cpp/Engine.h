@@ -57,6 +57,8 @@ public:
     float masterLevel() const { return masterLevel_.load(); }
     double latencyMs();
     int channelCount();
+    // Aussetzer (Puffer-Unterläufe) seit dem Öffnen des Audio-Streams, -1 = unbekannt
+    int xRuns();
 
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream* stream, void* data,
                                           int32_t numFrames) override;
