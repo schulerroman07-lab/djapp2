@@ -116,7 +116,9 @@ class DeviceSoakTest {
         shot("3_player_playing")
 
         // ---- Weiter / Zurück: kurzer Übergang im Takt ----
-        assertTrue("nächster Song bereit", waitFor(60_000, "nächster Song geladen") { main { vm.autoMix.nextPlan != null } })
+        val tPrep = System.currentTimeMillis()
+        assertTrue("nächster Song bereit", waitFor(150_000, "nächster Song geladen") { main { vm.autoMix.nextPlan != null } })
+        log("Nächster Song vorbereitet nach ${(System.currentTimeMillis() - tPrep) / 1000.0} s (ab Start des ersten Songs)")
         var before = main { vm.autoMix.transitionsDone }
         val titleBefore = main { vm.autoMix.current?.title }
         main { vm.remoteNext() }

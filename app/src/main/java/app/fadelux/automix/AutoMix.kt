@@ -326,10 +326,15 @@ class AutoMix(
     private suspend fun waitLoaded(d: DeckModel, playable: Boolean = false): Boolean {
         val end = System.currentTimeMillis() + 180_000
         while (System.currentTimeMillis() < end) {
-            val s = d.loadState
+            // direkt aus der Engine lesen (die Anzeige wird im Hintergrund seltener aktualisiert)
+            val s = d.liveLoadState()
             if (s == 3) return false
-            if (s == 2 && d.peaks.isNotEmpty()) return true
-            if (playable && s == 4) return true
+            if (s == 2) {
+                if (d.peaks.isEmpty()) d.peaks = NativeEngine.getPeaks(d.index)
+                d.loadState = 2
+                if (d.peaks.isNotEmpty()) return true
+            }
+            if (playable && s == 4) { d.loadState = 4; return true }
             if (prevRequest || skip) return false
             delay(30)
         }

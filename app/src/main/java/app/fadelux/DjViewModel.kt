@@ -256,6 +256,8 @@ class DjViewModel private constructor(private val app: Application) {
         analyzeJob = scope.launch {
             var sinceArrange = 0
             while (isActive) {
+                // Während ein Song für die Wiedergabe lädt, hat der Vorrang (nicht um den Decoder konkurrieren)
+                while (decks.any { it.loadState == 1 || it.loadState == 4 }) delay(300)
                 val queued = autoMix.queue.map { it.id } + listOfNotNull(autoMix.nextTrack?.id)
                 val t = library.analyzeNext(queued) ?: break
                 trackIndex = trackIndex + (t.id to t)

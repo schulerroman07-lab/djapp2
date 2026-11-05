@@ -73,66 +73,76 @@ bool decodeAudio(int fd, int64_t length, const PcmChunkCallback& onChunk,
     double decodedFrames = 0;
     bool ok = true;
 
+    // Pipeline voll ausnutzen: alle freien Eingabe-Puffer füllen und alle fertigen Ausgaben abholen,
+    // nur wenn gar nichts zu tun ist kurz warten. (Früher: 1 MP3-Rahmen pro Runde + Warten → nur
+    // ca. 5× Echtzeit; so ist das Dekodieren um ein Vielfaches schneller.)
     while (!outputDone) {
         if (cancel && cancel->load()) {
             ok = false;
             break;
         }
-        if (!inputDone) {
-            ssize_t inIdx = AMediaCodec_dequeueInputBuffer(codec, 5000);
-            if (inIdx >= 0) {
-                size_t cap = 0;
-                uint8_t* buf = AMediaCodec_getInputBuffer(codec, inIdx, &cap);
-                ssize_t size = AMediaExtractor_readSampleData(ex, buf, cap);
-                if (size < 0) {
-                    AMediaCodec_queueInputBuffer(codec, inIdx, 0, 0, 0,
-                                                 AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM);
-                    inputDone = true;
-                } else {
-                    int64_t pts = AMediaExtractor_getSampleTime(ex);
-                    AMediaCodec_queueInputBuffer(codec, inIdx, 0, size, pts, 0);
-                    AMediaExtractor_advance(ex);
-                }
+        bool progress = false;
+        while (!inputDone) {
+            ssize_t inIdx = AMediaCodec_dequeueInputBuffer(codec, 0);
+            if (inIdx < 0) break;
+            size_t cap = 0;
+            uint8_t* buf = AMediaCodec_getInputBuffer(codec, inIdx, &cap);
+            ssize_t size = AMediaExtractor_readSampleData(ex, buf, cap);
+            if (size < 0) {
+                AMediaCodec_queueInputBuffer(codec, inIdx, 0, 0, 0, AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM);
+                inputDone = true;
+            } else {
+                int64_t pts = AMediaExtractor_getSampleTime(ex);
+                AMediaCodec_queueInputBuffer(codec, inIdx, 0, size, pts, 0);
+                AMediaExtractor_advance(ex);
             }
+            progress = true;
         }
 
-        AMediaCodecBufferInfo info;
-        ssize_t outIdx = AMediaCodec_dequeueOutputBuffer(codec, &info, 5000);
-        if (outIdx >= 0) {
-            if (info.flags & AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM) outputDone = true;
-            size_t outSize = 0;
-            uint8_t* out = AMediaCodec_getOutputBuffer(codec, outIdx, &outSize);
-            if (out && info.size > 0 && channels > 0) {
-                const uint8_t* data = out + info.offset;
-                size_t bytesPerSample = (encoding == kEncodingFloat) ? 4 : 2;
-                size_t frames = info.size / (bytesPerSample * channels);
-                stereo.resize(frames * 2);
-                for (size_t f = 0; f < frames; f++) {
-                    float l, r;
-                    if (encoding == kEncodingFloat) {
-                        const float* s = reinterpret_cast<const float*>(data) + f * channels;
-                        l = s[0];
-                        r = channels > 1 ? s[1] : s[0];
-                        stereo[f * 2] = (int16_t)std::fmax(-32768.f, std::fmin(32767.f, l * 32767.f));
-                        stereo[f * 2 + 1] = (int16_t)std::fmax(-32768.f, std::fmin(32767.f, r * 32767.f));
-                    } else {
-                        const int16_t* s = reinterpret_cast<const int16_t*>(data) + f * channels;
-                        stereo[f * 2] = s[0];
-                        stereo[f * 2 + 1] = channels > 1 ? s[1] : s[0];
+        while (!outputDone) {
+            AMediaCodecBufferInfo info;
+            ssize_t outIdx = AMediaCodec_dequeueOutputBuffer(codec, &info, progress ? 0 : 2000);
+            if (outIdx >= 0) {
+                progress = true;
+                if (info.flags & AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM) outputDone = true;
+                size_t outSize = 0;
+                uint8_t* out = AMediaCodec_getOutputBuffer(codec, outIdx, &outSize);
+                if (out && info.size > 0 && channels > 0) {
+                    const uint8_t* data = out + info.offset;
+                    size_t bytesPerSample = (encoding == kEncodingFloat) ? 4 : 2;
+                    size_t frames = info.size / (bytesPerSample * channels);
+                    stereo.resize(frames * 2);
+                    for (size_t f = 0; f < frames; f++) {
+                        float l, r;
+                        if (encoding == kEncodingFloat) {
+                            const float* s = reinterpret_cast<const float*>(data) + f * channels;
+                            l = s[0];
+                            r = channels > 1 ? s[1] : s[0];
+                            stereo[f * 2] = (int16_t)std::fmax(-32768.f, std::fmin(32767.f, l * 32767.f));
+                            stereo[f * 2 + 1] = (int16_t)std::fmax(-32768.f, std::fmin(32767.f, r * 32767.f));
+                        } else {
+                            const int16_t* s = reinterpret_cast<const int16_t*>(data) + f * channels;
+                            stereo[f * 2] = s[0];
+                            stereo[f * 2 + 1] = channels > 1 ? s[1] : s[0];
+                        }
                     }
+                    if (frames > 0) onChunk(stereo.data(), frames, sampleRate);
+                    decodedFrames += frames;
+                    if (maxSeconds > 0 && decodedFrames / sampleRate >= maxSeconds) outputDone = true;
                 }
-                if (frames > 0) onChunk(stereo.data(), frames, sampleRate);
-                decodedFrames += frames;
-                if (maxSeconds > 0 && decodedFrames / sampleRate >= maxSeconds) outputDone = true;
+                AMediaCodec_releaseOutputBuffer(codec, outIdx, false);
+            } else if (outIdx == AMEDIACODEC_INFO_OUTPUT_FORMAT_CHANGED) {
+                AMediaFormat* of = AMediaCodec_getOutputFormat(codec);
+                AMediaFormat_getInt32(of, AMEDIAFORMAT_KEY_SAMPLE_RATE, &sampleRate);
+                AMediaFormat_getInt32(of, AMEDIAFORMAT_KEY_CHANNEL_COUNT, &channels);
+                int32_t enc = kEncodingPcm16;
+                if (AMediaFormat_getInt32(of, "pcm-encoding", &enc)) encoding = enc;
+                AMediaFormat_delete(of);
+            } else if (outIdx == AMEDIACODEC_INFO_OUTPUT_BUFFERS_CHANGED) {
+                continue;
+            } else {
+                break;   // gerade nichts fertig → wieder Eingaben füllen
             }
-            AMediaCodec_releaseOutputBuffer(codec, outIdx, false);
-        } else if (outIdx == AMEDIACODEC_INFO_OUTPUT_FORMAT_CHANGED) {
-            AMediaFormat* of = AMediaCodec_getOutputFormat(codec);
-            AMediaFormat_getInt32(of, AMEDIAFORMAT_KEY_SAMPLE_RATE, &sampleRate);
-            AMediaFormat_getInt32(of, AMEDIAFORMAT_KEY_CHANNEL_COUNT, &channels);
-            int32_t enc = kEncodingPcm16;
-            if (AMediaFormat_getInt32(of, "pcm-encoding", &enc)) encoding = enc;
-            AMediaFormat_delete(of);
         }
     }
 

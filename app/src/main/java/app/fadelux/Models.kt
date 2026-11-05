@@ -137,6 +137,12 @@ class DeckModel(val index: Int) {
         return liveBuf[2]
     }
 
+    /** Ladezustand direkt aus der Engine (0 leer, 1 lädt, 2 bereit, 3 Fehler, 4 spielbar). */
+    fun liveLoadState(): Int {
+        NativeEngine.getDeckState(index, liveBuf)
+        return liveBuf[0].toInt()
+    }
+
     /** Spielt das Deck gerade? (direkt aus der Engine) */
     fun livePlaying(): Boolean {
         NativeEngine.getDeckState(index, liveBuf)
