@@ -142,12 +142,14 @@ fun PlayerScreen(vm: DjViewModel, onMenu: (MenuTarget) -> Unit, onPicker: () -> 
 @Composable
 fun PlayerContent(ui: PlayerUi, act: PlayerActions) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val wide = maxWidth > maxHeight
+        val w = maxWidth
+        val h = maxHeight
+        val wide = w > h
         Column(Modifier.fillMaxSize()) {
             TopBar(ui.newWishes, onQr = { act.onMenu(MenuTarget.WISHES) }, onMenu = act.onMenu)
             if (wide) {
                 Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    val coverSize = min(maxHeight * 0.72f, maxWidth * 0.4f)
+                    val coverSize = min(h * 0.72f, w * 0.4f)
                     Box(Modifier.weight(0.45f), contentAlignment = Alignment.Center) {
                         BigCover(ui.track, coverSize, pulse = ui.pulse)
                     }
@@ -161,7 +163,7 @@ fun PlayerContent(ui: PlayerUi, act: PlayerActions) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    val coverSize = min(maxWidth * 0.8f, maxHeight * 0.42f)
+                    val coverSize = min(w * 0.8f, h * 0.42f)
                     BigCover(ui.track, coverSize, pulse = ui.pulse)
                     Spacer(Modifier.height(22.dp))
                     PlayerBody(ui, act)

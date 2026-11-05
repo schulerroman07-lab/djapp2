@@ -9,7 +9,7 @@ import kotlin.math.min
  *  - Tempo-Abstand: klein → Beats angleichen (Blends möglich); gross → Echo-Out, Schnitt oder Hall
  *  - Gesang: nie zwei Gesangsteile übereinander (sonst kürzer oder ohne Überlappung)
  *  - Intro/Outro-Länge, Energie-Verlauf und Stil (ruhig / ausgewogen / Club)
- *  - Abwechslung: derselbe Typ nicht mehrmals hintereinander
+ *  - Abwechslung (Rotation): derselbe Typ nie direkt hintereinander, lange nicht benutzte Typen bevorzugt
  * Alles im Takt und an Phrasengrenzen (8/16/32 Takte).
  */
 object TransitionPlanner {
@@ -288,7 +288,7 @@ object TransitionPlanner {
             )
             MixStyle.BALANCED -> mapOf(
                 TransitionType.BASS_SWAP to 3.0, TransitionType.FILTER to 2.2, TransitionType.ECHO_OUT to 2.0,
-                TransitionType.LOOP to 1.8, TransitionType.REVERB_WASH to 1.5, TransitionType.CUT to 1.0,
+                TransitionType.LOOP to 2.1, TransitionType.REVERB_WASH to 1.5, TransitionType.CUT to 1.0,
                 TransitionType.LONG_BLEND to 3.2,
             )
             MixStyle.CLUB -> mapOf(
@@ -312,14 +312,20 @@ object TransitionPlanner {
             if (aHasBreakBefore && t == TransitionType.CUT) s *= 2.0
             // Kurzes Intro beim neuen Song: lange Blends wirken leer
             if (shortIntro && t in blendTypes) s *= 0.6
-            if (length >= 16 && t == TransitionType.LOOP) s *= 0.8
+            if (length >= 32 && t == TransitionType.LOOP) s *= 0.8
             // Tonarten reiben → keine langen Überlagerungen; Echo/Filter kaschieren das besser
             if (keyFit < 0.3f && (t == TransitionType.BASS_SWAP || t == TransitionType.LOOP)) s *= 0.6
             if (keyFit < 0.3f && (t == TransitionType.ECHO_OUT || t == TransitionType.FILTER)) s *= 1.3
             if (keyFit >= 0.85f && t == TransitionType.LONG_BLEND) s *= 1.3
-            // Abwechslung
-            if (recent.lastOrNull() == t) s *= 0.2
-            else if (recent.takeLast(3).contains(t)) s *= 0.6
+            // Abwechslung (Rotation): gerade benutzt → stark abwerten, lange nicht benutzt → leicht bevorzugen
+            val last = recent.lastIndexOf(t)
+            val since = if (last < 0) 8 else recent.size - 1 - last
+            s *= when (since) {
+                0 -> 0.15
+                1 -> 0.45
+                2 -> 0.75
+                else -> 1.0 + 0.07 * min(since, 8)
+            }
             return s
         }
         return allowed.maxBy { score(it) }
