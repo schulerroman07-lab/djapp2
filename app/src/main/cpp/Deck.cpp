@@ -192,7 +192,11 @@ void Reverb::prepare(int rate) {
 }
 
 void Deck::setPlaying(bool p) {
-    if (p && state_.load() != LoadState::Ready) return;
+    // Spielen geht, sobald der Anfang dekodiert ist (Playable) – der Rest lädt während der Musik
+    if (p) {
+        LoadState st = state_.load();
+        if (st != LoadState::Ready && st != LoadState::Playable) return;
+    }
     playing_.store(p);
 }
 
