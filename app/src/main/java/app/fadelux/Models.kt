@@ -16,7 +16,7 @@ class DeckModel(val index: Int) {
 
     // Anzeige (wird laufend aus der Engine aktualisiert)
     var track by mutableStateOf<Track?>(null)
-    var loadState by mutableIntStateOf(0)   // 0 leer, 1 lädt, 2 bereit, 3 Fehler
+    var loadState by mutableIntStateOf(0)   // 0 leer, 1 lädt, 2 bereit, 3 Fehler, 4 spielbar (lädt noch fertig)
     var playing by mutableStateOf(false)
     var position by mutableStateOf(0.0)
     var duration by mutableStateOf(0.0)
@@ -88,12 +88,12 @@ class DeckModel(val index: Int) {
     }
 
     fun togglePlay() {
-        if (loadState != 2) return
+        if (loadState != 2 && loadState != 4) return
         NativeEngine.setPlaying(index, !playing)
     }
 
     fun play(on: Boolean) {
-        if (loadState == 2) NativeEngine.setPlaying(index, on)
+        if (loadState == 2 || loadState == 4) NativeEngine.setPlaying(index, on)
     }
 
     fun cuePress() = NativeEngine.cuePress(index)

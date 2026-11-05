@@ -318,19 +318,31 @@ class AutoMix(
 
     private fun side(deck: Int) = if (deck == 0) -1f else 1f
 
-    private suspend fun waitLoaded(d: DeckModel): Boolean =
-        withTimeoutOrNull(30_000) {
-            while (d.loadState != 2 || d.peaks.isEmpty()) {
-                if (d.loadState == 3) return@withTimeoutOrNull false
-                delay(30)
-            }
-            true
-        } ?: false
+    /**
+     * Warten, bis ein Deck bereit ist (ganz dekodiert + analysiert) bzw. – mit [playable] – schon
+     * spielen kann (Anfang dekodiert). Bricht ab bei Fehler, "Zurück"/"Überspringen" oder nach 3 Minuten
+     * (langsame Geräte brauchen manchmal lange – das ist kein Lesefehler).
+     */
+    private suspend fun waitLoaded(d: DeckModel, playable: Boolean = false): Boolean {
+        val end = System.currentTimeMillis() + 180_000
+        while (System.currentTimeMillis() < end) {
+            val s = d.loadState
+            if (s == 3) return false
+            if (s == 2 && d.peaks.isNotEmpty()) return true
+            if (playable && s == 4) return true
+            if (prevRequest || skip) return false
+            delay(30)
+        }
+        return false
+    }
 
-    /** Titel laden und warten, bis er bereit ist. */
-    private suspend fun loadInto(deck: Int, t: Track): Boolean {
+    /** Titel laden und warten, bis er bereit (bzw. spielbar) ist. */
+    private suspend fun loadInto(deck: Int, t: Track, playable: Boolean = false): Boolean {
+        val started = System.currentTimeMillis()
         if (!load(deck, t)) return false
-        return waitLoaded(decks[deck])
+        val ok = waitLoaded(decks[deck], playable)
+        if (ok) log("Geladen in ${"%.1f".format((System.currentTimeMillis() - started) / 1000.0)} s: ${t.title}")
+        return ok
     }
 
     /** Struktur des geladenen Titels (aus den Beat-Merkmalen der Engine). */
@@ -364,7 +376,8 @@ class AutoMix(
             while (true) {
                 if (queue.isEmpty()) { status = UiText(R.string.automix_empty); return }
                 val first = takeNext()
-                if (loadInto(0, first)) {
+                // Sofort starten, sobald der Anfang dekodiert ist – der Rest lädt während der Musik
+                if (loadInto(0, first, playable = true)) {
                     mixer.setCurve(false)
                     mixer.moveCrossfader(side(0))
                     decks[0].applyGain(1f)
@@ -431,13 +444,23 @@ class AutoMix(
             return null
         }
 
+        // ---- 0) Läuft A noch "teilweise geladen"? Erst fertig dekodieren/analysieren lassen ----
+        if (a.loadState == 4 && !waitLoaded(a)) {
+            if (prevRequest) { prevRequest = false; queueBackToPrevious(a, null); return cur }
+            if (a.loadState == 3) log("Fehler beim Laden von ${a.track?.title}")
+        }
+
         // ---- 1) Nächsten Titel laden (die Tempo-Rückführung von A läuft dabei weiter) ----
         val next = takeNext()
         nextTrack = next
         status = UiText(R.string.automix_next, next.title)
         if (!loadInto(nxt, next)) {
-            log("Nicht lesbar, übersprungen: ${next.title}")
             nextTrack = null
+            when {
+                prevRequest -> { prevRequest = false; queueBackToPrevious(a, next); return cur }
+                skip -> { skip = false; log("Übersprungen: ${next.title}"); return cur }
+            }
+            log(if (b.loadState == 3) "Nicht lesbar, übersprungen: ${next.title}" else "Laden dauert zu lange, übersprungen: ${next.title}")
             prevTransition = false
             return cur
         }

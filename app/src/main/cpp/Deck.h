@@ -64,7 +64,8 @@ private:
     int rate_ = 0;
 };
 
-enum class LoadState { Empty = 0, Loading = 1, Ready = 2, Error = 3 };
+// Playable = Anfang ist dekodiert und kann schon spielen, der Rest lädt noch (Analyse folgt bei Ready)
+enum class LoadState { Empty = 0, Loading = 1, Ready = 2, Error = 3, Playable = 4 };
 
 class Deck {
 public:
@@ -130,6 +131,7 @@ private:
     std::atomic<bool> cancelLoad_{false};
 
     std::atomic<LoadState> state_{LoadState::Empty};
+    std::atomic<bool> partial_{false};   // Titel ist erst teilweise dekodiert (wächst noch)
     std::atomic<bool> playing_{false};
     std::atomic<double> pos_{0};          // aktuelle Position (Frames) – nur Audio-Thread schreibt
     std::atomic<double> seekRequest_{-1};  // gewünschte neue Position (Frames)

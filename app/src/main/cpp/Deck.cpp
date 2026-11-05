@@ -1,5 +1,13 @@
 #include "Deck.h"
 
+#include <android/log.h>
+#include <chrono>
+
+#include "Decoder.h"
+#include "Resample.h"
+
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "Fadelux", __VA_ARGS__)
+
 #include <unistd.h>
 #include <algorithm>
 #include <cmath>
@@ -35,14 +43,77 @@ void Deck::load(int fd, int64_t length, int engineRate) {
     state_.store(LoadState::Loading);
 
     loader_ = std::thread([this, fd, length, engineRate]() {
-        auto t = std::make_unique<TrackData>();
-        t->rate = engineRate;
-        bool ok = decodeToRate(fd, length, engineRate, t->pcm, &cancelLoad_);
+        auto t0 = std::chrono::steady_clock::now();
+        // Schrittweise dekodieren: sobald die ersten Sekunden da sind, ist der Titel spielbar
+        // ("Playable"). Der spielbare Teil wächst, bis alles dekodiert und analysiert ist ("Ready").
+        std::vector<int16_t> src;
+        src.reserve((size_t)44100 * 2 * 60 * 6);
+        int srcRate = 44100;
+        size_t nextPublish = 0;     // Frames (Quelle), ab denen wieder veröffentlicht wird
+        bool published = false;
+
+        // Einen Titel (ganz oder teilweise) für den Audio-Thread einsetzen
+        auto install = [&](std::unique_ptr<TrackData> t, bool final) {
+            frames_.store(t->frames);
+            rate_.store(engineRate);
+            std::unique_ptr<TrackData> old;
+            {
+                std::lock_guard<std::mutex> lk(trackMutex_);
+                old = std::move(track_);
+                track_ = std::move(t);
+                if (!published) {           // erstes Einsetzen: von vorne
+                    seekRequest_.store(0);
+                    pos_.store(0);
+                }
+                partial_.store(!final);
+            }
+            published = true;
+            // 'old' wird hier (ausserhalb des Audio-Threads) freigegeben
+        };
+        auto publishPartial = [&]() {
+            auto t = std::make_unique<TrackData>();
+            t->rate = engineRate;
+            resampleTo(src, src.size() / 2, srcRate, engineRate, t->pcm);
+            t->frames = t->pcm.size() / 2;
+            bool first = !published;
+            if (first) {
+                loopOn_.store(false);
+                bpm_.store(0);
+                firstBeat_.store(0);
+                cue_.store(0);
+            }
+            install(std::move(t), false);
+            if (first) {
+                state_.store(LoadState::Playable);
+                LOGI("Titel spielbar nach %.2f s", std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
+            }
+        };
+
+        bool ok = decodeAudio(
+            fd, length,
+            [&](const int16_t* s, size_t frames, int rate) {
+                srcRate = rate;
+                src.insert(src.end(), s, s + frames * 2);
+                size_t have = src.size() / 2;
+                if (nextPublish == 0) nextPublish = (size_t)rate * 6;          // nach 6 s erstmals spielbar
+                if (have >= nextPublish && !cancelLoad_.load()) {
+                    publishPartial();
+                    nextPublish = (size_t)(have * 1.6);                         // danach wachsend (wenig Mehraufwand)
+                }
+            },
+            &cancelLoad_, 60 * 30);  // max. 30 Minuten pro Titel
         close(fd);
-        if (!ok || cancelLoad_.load()) {
-            if (!cancelLoad_.load()) state_.store(LoadState::Error);
+        if (cancelLoad_.load()) return;
+        if (!ok && !published) {
+            state_.store(LoadState::Error);
             return;
         }
+        double decodeSec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+
+        auto t = std::make_unique<TrackData>();
+        t->rate = engineRate;
+        resampleTo(src, src.size() / 2, srcRate, engineRate, t->pcm);
+        std::vector<int16_t>().swap(src);   // Speicher sofort freigeben
         t->frames = t->pcm.size() / 2;
 
         // BPM und ersten Beat erkennen
@@ -76,23 +147,16 @@ void Deck::load(int fd, int64_t length, int engineRate) {
             peaks_ = t->peaks;
             featuresCopy_ = t->features;
         }
-        loopOn_.store(false);
-        frames_.store(t->frames);
-        rate_.store(engineRate);
+        if (!published) {
+            loopOn_.store(false);
+            cue_.store(0);
+        }
         bpm_.store(t->bpm);
         firstBeat_.store(t->firstBeat);
-        cue_.store(0);
-
-        std::unique_ptr<TrackData> old;
-        {
-            std::lock_guard<std::mutex> lk(trackMutex_);
-            old = std::move(track_);
-            track_ = std::move(t);
-            seekRequest_.store(0);
-            pos_.store(0);
-        }
+        install(std::move(t), true);
         state_.store(LoadState::Ready);
-        // 'old' wird hier (ausserhalb des Audio-Threads) freigegeben
+        LOGI("Titel bereit: dekodiert in %.2f s, gesamt %.2f s", decodeSec,
+             std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
     });
 }
 
@@ -247,7 +311,7 @@ void Deck::renderSource(TrackData* t, float* out, int numFrames, double& pos) {
         // "Vinyl"-Modus: schneller = höher (einfaches Umrechnen)
         for (int i = 0; i < numFrames; i++) {
             if (pos >= end) {
-                playing_.store(false);
+                if (!partial_.load()) playing_.store(false);   // teilweise geladen: warten, nicht stoppen
                 break;
             }
             long i0 = (long)pos;
@@ -273,7 +337,7 @@ void Deck::renderSource(TrackData* t, float* out, int numFrames, double& pos) {
     }
     for (int i = 0; i < numFrames; i++) {
         if (wsolaIn_ >= end) {
-            playing_.store(false);
+            if (!partial_.load()) playing_.store(false);   // teilweise geladen: warten, nicht stoppen
             break;
         }
         if (fifoRead_ >= kHop) {

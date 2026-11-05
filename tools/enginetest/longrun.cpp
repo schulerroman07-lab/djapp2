@@ -37,7 +37,15 @@ bool decodeToRate(int, int64_t, int rate, std::vector<int16_t>& out, const std::
     }
     return true;
 }
-bool decodeAudio(int, int64_t, const PcmChunkCallback&, const std::atomic<bool>*, double) { return false; }
+bool decodeAudio(int fd, int64_t len, const PcmChunkCallback& cb, const std::atomic<bool>* cancel, double) {
+    std::vector<int16_t> pcm;
+    decodeToRate(fd, len, 44100, pcm, cancel);          // 44,1 kHz wie bei MP3 → Engine rechnet auf 48 kHz um
+    for (size_t f = 0; f < pcm.size() / 2; f += 1152) {  // MP3-Rahmen
+        if (cancel && cancel->load()) return false;
+        cb(&pcm[f * 2], std::min<size_t>(1152, pcm.size() / 2 - f), 44100);
+    }
+    return true;
+}
 }
 
 static long rssKb() {

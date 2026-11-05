@@ -120,7 +120,9 @@ fun PlayerScreen(vm: DjViewModel, onMenu: (MenuTarget) -> Unit, onPicker: () -> 
     PlayerContent(
         PlayerUi(
             track = am.current, playing = vm.isPlaying, transitioning = am.transitioning,
-            position = { deck.position }, duration = deck.duration,
+            // Während der Titel noch lädt (spielt aber schon), die Länge aus der Bibliothek zeigen
+            position = { deck.position },
+            duration = if (deck.loadState == 4) (am.current?.durationMs ?: 0L) / 1000.0 else deck.duration,
             nextTrack = am.nextTrack ?: am.queue.firstOrNull(), nextPlan = am.nextPlan, queueSize = am.queue.size,
             countdown = { am.secondsUntilNext() }, newWishes = vm.newWishes, earlyOffer = am.earlyOffer,
             pulse = { vm.beatPulse() },

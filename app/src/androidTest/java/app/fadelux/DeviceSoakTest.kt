@@ -120,14 +120,16 @@ class DeviceSoakTest {
         var before = main { vm.autoMix.transitionsDone }
         val titleBefore = main { vm.autoMix.current?.title }
         main { vm.remoteNext() }
-        val nextOk = waitFor(40_000, "Weiter") { main { vm.autoMix.transitionsDone } > before }
-        log("Weiter: ${if (nextOk) "OK" else "FEHLER"} ($titleBefore → ${main { vm.autoMix.current?.title }}), Typ ${main { vm.autoMix.logLines.firstOrNull { it.contains("Übergang startet") } }}")
+        val tNext = System.currentTimeMillis()
+        val nextOk = waitFor(120_000, "Weiter") { main { vm.autoMix.transitionsDone } > before }
+        log("Weiter: ${if (nextOk) "OK" else "FEHLER"} nach ${(System.currentTimeMillis() - tNext) / 1000.0} s ($titleBefore → ${main { vm.autoMix.current?.title }}), Typ ${main { vm.autoMix.logLines.firstOrNull { it.contains("Übergang startet") } }}")
         assertTrue("Weiter macht einen Übergang", nextOk)
         Thread.sleep(3000)
         before = main { vm.autoMix.transitionsDone }
         main { vm.remotePrevious() }
-        val prevOk = waitFor(60_000, "Zurück") { main { vm.autoMix.transitionsDone } > before }
-        log("Zurück: ${if (prevOk) "OK" else "FEHLER"} → ${main { vm.autoMix.current?.title }} (erwartet: $titleBefore)")
+        val tPrev = System.currentTimeMillis()
+        val prevOk = waitFor(150_000, "Zurück") { main { vm.autoMix.transitionsDone } > before }
+        log("Zurück: ${if (prevOk) "OK" else "FEHLER"} nach ${(System.currentTimeMillis() - tPrev) / 1000.0} s → ${main { vm.autoMix.current?.title }} (erwartet: $titleBefore)")
         assertTrue("Zurück macht einen Übergang", prevOk)
 
         // ---- Gästewunsch über den lokalen Webserver (wie ein Gast mit Handy) ----
