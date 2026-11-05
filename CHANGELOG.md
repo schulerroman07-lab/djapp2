@@ -120,6 +120,32 @@ selbstständig durch. Gästewünsche per QR-Code werden passend eingebaut.
 - Bildschirmfotos (Hoch- und Querformat): Start-Animation, Player, Startansicht, Früh-Übergang-Frage,
   Als Nächstes, Bibliothek, Wünsche, Playlist, Einstellungen.
 
+### Nachträge aus dem Gerätetest (Android-Emulator auf GitHub)
+Der Gerätetest (`.github/workflows/device-test.yml`, Test `DeviceSoakTest`) startet ein echtes Android 14
+im Emulator mit echter Oboe-Audioausgabe, kopiert 18 Test-Songs (MP3) aufs Gerät und bedient die App
+wie ein Mensch: Start-Animation, Bibliothek, Play, Weiter, Zurück, Gästewunsch über den QR-Webserver,
+App verlassen (Hintergrund) und Dauerbetrieb. Gefundene und behobene Fehler:
+- **Erster Song startete erst nach bis zu 2 Minuten** (ganzer Song wurde zuerst dekodiert). Jetzt:
+  **schrittweises Laden** – der Song spielt, sobald 6 s dekodiert sind, der Rest wird im Hintergrund
+  nachgeladen und nahtlos übernommen. Ergebnis im Emulator: **1,7 s** von Play bis Musik.
+- **Dekodieren um ein Vielfaches schneller** (Decoder-Pipeline voll ausnutzen statt 1 Block pro Runde).
+- Songs, die länger als 30 s zum Laden brauchten, wurden als "nicht lesbar" übersprungen → Wartezeit
+  180 s; "Zurück"/"Weiter" bricht ein laufendes Laden sofort ab.
+- Die Engine nahm "Play" im Zustand "spielbar (lädt noch)" nicht an → behoben.
+- Bibliotheks-Analyse pausiert, solange ein Song für die Wiedergabe lädt (Wiedergabe hat Vorrang).
+- **Im Hintergrund wurde der nächste Übergang manchmal mit BPM 0 geplant** (die Anzeige-Werte werden
+  dort nur alle 100 ms aktualisiert) → dann gab es nur einen Echo-Ausklang statt eines Übergangs im
+  Takt. Jetzt liest der Auto-DJ BPM, Beat und Dauer direkt nach dem Laden aus der Engine.
+- Gästewunsch, der schon weit hinten in der Warteschlange stand, blieb dort → wird jetzt passend unter
+  die nächsten 5 Songs geholt.
+- Test-Songs wie DJ-Tracks gebaut (Intro/Outro nur Schlagzeug, Bass + Akkord, Break), damit Outro,
+  Break und Früh-Übergang realistisch geprüft werden.
+
+**Tonart-Test mit echten Aufnahmen** (`.github/workflows/key-test.yml`, 30 frei lizenzierte Aufnahmen
+von Wikimedia Commons mit bekannter Tonart): 50 % exakt, 10 % Paralleltonart, 20 % Quint-Nachbar,
+20 % falsch → **80 % für harmonisches Mischen brauchbar** (Paralleltonart und Quinte gelten beim
+Mischen als passend).
+
 ### Offene Punkte (2.0)
 1. **Nicht auf einem echten Handy getestet** – bitte `TESTEN.md` durchgehen (Abschnitte A–J).
 2. Der 2-Stunden-Dauertest lief am PC mit der echten Engine-Logik, aber ohne echtes Android-Audio
