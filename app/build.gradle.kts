@@ -6,8 +6,7 @@ plugins {
     id("app.cash.paparazzi")
 }
 
-// App-Name und Version stehen in gradle.properties (nur dort ändern)
-val appName: String = providers.gradleProperty("appName").getOrElse("Fadelux")
+// Version steht in gradle.properties; der App-Name NUR in res/values/strings.xml (app_name)
 val appVersion: String = providers.gradleProperty("appVersion").getOrElse("1.0")
 
 android {
@@ -22,8 +21,6 @@ android {
         val build = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
         versionCode = build
         versionName = "$appVersion.$build"
-        // Sichtbarer App-Name (R.string.app_name) – kommt aus gradle.properties
-        resValue("string", "app_name", appName)
 
         externalNativeBuild {
             cmake {
@@ -91,7 +88,6 @@ android {
         compose = true
         prefab = true
         buildConfig = true
-        resValues = true      // für den App-Namen aus gradle.properties
     }
 }
 
@@ -104,6 +100,10 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.core:core-ktx:1.15.0")
+    // System-Startbildschirm (Android 12+ und älter einheitlich)
+    implementation("androidx.core:core-splashscreen:1.0.1")
+    // Baseline-Profil: vorkompilierter Code → flüssig ab dem ersten Start
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")

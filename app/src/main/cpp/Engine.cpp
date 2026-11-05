@@ -29,7 +29,6 @@ bool Engine::start() {
 }
 
 void Engine::stop() {
-    recorder.stop();
     std::lock_guard<std::mutex> lk(streamMutex_);
     closeStreams();
 }
@@ -222,7 +221,6 @@ void Engine::renderMain(float* out, int channels, int frames) {
     curXb_ = xb;
     masterLevel_.store(std::max(peak, masterLevel_.load() * 0.85f));
 
-    recorder.push(master_.data(), frames);
 
     // Mono-Kopie für die Spektrum-Anzeige (nur kopieren – sehr billig)
     int sp = scopePos_.load(std::memory_order_relaxed);

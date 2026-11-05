@@ -4,4 +4,12 @@
         <item name="android:statusBarColor">#FF050608</item>
         <item name="android:navigationBarColor">#FF050608</item>
     </style>
+
+    <!-- System-Startbildschirm (Android SplashScreen-API): schwarz mit leuchtendem Punkt,
+         danach übernimmt die Start-Animation in der App (Logo morpht aus dem Punkt). -->
+    <style name="Theme.Fadelux.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#FF050608</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_dot</item>
+        <item name="postSplashScreenTheme">@style/Theme.Fadelux</item>
+    </style>
 </resources>

@@ -17,7 +17,6 @@ object NativeEngine {
 
     /** Füllt out (9 Werte): Ladezustand, spielt, Position s, Dauer s, BPM, 1. Beat s, Tempo, Cue s, Pegel */
     external fun getDeckState(deck: Int, out: DoubleArray)
-    external fun getWaveform(deck: Int, points: Int): FloatArray
 
     external fun setPlaying(deck: Int, playing: Boolean)
     external fun cuePress(deck: Int)
@@ -45,14 +44,10 @@ object NativeEngine {
     external fun setCueDelayMs(ms: Float)
     external fun setOutput(mode: Int, masterDevice: Int, cueDevice: Int)
 
-    external fun startRecording(fd: Int): Boolean
-    external fun stopRecording()
-    external fun recordingSeconds(): Double
 
     external fun getMasterLevel(): Float
 
     /** Füllt out mit Spektrum-Bändern 0..1 (Berechnung im aufrufenden Thread, nicht im Audio-Thread) */
-    external fun getSpectrum(out: FloatArray)
 
     /** Puffergrösse in "Bursts": klein = tiefe Latenz, gross = stabiler */
     external fun setBufferBursts(n: Int)

@@ -99,32 +99,6 @@ fun NeonButton(
     }
 }
 
-/** Knopf, der nur wirkt, solange er gedrückt gehalten wird (Tempo-Schubs). */
-@Composable
-fun HoldButton(icon: ImageVector, modifier: Modifier = Modifier, onDown: () -> Unit, onUp: () -> Unit) {
-    val down by rememberUpdatedState(onDown)
-    val up by rememberUpdatedState(onUp)
-    val view = LocalView.current
-    var pressed by remember { mutableStateOf(false) }
-    val accent = LocalAccent.current
-    Box(
-        modifier
-            .clip(RoundedCornerShape(Dimens.radiusSmall))
-            .background(if (pressed) accent.copy(alpha = 0.4f) else Color(0x14FFFFFF))
-            .pointerInput(Unit) {
-                detectTapGestures(onPress = {
-                    pressed = true
-                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    down()
-                    tryAwaitRelease()
-                    up()
-                    pressed = false
-                })
-            },
-        contentAlignment = Alignment.Center,
-    ) { Icon(icon, null, tint = AppColors.Text, modifier = Modifier.size(18.dp)) }
-}
-
 /** Kleines Text-Label in Grossbuchstaben (über Reglern). */
 @Composable
 fun Label(text: String, modifier: Modifier = Modifier, color: Color = AppColors.TextDim) {

@@ -12,7 +12,6 @@ add_library(fadelux SHARED
         BpmAnalyzer.cpp
         Deck.cpp
         Engine.cpp
-        Recorder.cpp
         jni_bridge.cpp)
 
 target_compile_options(fadelux PRIVATE -O2 -Wall)

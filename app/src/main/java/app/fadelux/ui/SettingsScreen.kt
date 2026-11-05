@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Slider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +37,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.fadelux.BuildConfig
 import app.fadelux.DjViewModel
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.material3.Icon
+import app.fadelux.automix.AutoMix
+import app.fadelux.automix.TransitionType
+import app.fadelux.ui.components.AppIcons
+import androidx.compose.ui.Alignment
 import app.fadelux.R
 import app.fadelux.data.AppSettings
 import app.fadelux.ui.components.NeonButton
@@ -47,32 +53,133 @@ import app.fadelux.ui.theme.AppColors
 import app.fadelux.ui.theme.AppType
 import app.fadelux.ui.theme.LocalAccent
 
-/** Einstellungen mit Kategorien links und Inhalt rechts. */
+/** Bereiche der Einstellungen (Reihenfolge = Anzeige). */
+private val sections = listOf(
+    R.string.set_flow, R.string.set_transitions, R.string.set_library, R.string.io_title, R.string.set_design,
+    R.string.set_language, R.string.set_help, R.string.set_about, R.string.set_credits, R.string.set_privacy,
+)
+
+/** Einstellungen: Querformat = Bereiche links, Inhalt rechts; Hochformat = Liste → Bereich (mit Zurück). */
 @Composable
 fun SettingsScreen(vm: DjViewModel, onLanguageChanged: () -> Unit, onClose: () -> Unit) {
-    var section by rememberSaveable { mutableIntStateOf(0) }
-    OverlayScaffold(stringResource(R.string.nav_settings), onClose) {
-        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            SettingsNav(section) { section = it }
-            Column(Modifier.weight(1f).fillMaxHeight().glass().padding(14.dp).verticalScroll(rememberScrollState())) {
-                when (section) {
-                    0 -> DesignSection(vm)
-                    1 -> LanguageSection(onLanguageChanged)
-                    2 -> AudioSection(vm)
-                    3 -> AutoMixSettings(
-                        vm.settings.mixStyle, vm.settings.transitionBars, vm.autoMix.plannerSettings().enabled,
-                        { vm.settings.mixStyle = it }, { vm.settings.transitionBars = it }, { vm.toggleTransitionType(it) },
-                        autoSort = vm.settings.queueAutoSort, onAutoSort = { vm.settings.queueAutoSort = it },
-                    )
-                    4 -> LibrarySection(vm)
-                    5 -> ImportExportSection(vm)
-                    6 -> HelpSection(vm)
-                    7 -> AboutSection()
-                    else -> Text(stringResource(R.string.privacy_text), style = AppType.body)
+    var section by rememberSaveable { mutableIntStateOf(-1) }
+    OverlayScaffold(stringResource(R.string.nav_settings), onClose, actions = {
+        if (section >= 0) NeonButton(Modifier.size(44.dp), icon = AppIcons.ArrowLeft, color = AppColors.TextDim) { section = -1 }
+    }) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val wide = maxWidth > maxHeight
+            if (wide) {
+                val sel = if (section < 0) 0 else section
+                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    SettingsNav(sel) { section = it }
+                    Column(Modifier.weight(1f).fillMaxHeight().glass().padding(14.dp).verticalScroll(rememberScrollState())) {
+                        SectionContent(sel, vm, onLanguageChanged)
+                    }
+                }
+            } else if (section < 0) {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    sections.forEachIndexed { i, s ->
+                        Row(
+                            Modifier.fillMaxWidth().glass(corner = 14.dp).clickable { section = i }.padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(stringResource(s), style = AppType.bodyBold, modifier = Modifier.weight(1f))
+                            Text("›", style = AppType.title.copy(color = AppColors.TextDim))
+                        }
+                    }
+                }
+            } else {
+                Column(Modifier.fillMaxSize().glass().padding(14.dp).verticalScroll(rememberScrollState())) {
+                    Text(stringResource(sections[section]), style = AppType.title)
+                    SectionContent(section, vm, onLanguageChanged)
                 }
             }
         }
     }
+}
+
+@Composable
+private fun ColumnScope.SectionContent(i: Int, vm: DjViewModel, onLanguageChanged: () -> Unit) {
+    when (i) {
+        0 -> FlowSection(vm)
+        1 -> TransitionSection(vm)
+        2 -> LibrarySection(vm)
+        3 -> ImportExportSection(vm)
+        4 -> DesignSection(vm)
+        5 -> LanguageSection(onLanguageChanged)
+        6 -> HelpSection(vm)
+        7 -> AboutSection()
+        8 -> CreditsSection()
+        else -> Text(stringResource(R.string.privacy_text), style = AppType.body)
+    }
+}
+
+/** Linke Navigation der Einstellungen (Querformat). */
+@Composable
+fun SettingsNav(selected: Int, onSelect: (Int) -> Unit) {
+    Column(Modifier.width(200.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        sections.forEachIndexed { i, s ->
+            NeonButton(Modifier.fillMaxWidth().height(44.dp), text = stringResource(s), active = selected == i, fontSize = 13) { onSelect(i) }
+        }
+    }
+}
+
+/** Ablauf: Energie-Kurve, Genre-Blöcke, automatisches Einreihen. */
+@Composable
+private fun ColumnScope.FlowSection(vm: DjViewModel) {
+    FlowOptions(vm.settings)
+    Spacer(Modifier.height(12.dp))
+    SectionTitle(stringResource(R.string.am_sort_title))
+    NeonButton(
+        Modifier.fillMaxWidth().height(44.dp),
+        text = stringResource(if (vm.settings.queueAutoSort) R.string.am_sort_on else R.string.am_sort_off),
+        icon = AppIcons.Auto, active = vm.settings.queueAutoSort, fontSize = 12, iconSize = 16.dp,
+    ) { vm.settings.queueAutoSort = !vm.settings.queueAutoSort }
+    Text(stringResource(R.string.am_sort_help), style = AppType.small)
+}
+
+/** Übergänge: Stil, Früh-Übergänge, Länge, erlaubte Typen, Protokoll. */
+@Composable
+private fun ColumnScope.TransitionSection(vm: DjViewModel) {
+    val s = vm.settings
+    SectionTitle(stringResource(R.string.am_style))
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        listOf(R.string.style_calm, R.string.style_balanced, R.string.style_club).forEachIndexed { i, label ->
+            NeonButton(Modifier.weight(1f).height(44.dp), text = stringResource(label), active = s.mixStyle == i, fontSize = 12) { s.mixStyle = i }
+        }
+    }
+    Text(stringResource(R.string.style_help), style = AppType.small)
+    SectionTitle(stringResource(R.string.early_setting))
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        listOf(R.string.early_ask, R.string.early_always, R.string.early_never).forEachIndexed { i, label ->
+            NeonButton(Modifier.weight(1f).height(44.dp), text = stringResource(label), active = s.earlyMode == i, fontSize = 12) { s.earlyMode = i }
+        }
+    }
+    Text(stringResource(R.string.early_help), style = AppType.small)
+    SectionTitle(stringResource(R.string.am_length))
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        listOf(0, 8, 16, 32).forEach { b ->
+            NeonButton(
+                Modifier.weight(1f).height(40.dp),
+                text = if (b == 0) stringResource(R.string.am_length_auto) else "$b",
+                active = s.transitionBars == b, fontSize = 12,
+            ) { s.transitionBars = b }
+        }
+    }
+    SectionTitle(stringResource(R.string.am_types))
+    val enabled = vm.autoMix.plannerSettings().enabled
+    TransitionType.entries.chunked(2).forEach { row ->
+        Row(Modifier.padding(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            row.forEach { t ->
+                NeonButton(Modifier.weight(1f).height(40.dp), text = transitionLabel(t), color = AppColors.Violet, active = t in enabled, fontSize = 11) {
+                    vm.toggleTransitionType(t)
+                }
+            }
+            if (row.size == 1) Spacer(Modifier.weight(1f))
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    LogSection(vm.autoMix.logLines)
 }
 
 @Composable
@@ -98,24 +205,10 @@ fun AccentPicker(selected: Int, onSelect: (Int) -> Unit) {
         AppColors.accents.forEachIndexed { i, c ->
             val sel = selected == i
             Box(
-                Modifier.size(48.dp).clip(CircleShape).background(c)
+                Modifier.size(44.dp).clip(CircleShape).background(c)
                     .border(if (sel) 3.dp else 0.dp, Color.White, CircleShape)
                     .clickable { onSelect(i) },
             )
-        }
-    }
-}
-
-/** Linke Navigation der Einstellungen. */
-@Composable
-fun SettingsNav(selected: Int, onSelect: (Int) -> Unit) {
-    val sections = listOf(
-        R.string.set_design, R.string.set_language, R.string.set_audio, R.string.nav_automix, R.string.set_library,
-        R.string.io_title, R.string.set_help, R.string.set_about, R.string.set_privacy,
-    )
-    Column(Modifier.width(190.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        sections.forEachIndexed { i, s ->
-            NeonButton(Modifier.fillMaxWidth().height(44.dp), text = stringResource(s), active = selected == i, fontSize = 13) { onSelect(i) }
         }
     }
 }
@@ -133,42 +226,6 @@ private fun ColumnScope.LanguageSection(onLanguageChanged: () -> Unit) {
                 AppSettings.setLanguage(context, code)
                 onLanguageChanged()
             }
-        }
-    }
-}
-
-@Composable
-private fun ColumnScope.AudioSection(vm: DjViewModel) {
-    var devices by remember { mutableStateOf(vm.outputDevices()) }
-    LaunchedEffect(Unit) { vm.refreshEngineInfo() }
-    val s = vm.settings
-    val info = vm.engineInfo
-    Text(stringResource(R.string.audio_info, info[0].toInt(), info[1].toInt(), info[2].toInt()), style = AppType.small)
-    BackgroundCard(vm)
-    SectionTitle(stringResource(R.string.audio_mode))
-    listOf(R.string.audio_mode_stereo, R.string.audio_mode_split, R.string.audio_mode_4ch, R.string.audio_mode_2dev).forEachIndexed { i, label ->
-        NeonButton(Modifier.fillMaxWidth().height(44.dp).padding(vertical = 2.dp), text = stringResource(label), color = AppColors.Cyan, active = s.outputMode == i, fontSize = 12) {
-            vm.setOutput(i, s.masterDevice, s.cueDevice)
-        }
-    }
-    SectionTitle(stringResource(R.string.audio_master_device))
-    DevicePicker(devices, s.masterDevice) { vm.setOutput(s.outputMode, it, s.cueDevice) }
-    if (s.outputMode == 3) {
-        SectionTitle(stringResource(R.string.audio_cue_device))
-        DevicePicker(devices, s.cueDevice) { vm.setOutput(s.outputMode, s.masterDevice, it) }
-    }
-    NeonButton(Modifier.width(200.dp).height(40.dp), text = stringResource(R.string.audio_refresh), fontSize = 12) { devices = vm.outputDevices() }
-    SectionTitle(stringResource(R.string.audio_latency))
-    Text(stringResource(R.string.audio_latency_hint), style = AppType.small)
-    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-        Slider(s.cueDelayMs, { vm.changeCueDelay(it) }, valueRange = 0f..500f, modifier = Modifier.weight(1f))
-        Text("${s.cueDelayMs.toInt()} ms", style = AppType.body, modifier = Modifier.width(70.dp).padding(start = 8.dp))
-    }
-    SectionTitle(stringResource(R.string.audio_quality))
-    Text(stringResource(R.string.audio_quality_hint), style = AppType.small)
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        listOf(1 to R.string.audio_q_fast, 2 to R.string.audio_q_normal, 4 to R.string.audio_q_safe).forEach { (b, label) ->
-            NeonButton(Modifier.weight(1f).height(44.dp), text = stringResource(label), active = s.bufferBursts == b, fontSize = 12) { vm.changeBuffer(b) }
         }
     }
 }
@@ -195,7 +252,7 @@ private fun BackgroundCard(vm: DjViewModel) {
         )
         if (!ok) {
             Spacer(Modifier.height(6.dp))
-            NeonButton(Modifier.width(240.dp).height(40.dp), text = stringResource(R.string.bg_open_settings), color = AppColors.Amber, fontSize = 12) {
+            NeonButton(Modifier.fillMaxWidth().height(40.dp), text = stringResource(R.string.bg_open_settings), color = AppColors.Amber, fontSize = 12) {
                 val intent = android.content.Intent(
                     android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     android.net.Uri.fromParts("package", context.packageName, null),
@@ -207,62 +264,53 @@ private fun BackgroundCard(vm: DjViewModel) {
 }
 
 @Composable
-private fun DevicePicker(devices: List<app.fadelux.OutputDevice>, selected: Int, onSelect: (Int) -> Unit) {
-    NeonButton(Modifier.fillMaxWidth().height(40.dp).padding(vertical = 2.dp), text = stringResource(R.string.audio_auto), active = selected == 0, fontSize = 12) { onSelect(0) }
-    devices.forEach { d ->
-        NeonButton(Modifier.fillMaxWidth().height(40.dp).padding(vertical = 2.dp), text = "${deviceType(d.type)} · ${d.name}", active = selected == d.id, fontSize = 12) { onSelect(d.id) }
-    }
-}
-
-@Composable
-private fun deviceType(type: Int): String = stringResource(
-    when (type) {
-        android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> R.string.dev_speaker
-        android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES, android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET -> R.string.dev_wired
-        android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> R.string.dev_bluetooth
-        android.media.AudioDeviceInfo.TYPE_USB_DEVICE, android.media.AudioDeviceInfo.TYPE_USB_HEADSET, android.media.AudioDeviceInfo.TYPE_USB_ACCESSORY -> R.string.dev_usb
-        else -> R.string.dev_other
-    },
-)
-
-@Composable
 private fun ColumnScope.LibrarySection(vm: DjViewModel) {
+    val unanalyzed by vm.unanalyzed.collectAsStateWithLifecycle()
+    Text(
+        if (unanalyzed > 0) stringResource(R.string.lib_analyzing, unanalyzed) else stringResource(R.string.lib_analysis_done),
+        style = AppType.small,
+    )
     SectionTitle(stringResource(R.string.lib_folder))
     NeonButton(Modifier.fillMaxWidth().height(40.dp).padding(vertical = 2.dp), text = stringResource(R.string.lib_folder_all), active = vm.settings.libraryFolder.isEmpty(), fontSize = 12) { vm.setLibraryFolder("") }
     vm.folders.forEach { f ->
         NeonButton(Modifier.fillMaxWidth().height(40.dp).padding(vertical = 2.dp), text = f, active = vm.settings.libraryFolder == f, fontSize = 12) { vm.setLibraryFolder(f) }
     }
     Spacer(Modifier.height(10.dp))
-    NeonButton(Modifier.width(220.dp).height(44.dp), text = stringResource(R.string.lib_rescan), fontSize = 13) { vm.scanLibrary() }
+    NeonButton(Modifier.fillMaxWidth().height(44.dp), text = stringResource(R.string.lib_rescan), fontSize = 13) { vm.scanLibrary() }
 }
 
 @Composable
 private fun ColumnScope.HelpSection(vm: DjViewModel) {
+    BackgroundCard(vm)
     val faq = listOf(
-        R.string.faq_q1 to R.string.faq_a1, R.string.faq_q2 to R.string.faq_a2, R.string.faq_q3 to R.string.faq_a3,
-        R.string.faq_q4 to R.string.faq_a4, R.string.faq_q5 to R.string.faq_a5, R.string.faq_q6 to R.string.faq_a6,
+        R.string.faq2_q1 to R.string.faq2_a1, R.string.faq2_q2 to R.string.faq2_a2, R.string.faq2_q3 to R.string.faq2_a3,
+        R.string.faq2_q4 to R.string.faq2_a4, R.string.faq2_q5 to R.string.faq2_a5, R.string.faq2_q6 to R.string.faq2_a6,
         R.string.faq_q7 to R.string.faq_a7,
     )
     faq.forEach { (q, a) ->
-        Text(stringResource(q), style = AppType.bodyBold.copy(color = LocalAccent.current), modifier = Modifier.padding(top = 10.dp))
+        Text(stringResource(q), style = AppType.bodyBold.copy(color = LocalAccent.current), modifier = Modifier.padding(top = 12.dp))
         Text(stringResource(a), style = AppType.body)
     }
-    Spacer(Modifier.height(12.dp))
-    NeonButton(Modifier.width(240.dp).height(44.dp), text = stringResource(R.string.onb_show_again), fontSize = 13) { vm.settings.onboardingDone = false }
 }
 
 @Composable
 private fun ColumnScope.AboutSection() {
     Text(stringResource(R.string.app_name), style = AppType.title.copy(color = LocalAccent.current))
     Text(stringResource(R.string.about_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE), style = AppType.small)
-    Text(stringResource(R.string.about_text), style = AppType.body, modifier = Modifier.padding(vertical = 8.dp))
-    SectionTitle(stringResource(R.string.about_licenses))
+    Text(stringResource(R.string.about_text2), style = AppType.body, modifier = Modifier.padding(vertical = 8.dp))
+}
+
+@Composable
+private fun ColumnScope.CreditsSection() {
+    Text(stringResource(R.string.credits_intro), style = AppType.body, modifier = Modifier.padding(bottom = 6.dp))
     listOf(
         "Oboe — Apache License 2.0 (Google)",
+        "AndroidX Media3 — Apache License 2.0 (Google)",
         "Jetpack Compose, Room, AndroidX — Apache License 2.0 (Google)",
         "Kotlin & kotlinx.coroutines — Apache License 2.0 (JetBrains)",
         "ZXing (QR codes) — Apache License 2.0",
         "Firebase JS SDK (guest page) — Apache License 2.0 (Google)",
         stringResource(R.string.about_timestretch),
-    ).forEach { Text("• $it", style = AppType.small.copy(color = AppColors.Text)) }
+        stringResource(R.string.credits_key),
+    ).forEach { Text("• $it", style = AppType.small.copy(color = AppColors.Text), modifier = Modifier.padding(vertical = 2.dp)) }
 }

@@ -1,0 +1,12 @@
+# Baseline-Profil: Android kompiliert diese Klassen schon bei der Installation vor
+# (statt beim ersten Benutzen) → Start, Animationen und Listen laufen von Anfang an flüssig.
+# H = oft benutzt, S = beim Start, P = nach dem Start; ** = alle Unterklassen/Methoden.
+HSPLapp/fadelux/**->**(**)**
+Lapp/fadelux/**;
+HSPLandroidx/compose/runtime/**->**(**)**
+HSPLandroidx/compose/ui/**->**(**)**
+HSPLandroidx/compose/foundation/**->**(**)**
+HSPLandroidx/compose/animation/**->**(**)**
+HSPLandroidx/compose/material3/**->**(**)**
+Landroidx/compose/**;
+HSPLandroidx/media3/session/**->**(**)**

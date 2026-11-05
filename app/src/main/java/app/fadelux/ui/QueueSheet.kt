@@ -61,86 +61,24 @@ import app.fadelux.ui.theme.LocalAccent
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/** Alles, was die Auto-Mix-Anzeige zeigt. */
-data class AutoMixUi(
-    val queue: List<Track> = emptyList(),
-    val running: Boolean = false,
-    val status: String? = null,
-    val nextTrack: Track? = null,
-    val nextPlan: TransitionPlan? = null,
-    val forcedType: TransitionType? = null,
-    val countdown: () -> Double? = { null },
-    val style: Int = 1,
-    val lengthBars: Int = 0,
-    val enabled: Set<TransitionType> = TransitionType.entries.toSet(),
-    val suggestions: List<Track> = emptyList(),
-    val log: List<String> = emptyList(),
-    val pinned: Set<Long> = emptySet(),
-    val autoSort: Boolean = true,
-)
 
-/** Alle Aktionen der Auto-Mix-Anzeige. */
-data class AutoMixActions(
-    val startStop: () -> Unit = {},
-    val mixNow: () -> Unit = {},
-    val optimize: () -> Unit = {},
-    val clear: () -> Unit = {},
-    val remove: (Int) -> Unit = {},
-    val move: (Int, Int) -> Unit = { _, _ -> },
-    val playNext: (Int) -> Unit = {},
-    val moveToEnd: (Int) -> Unit = {},
-    val smartShuffle: () -> Unit = {},
-    val add: (Track) -> Unit = {},
-    val changeType: (TransitionType?) -> Unit = {},
-    val skip: () -> Unit = {},
-    val setStyle: (Int) -> Unit = {},
-    val setLength: (Int) -> Unit = {},
-    val toggleType: (TransitionType) -> Unit = {},
-    val setAutoSort: (Boolean) -> Unit = {},
-    val close: () -> Unit = {},
-)
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import app.fadelux.automix.AutoMix
+import app.fadelux.ui.components.BottomSheet
 
-/** Auto-Mix: verbindet die Anzeige mit der App-Logik. */
-@Composable
-fun AutoMixScreen(vm: DjViewModel, onClose: () -> Unit) {
-    val am = vm.autoMix
-    val ps = am.plannerSettings()
-    AutoMixContent(
-        AutoMixUi(
-            queue = am.queue, running = am.running, status = am.status?.resolve(),
-            nextTrack = am.nextTrack, nextPlan = am.nextPlan, forcedType = am.forcedType,
-            countdown = { am.secondsUntilNext() },
-            style = vm.settings.mixStyle, lengthBars = vm.settings.transitionBars, enabled = ps.enabled,
-            suggestions = remember(am.queue.size, vm.decks[0].track, vm.decks[1].track) { vm.queueSuggestions() },
-            log = am.logLines,
-            pinned = am.pinned.toSet(),
-            autoSort = vm.settings.queueAutoSort,
-        ),
-        AutoMixActions(
-            startStop = {
-                if (am.running) am.stop() else {
-                    am.start()
-                    if (!vm.batteryUnrestricted()) vm.message = UiText(R.string.bg_hint_short)
-                }
-            },
-            mixNow = { am.mixNow() },
-            optimize = { am.optimize(); vm.message = UiText(R.string.am_optimized) },
-            clear = { am.clear() },
-            remove = { am.remove(it) },
-            move = { from, to -> am.move(from, to) },
-            playNext = { am.playNext(it) },
-            moveToEnd = { am.moveToEnd(it) },
-            smartShuffle = { am.smartShuffle(); vm.message = UiText(R.string.am_shuffled) },
-            add = { am.add(it) },
-            changeType = { am.changeType(it) },
-            skip = { am.skipNext() },
-            setStyle = { vm.settings.mixStyle = it },
-            setLength = { vm.settings.transitionBars = it },
-            toggleType = { vm.toggleTransitionType(it) },
-            setAutoSort = { vm.settings.queueAutoSort = it },
-            close = onClose,
-        ),
-    )
+/** Zeit lesbar: "3:05". */
+fun formatTime(sec: Double): String {
+    val s = sec.coerceAtLeast(0.0).toInt()
+    return String.format(Locale.US, "%d:%02d", s / 60, s % 60)
 }
 
 /** Name eines Übergangstyps (übersetzt). */
@@ -157,59 +95,10 @@ fun transitionLabel(t: TransitionType): String = stringResource(
     },
 )
 
-/** Auto-Mix-Anzeige: Warteschlange links, Steuerung + nächster Übergang rechts. */
-@Composable
-fun AutoMixContent(ui: AutoMixUi, act: AutoMixActions) {
-    val accent = LocalAccent.current
-    OverlayScaffold(stringResource(R.string.nav_automix), act.close) {
-        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            QueueList(
-                ui.queue, act.remove, act.move, Modifier.weight(1f).fillMaxHeight(),
-                pinned = ui.pinned, onPlayNext = act.playNext, onMoveToEnd = act.moveToEnd,
-            )
-            Column(Modifier.width(280.dp).fillMaxHeight().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                NeonButton(
-                    Modifier.fillMaxWidth().height(56.dp),
-                    text = stringResource(if (ui.running) R.string.am_stop else R.string.am_start),
-                    icon = if (ui.running) AppIcons.Stop else AppIcons.Play, active = true,
-                    color = if (ui.running) AppColors.Red else accent, fontSize = 17,
-                ) { act.startStop() }
-                ui.status?.let { Text(it, style = AppType.small.copy(color = AppColors.Text)) }
-                if (ui.nextPlan != null && ui.nextTrack != null) NextTransitionCard(ui, act)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    NeonButton(Modifier.weight(1f).height(44.dp), text = stringResource(R.string.am_optimize), icon = AppIcons.Auto, color = AppColors.Violet, fontSize = 12, iconSize = 16.dp) {
-                        act.optimize()
-                    }
-                    // Smart Shuffle: zufällig, aber mit gutem Flow (BPM/Energie/Genre)
-                    NeonButton(Modifier.weight(1f).height(44.dp), text = stringResource(R.string.am_smart_shuffle), icon = AppIcons.Shuffle, color = AppColors.Pink, fontSize = 12, iconSize = 16.dp) {
-                        act.smartShuffle()
-                    }
-                }
-                AutoMixSettings(ui.style, ui.lengthBars, ui.enabled, act.setStyle, act.setLength, act.toggleType, ui.autoSort, act.setAutoSort)
-                if (ui.suggestions.isNotEmpty()) {
-                    SectionTitle(stringResource(R.string.lib_tab_suggest))
-                    ui.suggestions.forEach { t ->
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            CoverThumb(t, 32.dp)
-                            Column(Modifier.weight(1f)) {
-                                Text(t.title, style = AppType.small.copy(color = AppColors.Text), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(t.bpm?.takeIf { it > 0 }?.let { String.format(Locale.US, "%.0f BPM", it) } ?: t.artist, style = AppType.tiny, maxLines = 1)
-                            }
-                            NeonButton(Modifier.size(36.dp), icon = AppIcons.Add, iconSize = 18.dp) { act.add(t) }
-                        }
-                    }
-                }
-                NeonButton(Modifier.fillMaxWidth().height(40.dp), text = stringResource(R.string.am_clear), icon = AppIcons.Delete, color = AppColors.Red, fontSize = 12, iconSize = 16.dp) { act.clear() }
-                Text(stringResource(R.string.am_help2), style = AppType.small)
-                LogSection(ui.log)
-            }
-        }
-    }
-}
 
 /** Protokoll zum Testen: welcher Übergang wann und warum gewählt wurde (aufklappbar). */
 @Composable
-private fun LogSection(lines: List<String>) {
+fun LogSection(lines: List<String>) {
     var open by remember { mutableStateOf(false) }
     NeonButton(
         Modifier.fillMaxWidth().height(38.dp),
@@ -224,87 +113,28 @@ private fun LogSection(lines: List<String>) {
     }
 }
 
-/** Karte "Als nächstes": Titel, Übergangstyp, Länge, Countdown; Typ ändern, überspringen, sofort mixen. */
-@Composable
-private fun NextTransitionCard(ui: AutoMixUi, act: AutoMixActions) {
-    val accent = LocalAccent.current
-    val plan = ui.nextPlan ?: return
-    // Countdown 4× pro Sekunde aktualisieren
-    var left by remember { mutableStateOf(ui.countdown()) }
-    LaunchedEffect(plan) {
-        while (true) {
-            left = ui.countdown()
-            kotlinx.coroutines.delay(250)
-        }
-    }
-    Column(Modifier.fillMaxWidth().glass(corner = 12.dp, glowColor = accent).padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(stringResource(R.string.am_next_title, ui.nextTrack?.title ?: ""), style = AppType.bodyBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(
-            stringResource(R.string.am_next_detail, transitionLabel(plan.type), plan.lengthBars, formatTime(left ?: 0.0)),
-            style = AppType.small.copy(color = accent),
-        )
-        if (!plan.matchTempo) Text(stringResource(R.string.am_tempo_note), style = AppType.tiny.copy(color = AppColors.Amber))
-        SectionTitle(stringResource(R.string.am_change_type))
-        TransitionType.entries.chunked(3).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                row.forEach { t ->
-                    NeonButton(Modifier.weight(1f).height(34.dp), text = transitionLabel(t), active = plan.type == t, fontSize = 10, corner = 8.dp) {
-                        act.changeType(if (ui.forcedType == t) null else t)
-                    }
-                }
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            NeonButton(Modifier.weight(1f).height(40.dp), text = stringResource(R.string.am_mix_now), icon = AppIcons.Next, color = AppColors.Cyan, fontSize = 11, iconSize = 14.dp) { act.mixNow() }
-            NeonButton(Modifier.weight(1f).height(40.dp), text = stringResource(R.string.am_skip_song), color = AppColors.Amber, fontSize = 11) { act.skip() }
-        }
-    }
-}
 
-/** Auto-Mix-Einstellungen: Stil, Länge, erlaubte Übergangstypen (auch in den Einstellungen verwendet). */
+/**
+ * "Als Nächstes": Liste der kommenden Songs, von unten eingeblendet (Hochwischen oder Tippen).
+ * Verschieben per Drag & Drop mit Auto-Scroll, Menü pro Song, Smart Shuffle, nach Stimmung ordnen.
+ * Schliessen: nach unten wischen, ausserhalb tippen oder Zurück-Taste.
+ */
 @Composable
-fun AutoMixSettings(
-    style: Int,
-    lengthBars: Int,
-    enabled: Set<TransitionType>,
-    onStyle: (Int) -> Unit,
-    onLength: (Int) -> Unit,
-    onToggle: (TransitionType) -> Unit,
-    autoSort: Boolean? = null,
-    onAutoSort: (Boolean) -> Unit = {},
-) {
-    if (autoSort != null) {
-        SectionTitle(stringResource(R.string.am_sort_title))
-        NeonButton(
-            Modifier.fillMaxWidth().height(40.dp),
-            text = stringResource(if (autoSort) R.string.am_sort_on else R.string.am_sort_off),
-            icon = AppIcons.Auto, active = autoSort, fontSize = 12, iconSize = 16.dp,
-        ) { onAutoSort(!autoSort) }
-        Text(stringResource(R.string.am_sort_help), style = AppType.tiny)
-    }
-    SectionTitle(stringResource(R.string.am_style))
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        listOf(R.string.style_calm, R.string.style_balanced, R.string.style_club).forEachIndexed { i, label ->
-            NeonButton(Modifier.weight(1f).height(38.dp), text = stringResource(label), active = style == i, fontSize = 11) { onStyle(i) }
-        }
-    }
-    SectionTitle(stringResource(R.string.am_length))
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        listOf(0, 4, 8, 16, 32).forEach { b ->
-            NeonButton(
-                Modifier.weight(1f).height(38.dp),
-                text = if (b == 0) stringResource(R.string.am_length_auto) else "$b",
-                active = lengthBars == b, fontSize = 11,
-            ) { onLength(b) }
-        }
-    }
-    SectionTitle(stringResource(R.string.am_types))
-    TransitionType.entries.chunked(3).forEach { row ->
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            row.forEach { t ->
-                NeonButton(Modifier.weight(1f).height(34.dp), text = transitionLabel(t), color = AppColors.Violet, active = t in enabled, fontSize = 10, corner = 8.dp) { onToggle(t) }
+fun QueueSheet(visible: Boolean, am: AutoMix, onMessage: (UiText) -> Unit, onClose: () -> Unit) {
+    val accent = LocalAccent.current
+    BottomSheet(visible, stringResource(R.string.nav_up_next), onClose) {
+        Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NeonButton(Modifier.weight(1f).height(42.dp), text = stringResource(R.string.q_arrange), icon = AppIcons.Auto, color = accent, fontSize = 12, iconSize = 16.dp) {
+                am.arrangeQueue(); onMessage(UiText(R.string.q_arranged))
+            }
+            NeonButton(Modifier.weight(1f).height(42.dp), text = stringResource(R.string.am_smart_shuffle), icon = AppIcons.Shuffle, color = AppColors.Pink, fontSize = 12, iconSize = 16.dp) {
+                am.smartShuffle(); onMessage(UiText(R.string.am_shuffled))
             }
         }
+        QueueList(
+            am.queue, { am.remove(it) }, { from, to -> am.move(from, to) }, Modifier.weight(1f).fillMaxWidth(),
+            pinned = am.pinned.toSet(), onPlayNext = { am.playNext(it) }, onMoveToEnd = { am.moveToEnd(it) },
+        )
     }
 }
 

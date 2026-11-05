@@ -9,7 +9,6 @@
 
 #include "Deck.h"
 #include "Dsp.h"
-#include "Recorder.h"
 
 namespace dj {
 
@@ -58,8 +57,6 @@ public:
     float masterLevel() const { return masterLevel_.load(); }
     double latencyMs();
     int channelCount();
-
-    Recorder recorder;
 
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream* stream, void* data,
                                           int32_t numFrames) override;

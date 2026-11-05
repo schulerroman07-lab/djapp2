@@ -1,215 +1,152 @@
 package app.fadelux
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
+import app.fadelux.automix.EarlyOffer
+import app.fadelux.automix.TransitionPlan
+import app.fadelux.automix.TransitionType
 import app.fadelux.data.Track
-import app.fadelux.ui.AutoMixActions
-import app.fadelux.ui.AutoMixContent
-import app.fadelux.ui.AutoMixUi
-import app.fadelux.ui.DeckPanel
-import app.fadelux.ui.MixerPanel
-import app.fadelux.ui.OnboardingScreen
-import app.fadelux.ui.TopBar
-import app.fadelux.ui.SettingsNav
 import app.fadelux.ui.AccentPicker
-import app.fadelux.ui.components.glass
+import app.fadelux.ui.IntroContent
+import app.fadelux.ui.PlayerContent
+import app.fadelux.ui.PlayerUi
+import app.fadelux.ui.QueueList
+import app.fadelux.ui.SettingsNav
 import app.fadelux.ui.TrackRow
 import app.fadelux.ui.WishRow
-import app.fadelux.ui.WishStep
-import app.fadelux.wishes.Wish
 import app.fadelux.ui.components.AppBackground
+import app.fadelux.ui.components.BottomSheet
+import app.fadelux.ui.components.glass
 import app.fadelux.ui.theme.AppColors
 import app.fadelux.ui.theme.AppTheme
+import app.fadelux.wishes.Wish
 import com.android.resources.Density
 import com.android.resources.ScreenOrientation
 import org.junit.Rule
 import org.junit.Test
-import kotlin.math.abs
-import kotlin.math.sin
 
-/** Erstellt Bildschirmfotos der Oberfläche (Samsung-ähnlicher Bildschirm im Querformat). */
+/** Beispiel-Daten für die Bildschirmfotos. */
+internal object Demo {
+    val tracks = listOf(
+        Track(1, "", "Midnight Drive", "Neon Avenue", 245000, 124f, 0.8f, genre = "House", musicalKey = 21),
+        Track(2, "", "Sunset Groove", "The Waves", 198000, 118.5f, 0.4f, musicalKey = 7),
+        Track(3, "", "Ein sehr, sehr langer Titel mit vielen Wörtern", "Interpret", 320000, 128f, 0.6f),
+        Track(4, "", "Unknown BPM", "Artist", 180000, null, null),
+    )
+    val plan = TransitionPlan(TransitionType.BASS_SWAP, 80, 150.0, 30.0, 16, 1f, true)
+
+    fun player(early: Boolean = false, idle: Boolean = false) = PlayerUi(
+        track = if (idle) null else tracks[0], playing = true, position = { 96.0 }, duration = 245.0,
+        nextTrack = tracks[1], nextPlan = plan, queueSize = 12, countdown = { 42.0 }, newWishes = 3,
+        earlyOffer = if (early) EarlyOffer("Sunset Groove", System.currentTimeMillis() + 7000, 96) else null,
+    )
+}
+
+@Composable
+private fun Screen(content: @Composable () -> Unit) {
+    AppTheme(AppColors.Emerald) { AppBackground { Box(Modifier.fillMaxSize().padding(top = 8.dp)) { content() } } }
+}
+
+/** Bildschirmfotos im Hochformat (Samsung-ähnlich, 1080 × 2340). */
 class LayoutTest {
     @get:Rule
     val paparazzi = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(
-            screenWidth = 2340,
-            screenHeight = 1080,
-            xdpi = 480,
-            ydpi = 480,
-            density = Density.XXHIGH,
-            orientation = ScreenOrientation.LANDSCAPE,
+            screenWidth = 1080, screenHeight = 2340, xdpi = 420, ydpi = 420,
+            density = Density.XXHIGH, orientation = ScreenOrientation.PORTRAIT,
         ),
     )
 
-    private fun demoDeck(i: Int) = DeckModel(i).apply {
-        track = Track(1, "", if (i == 0) "Ein sehr langer Titelname für den Test" else "Party Song", "Interpret $i", 215000, 126f)
-        loadState = 2
-        playing = i == 0
-        position = 60.0 + i * 100
-        duration = 215.0
-        bpm = 126f
-        cue = 30.0
-        waveform = FloatArray(600) { abs(sin(it * 0.3f)) * 0.8f }
-        peaks = FloatArray(21500) { abs(sin(it * 0.21f)) * if (it % 48 < 6) 1f else 0.4f }
-        kill[1] = i == 1
-        echoOn = i == 0
-        pfl = i == 1
-        level = 0.6f
-    }
+    @Test
+    fun intro() = paparazzi.snapshot { AppTheme(AppColors.Emerald) { IntroContent(1f, 1f, 1f) } }
 
     @Test
-    fun mixer() = mixerShot(false)
+    fun introMorphing() = paparazzi.snapshot { AppTheme(AppColors.Emerald) { IntroContent(0.45f, 0.2f, 0f) } }
 
-    /** Auto-Mix läuft: Crossfader gesperrt, Knopf "Manuell übernehmen". */
     @Test
-    fun mixerAutoMixLocked() = mixerShot(true)
+    fun player() = paparazzi.snapshot { Screen { PlayerContent(Demo.player(), app.fadelux.ui.PlayerActions()) } }
 
-    private fun mixerShot(autoMix: Boolean) {
-        paparazzi.snapshot {
-            AppTheme(AppColors.Emerald) {
-                AppBackground {
-                    Column(Modifier.fillMaxSize().padding(6.dp)) {
-                        TopBar(true, 3, true, 754.0, true, {}, {}, {}, {}, {}, {})
-                        Box(Modifier.height(6.dp))
-                        val decks = listOf(demoDeck(0), demoDeck(1))
-                        val mixer = MixerModel().apply {
-                            crossfader = -0.3f; masterLevel = 0.7f
-                            spectrum = FloatArray(28) { 0.3f + 0.6f * abs(sin(it * 0.5f)) }
-                        }
-                        val colors = listOf(AppColors.Emerald, AppColors.Cyan)
-                        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            DeckPanel(decks[0], colors[0], Modifier.weight(1f).fillMaxHeight())
-                            MixerPanel(decks, mixer, colors, Modifier.width(204.dp).fillMaxHeight(), autoMix = autoMix)
-                            DeckPanel(decks[1], colors[1], Modifier.weight(1f).fillMaxHeight())
-                        }
-                    }
-                }
+    @Test
+    fun playerIdle() = paparazzi.snapshot { Screen { PlayerContent(Demo.player(idle = true), app.fadelux.ui.PlayerActions()) } }
+
+    @Test
+    fun playerEarlyOffer() = paparazzi.snapshot { Screen { PlayerContent(Demo.player(early = true), app.fadelux.ui.PlayerActions()) } }
+
+    @Test
+    fun upNext() = paparazzi.snapshot {
+        Screen {
+            PlayerContent(Demo.player(), app.fadelux.ui.PlayerActions())
+            BottomSheet(true, "Als Nächstes", {}) {
+                QueueList(Demo.tracks, {}, { _, _ -> }, Modifier.weight(1f).fillMaxWidth(), pinned = setOf(2L))
             }
         }
     }
 
     @Test
-    fun library() {
-        paparazzi.snapshot {
-            AppTheme(AppColors.Emerald) {
-                AppBackground {
-                    androidx.compose.foundation.layout.Column(Modifier.fillMaxSize().padding(12.dp)) {
-                        listOf(
-                            Track(1, "", "Midnight Drive", "Neon Avenue", 245000, 124f, 0.8f),
-                            Track(2, "", "Sunset Groove", "The Waves", 198000, 118.5f, 0.4f),
-                            Track(3, "", "Ein sehr, sehr langer Titel mit vielen Wörtern", "Interpret", 320000, null, null),
-                            Track(4, "", "Unknown BPM", "Artist", 180000, 0f, 0.6f),
-                        ).forEachIndexed { i, t -> TrackRow(t, i == 1, {}, {}, {}) }
-                    }
-                }
-            }
-        }
-    }
-
-    @Test
-    fun automix() {
-        val q = listOf(
-            Track(1, "", "Midnight Drive", "Neon Avenue", 245000, 124f, 0.8f),
-            Track(2, "", "Sunset Groove", "The Waves", 198000, 118.5f, 0.4f),
-            Track(3, "", "Ein sehr, sehr langer Titel mit vielen Wörtern", "Interpret", 320000, 128f, 0.6f),
-        )
-        paparazzi.snapshot {
-            AppTheme(AppColors.Emerald) {
-                AppBackground {
-                    AutoMixContent(
-                        AutoMixUi(
-                            queue = q, running = true, status = "Next: Sunset Groove – waiting for the outro",
-                            nextTrack = q[1],
-                            nextPlan = app.fadelux.automix.TransitionPlan(
-                                app.fadelux.automix.TransitionType.BASS_SWAP, 72, 140.0, 20.0, 16, 0.98f, true,
-                            ),
-                            countdown = { 42.0 }, suggestions = q.take(2),
-                        ),
-                        AutoMixActions(),
-                    )
-                }
-            }
-        }
+    fun library() = paparazzi.snapshot {
+        Screen { Column(Modifier.padding(12.dp)) { Demo.tracks.forEach { TrackRow(it, {}, {}) } } }
     }
 
     @Test
     fun wishes() {
         val now = java.time.Instant.now()
         paparazzi.snapshot {
-            AppTheme(AppColors.Emerald) {
-                AppBackground {
-                    Row(Modifier.fillMaxSize().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Column(Modifier.width(320.dp)) {
-                            WishStep(1, app.fadelux.ui.components.AppIcons.Play, "Start an event")
-                            WishStep(2, app.fadelux.ui.components.AppIcons.QrCode, "Guests scan the QR code with their phone camera")
-                            WishStep(3, app.fadelux.ui.components.AppIcons.Star, "Requests appear here live – tick them off or delete them")
-                        }
-                        Column(Modifier.weight(1f)) {
-                            WishRow(Wish("1", "", "Neon Avenue – Midnight Drive", now, false), "21:04", true, {}, {}, {}, {}, {})
-                            WishRow(Wish("2", "Bitte etwas von ABBA, und alles Gute zum Geburtstag an Lisa!", "", now, false), "21:06", false, {}, {}, {}, {}, {})
-                            WishRow(Wish("3", "", "The Waves – Sunset Groove", now, true), "21:10", true, {}, {}, {}, {}, {})
-                        }
-                    }
+            Screen {
+                Column(Modifier.padding(12.dp)) {
+                    WishRow(Wish("1", "", "Neon Avenue – Midnight Drive", now, false), "21:04", Demo.tracks[0], queued = true, {}, {}, {})
+                    WishRow(Wish("2", "", "The Waves – Sunset Groove", now, false), "21:05", Demo.tracks[1], queued = false, {}, {}, {})
+                    WishRow(Wish("3", "Bitte etwas von ABBA, und alles Gute zum Geburtstag an Lisa!", "", now, false), "21:06", null, queued = false, {}, {}, {})
                 }
             }
         }
     }
 
     @Test
-    fun settings() {
-        paparazzi.snapshot {
-            AppTheme(AppColors.Violet) {
-                AppBackground {
-                    Row(Modifier.fillMaxSize().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        SettingsNav(0) {}
-                        Column(Modifier.weight(1f).fillMaxHeight().glass().padding(14.dp)) { AccentPicker(2) {} }
-                    }
-                }
+    fun playlist() = paparazzi.snapshot {
+        Screen {
+            Column(Modifier.padding(12.dp)) {
+                app.fadelux.ui.CoverCollage(Demo.tracks, Modifier.width(180.dp).height(180.dp))
+                app.fadelux.ui.PlaylistEntryList(
+                    Demo.tracks.mapIndexed { i, t -> app.fadelux.data.PlaylistEntry(i.toLong(), i, t) },
+                    {}, {}, {}, {},
+                )
             }
         }
     }
+}
+
+/** Bildschirmfotos im Querformat. */
+class LayoutLandscapeTest {
+    @get:Rule
+    val paparazzi = Paparazzi(
+        deviceConfig = DeviceConfig.PIXEL_5.copy(
+            screenWidth = 2340, screenHeight = 1080, xdpi = 420, ydpi = 420,
+            density = Density.XXHIGH, orientation = ScreenOrientation.LANDSCAPE,
+        ),
+    )
 
     @Test
-    fun playlist() {
-        val tracks = listOf(
-            Track(1, "", "Midnight Drive", "Neon Avenue", 245000, 124f, 0.8f),
-            Track(2, "", "Sunset Groove", "The Waves", 198000, 118.5f, 0.4f),
-            Track(3, "", "Ein sehr, sehr langer Titel mit vielen Wörtern", "Interpret", 320000, 128f, 0.6f),
-        )
-        paparazzi.snapshot {
-            AppTheme(AppColors.Emerald) {
-                AppBackground {
-                    Row(Modifier.fillMaxSize().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(Modifier.width(180.dp)) {
-                            app.fadelux.ui.CoverCollage(tracks, Modifier.width(180.dp).height(180.dp))
-                        }
-                        Column(Modifier.weight(1f)) {
-                            app.fadelux.ui.PlaylistEntryList(
-                                tracks.mapIndexed { i, t -> app.fadelux.data.PlaylistEntry(i.toLong(), i, t) },
-                                {}, {}, {}, { _, _ -> },
-                            )
-                        }
-                    }
-                }
+    fun player() = paparazzi.snapshot { Screen { PlayerContent(Demo.player(), app.fadelux.ui.PlayerActions()) } }
+
+    @Test
+    fun settings() = paparazzi.snapshot {
+        Screen {
+            Row(Modifier.fillMaxSize().padding(12.dp)) {
+                SettingsNav(4) {}
+                Column(Modifier.weight(1f).fillMaxHeight().glass().padding(14.dp)) { AccentPicker(0) {} }
             }
-        }
-    }
-
-    @Test
-    fun onboarding() {
-        paparazzi.snapshot {
-            AppTheme(AppColors.Emerald) { AppBackground { OnboardingScreen {} } }
         }
     }
 }

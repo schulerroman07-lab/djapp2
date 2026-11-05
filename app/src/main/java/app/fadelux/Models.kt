@@ -23,7 +23,6 @@ class DeckModel(val index: Int) {
     var bpm by mutableFloatStateOf(0f)
     var cue by mutableStateOf(0.0)
     var level by mutableFloatStateOf(0f)
-    var waveform by mutableStateOf(FloatArray(0))
     var peaks by mutableStateOf(FloatArray(0))     // volle Auflösung (100 Werte/s)
     var firstBeat by mutableFloatStateOf(0f)
 
@@ -161,7 +160,6 @@ class MixerModel {
     var headphoneVolume by mutableFloatStateOf(0.8f)
     var cueMix by mutableFloatStateOf(0f)
     var masterLevel by mutableFloatStateOf(0f)
-    var spectrum by mutableStateOf(FloatArray(28))
 
     /** Crossfader gesperrt? (während Auto-Mix: bewegt sich nur automatisch) */
     var locked: () -> Boolean = { false }

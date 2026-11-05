@@ -1,14 +1,9 @@
 package app.fadelux
 
 import android.app.Application
-import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
-import android.media.AudioDeviceInfo
-import android.media.AudioManager
 import android.net.Uri
-import android.os.Environment
-import android.provider.MediaStore
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -18,7 +13,6 @@ import androidx.compose.runtime.setValue
 import app.fadelux.audio.NativeEngine
 import app.fadelux.automix.AutoMix
 import app.fadelux.automix.TransitionType
-import app.fadelux.automix.Suggestion
 import app.fadelux.automix.Suggestions
 import app.fadelux.data.AppSettings
 import app.fadelux.data.LibraryRepository
@@ -43,12 +37,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-
-/** Ein Audio-Ausgabegerät (z.B. Lautsprecher, Kopfhörer, Bluetooth, USB). */
-data class OutputDevice(val id: Int, val type: Int, val name: String)
 
 /**
  * Der "Kern" der App: Decks, Mixer, Auto-Mix, Bibliothek, Wünsche.
@@ -85,7 +73,6 @@ class DjViewModel private constructor(private val app: Application) {
     val mixer = MixerModel()
     var engineOk by mutableStateOf(false)
     var message by mutableStateOf<UiText?>(null)
-    var engineInfo by mutableStateOf(DoubleArray(4))
 
     /** Schneller Zugriff auf die neuesten Titel-Daten (nach der Analyse: BPM, Tonart, Energie). */
     @Volatile private var trackIndex: Map<Long, Track> = emptyMap()
@@ -96,11 +83,6 @@ class DjViewModel private constructor(private val app: Application) {
         refresh = { t -> trackIndex[t.id] ?: t },
     )
 
-    // Aufnahme
-    var recording by mutableStateOf(false)
-    var recordSeconds by mutableStateOf(0.0)
-    private var recordUri: Uri? = null
-
     private var scanning = false
     private var analyzeJob: Job? = null
 
@@ -108,7 +90,6 @@ class DjViewModel private constructor(private val app: Application) {
     private fun startPolling() = scope.launch {
         val st = DoubleArray(9)
         val lastLoad = intArrayOf(-1, -1)
-        var frame = 0
         var wasPlaying = false
         while (isActive) {
             for (d in decks) {
@@ -125,7 +106,6 @@ class DjViewModel private constructor(private val app: Application) {
                 if (ls != lastLoad[d.index]) {
                     lastLoad[d.index] = ls
                     if (ls == 2) {
-                        d.waveform = NativeEngine.getWaveform(d.index, 600)
                         d.peaks = NativeEngine.getPeaks(d.index)
                         val t = d.track
                         if (t != null && d.bpm > 0 && (t.bpm == null || t.bpm == 0f)) library.setBpm(t.id, d.bpm)
@@ -138,22 +118,8 @@ class DjViewModel private constructor(private val app: Application) {
             if (!anyPlaying && wasPlaying && remotePaused.isEmpty() && !autoMix.running) focus.abandon()
             wasPlaying = anyPlaying
             mixer.masterLevel = NativeEngine.getMasterLevel()
-            // Spektrum: neues Array, damit Compose neu zeichnet (Berechnung hier, nicht im Audio-Thread)
-            val spec = FloatArray(28)
-            NativeEngine.getSpectrum(spec)
-            val old = mixer.spectrum
-            for (i in spec.indices) spec[i] = maxOf(spec[i], (old.getOrNull(i) ?: 0f) * 0.86f) // sanft abfallen
-            mixer.spectrum = spec
-            if (recording && frame % 10 == 0) recordSeconds = NativeEngine.recordingSeconds()
-            frame++
             delay(if (uiVisible) 16 else 100)
         }
-    }
-
-    fun refreshEngineInfo() {
-        val info = DoubleArray(4)
-        NativeEngine.getEngineInfo(info)
-        engineInfo = info
     }
 
     // ---------------- Audio-Fokus & Fernsteuerung (Benachrichtigung, Bluetooth, Auto) ----------------
@@ -193,8 +159,11 @@ class DjViewModel private constructor(private val app: Application) {
             pauseAll()
             return
         }
-        if (remotePaused.isNotEmpty()) resumePaused()
-        else (liveDeck() ?: decks.firstOrNull { it.loadState == 2 })?.play(true)
+        when {
+            remotePaused.isNotEmpty() -> resumePaused()
+            autoMix.running -> decks[autoMix.currentDeck].play(true)
+            autoMix.queue.isNotEmpty() -> autoMix.start()
+        }
     }
 
     /** "Weiter" (Bildschirm, Benachrichtigung, Kopfhörer): kurzer, sauberer Übergang im Takt. */
@@ -254,10 +223,6 @@ class DjViewModel private constructor(private val app: Application) {
         autoMix.changeType(autoMix.forcedType)
     }
 
-    fun toggleAutoMix() {
-        if (autoMix.running) autoMix.stop() else autoMix.start()
-    }
-
     /** Läuft die App ohne Akku-Einschränkung? (sonst kann Android den Dienst stoppen) */
     fun batteryUnrestricted(): Boolean {
         val pm = app.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
@@ -312,7 +277,6 @@ class DjViewModel private constructor(private val app: Application) {
     suspend fun loadTrackNow(deck: Int, t: Track): Boolean {
         val d = decks[deck]
         d.track = t
-        d.waveform = FloatArray(0)
         d.peaks = FloatArray(0)
         d.loadState = 1
         d.applyGain(1f)      // Lautheits-Angleichung gilt nur für den vorherigen Titel
@@ -332,46 +296,16 @@ class DjViewModel private constructor(private val app: Application) {
         }
     }
 
-    /** Titel direkt in ein Deck laden (nur noch für Tests/Altes). */
-    fun loadTrack(deck: Int, t: Track, force: Boolean = false) {
-        if (decks[deck].playing && !force) return
-        scope.launch { loadTrackNow(deck, t) }
-    }
-
     /**
      * Beat-Puls für den animierten Hintergrund: 1 genau auf dem Beat, fällt bis zum nächsten Beat ab.
      * 0, wenn nichts spielt oder kein Tempo erkannt wurde.
      */
     fun beatPulse(): Float {
-        val d = liveDeck() ?: return 0f
+        val d = decks[autoMix.currentDeck]
         if (!d.playing || d.bpm <= 0f) return 0f
         val beat = 60.0 / d.bpm
         val phase = ((d.position - d.firstBeat) / beat).mod(1.0)
         return kotlin.math.exp(-phase * 5.0).toFloat()
-    }
-
-    /** Das Deck, das gerade "on air" ist (spielt und ist am Crossfader offen). */
-    fun liveDeck(): DeckModel? {
-        val playing = decks.filter { it.playing }
-        if (playing.size <= 1) return playing.firstOrNull()
-        return if (mixer.crossfader <= 0f) decks[0] else decks[1]
-    }
-
-    /** Vorschläge "Passt als nächstes". */
-    fun suggestions(): List<Suggestion> {
-        val live = liveDeck() ?: decks.firstOrNull { it.track != null }
-        val exclude = decks.mapNotNull { it.track?.id }.toSet() + autoMix.queue.map { it.id }
-        val wishTexts = wishes.filter { !it.done }.map { if (it.song.isNotBlank()) it.song else it.text }
-        return Suggestions.suggest(live?.track, live?.effectiveBpm ?: 0f, tracks.value, wishTexts, exclude)
-    }
-
-    /** Vorschläge für die Auto-Mix-Warteschlange: passend zum letzten Titel der Warteschlange. */
-    fun queueSuggestions(): List<Track> {
-        val ref = autoMix.queue.lastOrNull() ?: liveDeck()?.track
-        val refBpm = ref?.bpm ?: 0f
-        val exclude = decks.mapNotNull { it.track?.id }.toSet() + autoMix.queue.map { it.id }
-        val wishTexts = wishes.filter { !it.done }.map { if (it.song.isNotBlank()) it.song else it.text }
-        return Suggestions.suggest(ref, refBpm, tracks.value, wishTexts, exclude).take(6).map { it.track }
     }
 
     // ---------------- Playlists ----------------
@@ -395,23 +329,6 @@ class DjViewModel private constructor(private val app: Application) {
     fun deletePlaylist(id: Long) { scope.launch { playlists.delete(id) } }
     fun removeFromPlaylist(entryId: Long) { scope.launch { playlists.removeEntry(entryId) } }
     fun reorderPlaylist(entryIds: List<Long>) { scope.launch { playlists.reorder(entryIds) } }
-
-    /**
-     * Ganze Playlist in die Auto-Mix-Warteschlange; optional Auto-Mix gleich starten.
-     * shuffle = zufällige Reihenfolge (wird dann nicht automatisch sortiert).
-     */
-    fun queuePlaylist(id: Long, start: Boolean, shuffle: Boolean = false) {
-        scope.launch {
-            val list = playlists.tracks(id)
-            val before = autoMix.queue.size
-            if (shuffle) autoMix.addInOrder(list.shuffled()) else autoMix.addAll(list)
-            message = UiText(R.string.msg_queue_added, autoMix.queue.size - before)
-            if (start && !autoMix.running) {
-                autoMix.start()
-                if (!batteryUnrestricted()) message = UiText(R.string.bg_hint_short)
-            }
-        }
-    }
 
     // ---------------- Import / Export ----------------
     /** Fortschritt (fertig, total) einer laufenden Kopie, oder null. */
@@ -474,87 +391,22 @@ class DjViewModel private constructor(private val app: Application) {
         }
     }
 
-    // ---------------- Ausgabe / Einstellungen ----------------
-    fun outputDevices(): List<OutputDevice> {
-        val am = app.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        return am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-            .filter { it.type != AudioDeviceInfo.TYPE_TELEPHONY && it.type != AudioDeviceInfo.TYPE_BUILTIN_EARPIECE }
-            .map { OutputDevice(it.id, it.type, it.productName.toString()) }
-    }
-
-    fun setOutput(mode: Int, master: Int, cue: Int) {
-        settings.outputMode = mode
-        settings.masterDevice = master
-        settings.cueDevice = cue
-        applyOutput()
-    }
-
+    // ---------------- Ausgabe ----------------
+    /**
+     * Auto-DJ: immer normaler Stereo-Ausgang (Lautsprecher, Kopfhörer oder Bluetooth – Android wählt).
+     * Grösserer Puffer = keine Aussetzer; die Verzögerung spielt beim Auto-DJ keine Rolle.
+     */
     private fun applyOutput() {
         scope.launch(Dispatchers.Default) {
-            NativeEngine.setOutput(settings.outputMode, settings.masterDevice, settings.cueDevice)
-            withContext(Dispatchers.Main) { refreshEngineInfo() }
+            NativeEngine.setOutput(0, 0, 0)
+            NativeEngine.setCueDelayMs(0f)
+            NativeEngine.setBufferBursts(4)
         }
-    }
-
-    fun changeCueDelay(ms: Float) {
-        settings.cueDelayMs = ms
-        NativeEngine.setCueDelayMs(ms)
-    }
-
-    fun changeBuffer(bursts: Int) {
-        settings.bufferBursts = bursts
-        NativeEngine.setBufferBursts(bursts)
-        scope.launch { delay(200); refreshEngineInfo() }
     }
 
     fun setLibraryFolder(folder: String) {
         settings.libraryFolder = folder
         scanLibrary()
-    }
-
-    // ---------------- Aufnahme ----------------
-    fun toggleRecording() {
-        if (recording) stopRecording() else startRecording()
-    }
-
-    private val appFolder: String
-        get() = app.getString(R.string.app_name).replace(Regex("[^A-Za-z0-9 _-]"), "")
-
-    private fun startRecording() {
-        val resolver = app.contentResolver
-        val name = "Mix_" + SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(Date()) + ".wav"
-        val values = ContentValues().apply {
-            put(MediaStore.Audio.Media.DISPLAY_NAME, name)
-            put(MediaStore.Audio.Media.MIME_TYPE, "audio/wav")
-            put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC + "/" + appFolder)
-            put(MediaStore.Audio.Media.IS_PENDING, 1)
-        }
-        try {
-            val uri = resolver.insert(MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values)
-                ?: throw IllegalStateException("insert")
-            val pfd = resolver.openFileDescriptor(uri, "rw") ?: throw IllegalStateException("open")
-            val fd = pfd.detachFd()
-            pfd.close()
-            if (NativeEngine.startRecording(fd)) {
-                recordUri = uri
-                recording = true
-                recordSeconds = 0.0
-                message = UiText(R.string.msg_rec_started, "Music/$appFolder")
-            }
-        } catch (e: Exception) {
-            message = UiText(R.string.msg_rec_failed)
-        }
-    }
-
-    private fun stopRecording() {
-        NativeEngine.stopRecording()
-        recording = false
-        recordUri?.let { uri ->
-            val values = ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }
-            app.contentResolver.update(uri, values, null, null)
-        }
-        recordUri = null
-        message = UiText(R.string.msg_rec_saved, "Music/$appFolder")
     }
 
     // ---------------- Gästewünsche ----------------
@@ -687,10 +539,15 @@ class DjViewModel private constructor(private val app: Application) {
     private fun handleNewWish(w: Wish) {
         if (w.id in queuedWishIds) return
         val t = trackForWish(w) ?: return
-        if (autoMix.insertWish(t)) {
-            queuedWishIds += w.id
-            message = UiText(R.string.wish_queued, t.title)
-        }
+        if (queueWish(w, t)) message = UiText(R.string.wish_queued, t.title)
+    }
+
+    /** Wunsch-Song passend einreihen (auch von Hand aus der Wunschliste). */
+    fun queueWish(w: Wish, t: Track): Boolean {
+        if (w.id in queuedWishIds) return false
+        val ok = autoMix.insertWish(t)
+        if (ok) queuedWishIds += w.id
+        return ok
     }
 
     /** Titel aus der Bibliothek, der zu einem Wunsch passt (oder null). */
@@ -701,8 +558,6 @@ class DjViewModel private constructor(private val app: Application) {
     init {
         engineOk = NativeEngine.create()
         applyOutput()
-        NativeEngine.setCueDelayMs(settings.cueDelayMs)
-        NativeEngine.setBufferBursts(settings.bufferBursts)
         mixer.applyAll()
         decks.forEach { it.applyAll() }
         startPolling()
@@ -713,7 +568,6 @@ class DjViewModel private constructor(private val app: Application) {
 
     /** App wird ganz beendet (z.B. "Beenden" in der Benachrichtigung). */
     fun shutdown() {
-        if (recording) stopRecording()
         localServer?.stop()
         autoMix.stop()
         decks.forEach { NativeEngine.setPlaying(it.index, false) }

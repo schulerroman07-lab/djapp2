@@ -72,12 +72,12 @@ fun formatDuration(ms: Long): String {
 
 /** Playlist-Seite: Übersicht oder Detail einer Playlist. */
 @Composable
-fun PlaylistsScreen(vm: DjViewModel, onClose: () -> Unit) {
+fun PlaylistsScreen(vm: DjViewModel, onPlayed: () -> Unit = {}, onClose: () -> Unit) {
     var openId by rememberSaveable { mutableLongStateOf(-1L) }
     val summaries by vm.playlistSummaries.collectAsStateWithLifecycle()
     val open = summaries.firstOrNull { it.id == openId }
     if (open != null) {
-        PlaylistDetail(vm, open, onBack = { openId = -1L }, onClose = onClose)
+        PlaylistDetail(vm, open, onBack = { openId = -1L }, onPlayed = onPlayed, onClose = onClose)
     } else {
         PlaylistOverview(vm, summaries, onOpen = { openId = it }, onClose = onClose)
     }
@@ -159,7 +159,7 @@ fun CoverCollage(tracks: List<Track>, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun PlaylistDetail(vm: DjViewModel, p: PlaylistSummary, onBack: () -> Unit, onClose: () -> Unit) {
+private fun PlaylistDetail(vm: DjViewModel, p: PlaylistSummary, onBack: () -> Unit, onPlayed: () -> Unit, onClose: () -> Unit) {
     val entries by vm.playlists.entries(p.id).collectAsStateWithLifecycle(emptyList())
     var adding by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
@@ -169,14 +169,19 @@ private fun PlaylistDetail(vm: DjViewModel, p: PlaylistSummary, onBack: () -> Un
         NeonButton(Modifier.size(44.dp), icon = AppIcons.ArrowLeft, color = AppColors.TextDim) { onBack() }
     }) {
         Text(stringResource(R.string.pl_count, p.count, formatDuration(p.durationMs)), style = AppType.small)
+        // Play = nach Stimmung geordnet abspielen, Zufällig = gemischt abspielen
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NeonButton(Modifier.weight(1f).height(50.dp), text = stringResource(R.string.pl_play), icon = AppIcons.Play, active = true, fontSize = 15, iconSize = 20.dp) {
+                vm.playPlaylist(p.id); onPlayed()
+            }
+            NeonButton(Modifier.weight(1f).height(50.dp), text = stringResource(R.string.pl_shuffle), icon = AppIcons.Shuffle, color = AppColors.Pink, fontSize = 15, iconSize = 20.dp) {
+                vm.playPlaylist(p.id, shuffle = true); onPlayed()
+            }
+        }
         Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             NeonButton(Modifier.weight(1f).height(42.dp), text = stringResource(R.string.pl_add_songs), icon = AppIcons.Add, fontSize = 12, iconSize = 16.dp) { adding = true }
-            NeonButton(Modifier.weight(1f).height(42.dp), text = stringResource(R.string.pl_all_to_queue), icon = AppIcons.Queue, color = AppColors.Violet, fontSize = 12, iconSize = 16.dp) { vm.queuePlaylist(p.id, false) }
-            NeonButton(Modifier.weight(1f).height(42.dp), text = stringResource(R.string.pl_start_automix), icon = AppIcons.Auto, active = true, fontSize = 12, iconSize = 16.dp) { vm.queuePlaylist(p.id, true) }
-            // Zufällige Reihenfolge (nicht sortiert) und gleich losspielen
-            NeonButton(Modifier.weight(0.8f).height(42.dp), text = stringResource(R.string.pl_shuffle), icon = AppIcons.Shuffle, color = AppColors.Pink, fontSize = 12, iconSize = 16.dp) { vm.queuePlaylist(p.id, true, shuffle = true) }
-            NeonButton(Modifier.width(96.dp).height(42.dp), text = stringResource(R.string.io_export), color = AppColors.Cyan, fontSize = 12) { exporting = true }
-            NeonButton(Modifier.width(96.dp).height(42.dp), text = stringResource(R.string.pl_rename), fontSize = 12) { renaming = true }
+            NeonButton(Modifier.weight(1f).height(42.dp), text = stringResource(R.string.io_export), color = AppColors.Cyan, fontSize = 12) { exporting = true }
+            NeonButton(Modifier.size(42.dp), icon = AppIcons.Edit, iconSize = 18.dp) { renaming = true }
             NeonButton(Modifier.size(42.dp), icon = AppIcons.Delete, color = AppColors.Red, iconSize = 18.dp) { deleting = true }
         }
         if (entries.isEmpty()) {
@@ -189,7 +194,7 @@ private fun PlaylistDetail(vm: DjViewModel, p: PlaylistSummary, onBack: () -> Un
                 onReorder = { ids -> vm.reorderPlaylist(ids) },
                 onRemove = { vm.removeFromPlaylist(it.entryId) },
                 onQueue = { vm.autoMix.add(it.track); vm.message = UiText(R.string.msg_queued, it.track.title) },
-                onLoad = { e, deck -> vm.loadTrack(deck, e.track) },
+                onNext = { vm.autoMix.addNext(it.track); vm.message = UiText(R.string.msg_queued_next, it.track.title) },
             )
         }
     }
@@ -213,7 +218,7 @@ fun PlaylistEntryList(
     onReorder: (List<Long>) -> Unit,
     onRemove: (PlaylistEntry) -> Unit,
     onQueue: (PlaylistEntry) -> Unit,
-    onLoad: (PlaylistEntry, Int) -> Unit,
+    onNext: (PlaylistEntry) -> Unit,
 ) {
     val accent = LocalAccent.current
     val local = remember(entries) { entries.toMutableStateList() }
@@ -262,10 +267,8 @@ fun PlaylistEntryList(
                     Text(e.track.title, style = AppType.bodyBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(e.track.artist, style = AppType.small, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Text(formatTime(e.track.durationMs / 1000.0), style = AppType.small)
                 Text(e.track.bpm?.takeIf { it > 0 }?.let { String.format(Locale.US, "%.0f", it) } ?: "–", style = AppType.bodyBold, color = accent)
-                NeonButton(Modifier.size(width = 40.dp, height = 40.dp), text = "A", fontSize = 14) { onLoad(e, 0) }
-                NeonButton(Modifier.size(width = 40.dp, height = 40.dp), text = "B", color = AppColors.Cyan, fontSize = 14) { onLoad(e, 1) }
+                NeonButton(Modifier.size(40.dp), icon = AppIcons.Next, color = AppColors.Cyan, iconSize = 18.dp) { onNext(e) }
                 NeonButton(Modifier.size(40.dp), icon = AppIcons.Queue, color = AppColors.Violet, iconSize = 18.dp) { onQueue(e) }
                 NeonButton(Modifier.size(40.dp), icon = AppIcons.Close, color = AppColors.Red, iconSize = 18.dp) { onRemove(e) }
             }

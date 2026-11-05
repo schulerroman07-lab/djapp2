@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 /**
  * "Übersetzer" zwischen unserer DJ-Engine und Android (Media3).
  * Android sieht damit einen normalen Musik-Player: Benachrichtigung, Sperrbildschirm,
- * Bluetooth-Kopfhörer und Auto können Play/Pause/Nächster senden.
+ * Bluetooth-Kopfhörer und Auto können Play/Pause, Zurück, Weiter und Spulen senden.
  * Die Musik selbst kommt weiterhin aus unserer Oboe-Engine.
  */
 @OptIn(UnstableApi::class)
@@ -32,12 +32,12 @@ class DjPlayer(private val core: DjViewModel) : SimpleBasePlayer(Looper.getMainL
     // Zweimal pro Sekunde prüfen, ob sich etwas Sichtbares geändert hat (Titel, Play-Zustand …)
     private val watcher = object : Runnable {
         override fun run() {
-            val live = core.liveDeck() ?: core.decks.firstOrNull { it.track != null }
-            val sig = "${live?.track?.id}|${core.decks.any { it.playing }}|${core.autoMix.queue.firstOrNull()?.id}|" +
-                "${core.autoMix.running}|${live?.duration}"
+            val live = core.decks[core.autoMix.currentDeck]
+            val sig = "${core.autoMix.current?.id}|${core.decks.any { it.playing }}|${core.autoMix.queue.firstOrNull()?.id}|" +
+                "${core.autoMix.running}|${live.duration}|${core.autoMix.transitioning}"
             if (sig != lastSignature) {
                 lastSignature = sig
-                loadCover(live?.track)
+                loadCover(core.autoMix.current)
                 invalidateState()
             }
             handler.postDelayed(this, 500)
@@ -69,10 +69,10 @@ class DjPlayer(private val core: DjViewModel) : SimpleBasePlayer(Looper.getMainL
     }
 
     override fun getState(): State {
-        val live = core.liveDeck() ?: core.decks.firstOrNull { it.track != null }
-        val t = live?.track
+        val live = core.decks[core.autoMix.currentDeck]
+        val t = core.autoMix.current
         val playing = core.decks.any { it.playing }
-        val next = core.autoMix.queue.firstOrNull()
+        val next = core.autoMix.nextTrack ?: core.autoMix.queue.firstOrNull()
 
         val commands = Player.Commands.Builder()
             .addAll(
@@ -83,7 +83,10 @@ class DjPlayer(private val core: DjViewModel) : SimpleBasePlayer(Looper.getMainL
                 Player.COMMAND_GET_TIMELINE,
                 Player.COMMAND_SEEK_TO_NEXT,
                 Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+                Player.COMMAND_SEEK_TO_PREVIOUS,
+                Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
             )
+            .addIf(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM, !core.autoMix.transitioning)
             .build()
 
         // Playlist für Android: [aktueller Titel, nächster Titel] – damit "Weiter" aktiv ist
@@ -91,7 +94,7 @@ class DjPlayer(private val core: DjViewModel) : SimpleBasePlayer(Looper.getMainL
             MediaItemData.Builder("current-${t?.id ?: 0}")
                 .setMediaItem(MediaItem.Builder().setMediaId("current").setMediaMetadata(metadata(t, coverBytes)).build())
                 .setMediaMetadata(metadata(t, coverBytes))
-                .setDurationUs(((live?.duration ?: 0.0) * 1_000_000).toLong().coerceAtLeast(1))
+                .setDurationUs((live.duration * 1_000_000).toLong().coerceAtLeast(1))
                 .build(),
             MediaItemData.Builder("next-${next?.id ?: 0}")
                 .setMediaItem(MediaItem.Builder().setMediaId("next").setMediaMetadata(metadata(next, null)).build())
@@ -105,7 +108,7 @@ class DjPlayer(private val core: DjViewModel) : SimpleBasePlayer(Looper.getMainL
             .setPlaybackState(if (t == null) Player.STATE_IDLE else Player.STATE_READY)
             .setPlaylist(items)
             .setCurrentMediaItemIndex(0)
-            .setContentPositionMs { (((core.liveDeck() ?: live)?.position ?: 0.0) * 1000).toLong() }
+            .setContentPositionMs { (core.decks[core.autoMix.currentDeck].position * 1000).toLong() }
             .build()
     }
 
@@ -116,8 +119,10 @@ class DjPlayer(private val core: DjViewModel) : SimpleBasePlayer(Looper.getMainL
     }
 
     override fun handleSeek(mediaItemIndex: Int, positionMs: Long, seekCommand: Int): ListenableFuture<*> {
-        if (seekCommand == Player.COMMAND_SEEK_TO_NEXT || seekCommand == Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM) {
-            core.remoteNext()
+        when (seekCommand) {
+            Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> core.remoteNext()
+            Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> core.remotePrevious()
+            Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM -> core.seekTo(positionMs / 1000.0)
         }
         lastSignature = ""
         return Futures.immediateVoidFuture()

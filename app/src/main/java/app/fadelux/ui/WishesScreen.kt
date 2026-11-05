@@ -37,6 +37,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.LaunchedEffect
+import app.fadelux.data.Track
 import app.fadelux.DjViewModel
 import app.fadelux.R
 import app.fadelux.wishes.Wish
@@ -51,11 +55,14 @@ import app.fadelux.ui.theme.LocalAccent
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/** Gästewünsche: Anleitung, Event starten (Internet oder lokales WLAN), QR-Code, Liste. */
+/**
+ * Gästewünsche: QR-Code (startet automatisch – kein Einrichten nötig), Liste der Wünsche.
+ * Wünsche, die in der Bibliothek sind, reiht der Auto-DJ selbst an passender Stelle ein.
+ * Fehlende Songs werden angezeigt und können abgehakt werden.
+ */
 @Composable
 fun WishesScreen(vm: DjViewModel, onClose: () -> Unit) {
     val accent = LocalAccent.current
-    var eventName by rememberSaveable { mutableStateOf("") }
     val timeFmt = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
     // Übersetzte Texte für die lokale Gästeseite
     val localTexts = mapOf(
@@ -67,124 +74,124 @@ fun WishesScreen(vm: DjViewModel, onClose: () -> Unit) {
         "wait" to stringResource(R.string.guest_wait),
         "empty" to stringResource(R.string.guest_empty),
     )
+    val partyName = stringResource(R.string.app_name)
+    // Wünsche sofort bereit: beim Öffnen automatisch starten
+    LaunchedEffect(Unit) {
+        if (!vm.eventActive && !vm.eventBusy) vm.startEvent(partyName, localTexts)
+    }
 
     OverlayScaffold(stringResource(R.string.nav_wishes), onClose) {
-        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            // ---- Links: Anleitung / Event ----
-            Column(Modifier.width(320.dp).fillMaxHeight().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
-                if (!vm.eventActive) {
-                    // 3-Schritte-Anleitung
-                    WishStep(1, AppIcons.Play, stringResource(R.string.wish_step1))
-                    WishStep(2, AppIcons.QrCode, stringResource(R.string.wish_step2))
-                    WishStep(3, AppIcons.Star, stringResource(R.string.wish_step3))
-                    SectionTitle(stringResource(R.string.wish_mode))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        NeonButton(
-                            Modifier.weight(1f).height(44.dp), text = stringResource(R.string.wish_mode_online), icon = AppIcons.Star,
-                            active = vm.settings.wishMode == 0 && vm.onlineAvailable, fontSize = 12, iconSize = 16.dp,
-                        ) { if (vm.onlineAvailable) vm.settings.wishMode = 0 else vm.message = UiText(R.string.wish_online_unavailable) }
-                        NeonButton(
-                            Modifier.weight(1f).height(44.dp), text = stringResource(R.string.wish_mode_local), icon = AppIcons.Wifi,
-                            active = vm.settings.wishMode == 1 || !vm.onlineAvailable, fontSize = 12, iconSize = 16.dp,
-                        ) { vm.settings.wishMode = 1 }
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val wide = maxWidth > maxHeight
+            if (wide) {
+                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Column(Modifier.width(320.dp).fillMaxHeight().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+                        QrPanel(vm, partyName, localTexts)
                     }
-                    Text(
-                        stringResource(if (vm.settings.wishMode == 1 || !vm.onlineAvailable) R.string.wish_mode_local_hint else R.string.wish_mode_online_hint),
-                        style = AppType.small, modifier = Modifier.padding(vertical = 6.dp),
-                    )
-                    OutlinedTextField(eventName, { eventName = it }, label = { Text(stringResource(R.string.wish_event_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(8.dp))
-                    NeonButton(
-                        Modifier.fillMaxWidth().height(54.dp),
-                        text = stringResource(if (vm.eventBusy) R.string.wish_starting else R.string.wish_start), active = true, fontSize = 16,
-                    ) { if (!vm.eventBusy) vm.startEvent(eventName.ifBlank { "Party" }, localTexts) }
-                } else {
-                    vm.qrBitmap?.let {
-                        Box(Modifier.glass(glowColor = accent).padding(10.dp)) {
-                            Image(it.asImageBitmap(), "QR", Modifier.size(210.dp).clip(RoundedCornerShape(8.dp)))
-                        }
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Text(vm.wishUrl, style = AppType.small)
-                    Text(stringResource(R.string.wish_scan_hint), style = AppType.small.copy(color = AppColors.Text))
-                    if (vm.settings.wishMode == 1) Text(stringResource(R.string.wish_local_same_wifi), style = AppType.small.copy(color = AppColors.Amber))
-                    Spacer(Modifier.height(10.dp))
-                    NeonButton(Modifier.fillMaxWidth().height(44.dp), text = stringResource(R.string.wish_end), color = AppColors.Red, fontSize = 13) { vm.endEvent() }
+                    WishList(vm, timeFmt, Modifier.weight(1f).fillMaxHeight())
                 }
-                vm.wishError?.let { Text(it.resolve(), style = AppType.small.copy(color = AppColors.Red), modifier = Modifier.padding(top = 6.dp)) }
-            }
-            // ---- Rechts: Liste ----
-            Column(Modifier.weight(1f).fillMaxHeight()) {
-                Text(stringResource(R.string.wish_count, vm.wishes.count { !it.done }, vm.wishes.size), style = AppType.small)
-                LazyColumn(Modifier.fillMaxSize()) {
-                    items(vm.wishes, key = { it.id }) { w ->
-                        // Wunsch ist in der Bibliothek: direkt laden oder in die Warteschlange
-                        val match = remember(w.id, vm.tracks.value.size) { vm.trackForWish(w) }
-                        WishRow(
-                            w, timeFmt.format(w.createdAt), match != null,
-                            onA = { match?.let { vm.loadTrack(0, it) } },
-                            onB = { match?.let { vm.loadTrack(1, it) } },
-                            onQueue = { match?.let { vm.autoMix.add(it); vm.message = UiText(R.string.msg_queued, it.title) } },
-                            onDone = { vm.markWish(w) },
-                            onDelete = { vm.deleteWish(w) },
-                        )
+            } else {
+                Column(Modifier.fillMaxSize()) {
+                    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        QrPanel(vm, partyName, localTexts, qrSize = 170.dp)
                     }
+                    Spacer(Modifier.height(8.dp))
+                    WishList(vm, timeFmt, Modifier.weight(1f).fillMaxWidth())
                 }
             }
         }
     }
 }
 
-/** Eine Zeile der Wunschliste. inLibrary = Knöpfe A / B / Warteschlange anzeigen. */
+/** QR-Code + Hinweise (oder Fehlermeldung mit "Nochmals versuchen"). */
+@Composable
+private fun QrPanel(vm: DjViewModel, partyName: String, localTexts: Map<String, String>, qrSize: androidx.compose.ui.unit.Dp = 210.dp) {
+    val accent = LocalAccent.current
+    if (vm.eventActive) {
+        vm.qrBitmap?.let {
+            Box(Modifier.glass(glowColor = accent).padding(10.dp)) {
+                Image(it.asImageBitmap(), "QR", Modifier.size(qrSize).clip(RoundedCornerShape(8.dp)))
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(stringResource(R.string.wish_scan_hint), style = AppType.small.copy(color = AppColors.Text))
+        Text(vm.wishUrl, style = AppType.tiny)
+        if (vm.settings.wishMode == 1) Text(stringResource(R.string.wish_local_same_wifi), style = AppType.small.copy(color = AppColors.Amber))
+        Spacer(Modifier.height(6.dp))
+        NeonButton(Modifier.fillMaxWidth().height(40.dp), text = stringResource(R.string.wish_end), color = AppColors.Red, fontSize = 12) { vm.endEvent() }
+    } else {
+        Text(stringResource(if (vm.eventBusy) R.string.wish_starting else R.string.wish_not_running), style = AppType.body)
+        Spacer(Modifier.height(8.dp))
+        NeonButton(Modifier.fillMaxWidth().height(50.dp), text = stringResource(R.string.wish_start), icon = AppIcons.QrCode, active = true, fontSize = 15) {
+            if (!vm.eventBusy) vm.startEvent(partyName, localTexts)
+        }
+    }
+    vm.wishError?.let { Text(it.resolve(), style = AppType.small.copy(color = AppColors.Red), modifier = Modifier.padding(top = 6.dp)) }
+}
+
+@Composable
+private fun WishList(vm: DjViewModel, timeFmt: DateTimeFormatter, modifier: Modifier) {
+    Column(modifier) {
+        Text(stringResource(R.string.wish_count, vm.wishes.count { !it.done }, vm.wishes.size), style = AppType.small)
+        if (vm.wishes.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(stringResource(R.string.wish_none_yet), style = AppType.body.copy(color = AppColors.TextDim))
+            }
+            return@Column
+        }
+        LazyColumn(Modifier.fillMaxSize()) {
+            items(vm.wishes, key = { it.id }) { w ->
+                val match = remember(w.id, vm.tracks.value.size) { vm.trackForWish(w) }
+                WishRow(
+                    w, timeFmt.format(w.createdAt), match,
+                    queued = w.id in vm.queuedWishIds,
+                    onQueue = { t -> if (vm.queueWish(w, t)) vm.message = UiText(R.string.wish_queued, t.title) },
+                    onDone = { vm.markWish(w) },
+                    onDelete = { vm.deleteWish(w) },
+                )
+            }
+        }
+    }
+}
+
+/** Eine Zeile der Wunschliste: Status "eingereiht" / "nicht in der Bibliothek", abhaken, löschen. */
 @Composable
 fun WishRow(
     w: Wish,
     time: String,
-    inLibrary: Boolean,
-    onA: () -> Unit,
-    onB: () -> Unit,
-    onQueue: () -> Unit,
+    match: Track?,
+    queued: Boolean,
+    onQueue: (Track) -> Unit,
     onDone: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val accent = LocalAccent.current
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 3.dp).glass(corner = 12.dp, glowColor = if (!w.done) AppColors.Amber else null).padding(8.dp),
+        Modifier.fillMaxWidth().padding(vertical = 3.dp).glass(corner = 12.dp, glowColor = if (!w.done && !queued) AppColors.Amber else null).padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(time, style = AppType.small, modifier = Modifier.width(44.dp))
+        Text(time, style = AppType.small, modifier = Modifier.width(42.dp))
         Column(Modifier.weight(1f)) {
             val deco = if (w.done) TextDecoration.LineThrough else null
             if (w.song.isNotBlank()) Text(w.song, style = AppType.bodyBold.copy(color = AppColors.Amber, textDecoration = deco), maxLines = 2)
             if (w.text.isNotBlank()) Text(w.text, style = AppType.body.copy(color = if (w.done) AppColors.TextDim else AppColors.Text, textDecoration = deco), maxLines = 3)
+            Text(
+                stringResource(
+                    when {
+                        queued -> R.string.wish_status_queued
+                        match != null -> R.string.wish_status_available
+                        else -> R.string.wish_status_missing
+                    },
+                ),
+                style = AppType.tiny.copy(color = if (queued) accent else AppColors.TextDim),
+            )
         }
-        if (inLibrary && !w.done) {
-            NeonButton(Modifier.size(width = 38.dp, height = 42.dp), text = "A", fontSize = 15) { onA() }
+        if (match != null && !queued && !w.done) {
+            NeonButton(Modifier.size(42.dp), icon = AppIcons.Queue, color = AppColors.Violet, iconSize = 18.dp) { onQueue(match) }
             Spacer(Modifier.width(4.dp))
-            NeonButton(Modifier.size(width = 38.dp, height = 42.dp), text = "B", color = AppColors.Cyan, fontSize = 15) { onB() }
-            Spacer(Modifier.width(4.dp))
-            NeonButton(Modifier.size(width = 38.dp, height = 42.dp), icon = AppIcons.Queue, color = AppColors.Violet, iconSize = 18.dp) { onQueue() }
-            Spacer(Modifier.width(8.dp))
         }
-        NeonButton(Modifier.size(width = 44.dp, height = 42.dp), icon = AppIcons.Check, color = AppColors.Emerald, active = w.done) { onDone() }
+        NeonButton(Modifier.size(42.dp), icon = AppIcons.Check, color = AppColors.Emerald, active = w.done) { onDone() }
         Spacer(Modifier.width(4.dp))
-        NeonButton(Modifier.size(width = 44.dp, height = 42.dp), icon = AppIcons.Delete, color = AppColors.Red) { onDelete() }
-    }
-}
-
-/** Ein Schritt der Anleitung: Nummer, Symbol, Text. */
-@Composable
-fun WishStep(n: Int, icon: ImageVector, text: String) {
-    val accent = LocalAccent.current
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 3.dp).glass(corner = 12.dp).padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(34.dp).clip(RoundedCornerShape(50)).background(accent.copy(alpha = 0.85f)), contentAlignment = Alignment.Center) {
-            Text("$n", style = AppType.bodyBold.copy(color = Color.Black))
-        }
-        Spacer(Modifier.width(8.dp))
-        Icon(icon, null, tint = accent, modifier = Modifier.size(24.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(text, style = AppType.small.copy(color = AppColors.Text))
+        NeonButton(Modifier.size(42.dp), icon = AppIcons.Delete, color = AppColors.Red) { onDelete() }
     }
 }

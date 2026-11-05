@@ -1,5 +1,6 @@
 <resources>
-    <!-- Der App-Name steht NUR hier. Zum Umbenennen nur diese Zeile ändern. -->
+    <string name="app_name" translatable="false">Fadelux</string>
+    <!-- App-Name (Platzhalter): steht NUR hier. Zum Umbenennen nur diese Zeile ändern – Startanimation, Kopfzeile, Benachrichtigung und Download-Dateien übernehmen ihn. -->
 
     <string name="notif_text">Running – tap to open</string>
 
@@ -257,4 +258,61 @@ Tap “New playlist” – or long-press a song in the library.</string>
     <string name="msg_choose_playlist">Choose a playlist first</string>
     <string name="wish_queued">Request added at a fitting spot: %1$s</string>
     <string name="tr_long_blend">Long blend</string>
+    <string name="player_idle_title">Ready for the party</string>
+    <string name="player_idle_sub">Choose a playlist and press Play – the app does the rest.</string>
+    <string name="picker_title">Choose playlist</string>
+    <string name="picker_library">Whole library</string>
+    <string name="picker_no_playlists">No playlists yet – create one under Menu → Playlists, or play the whole library.</string>
+    <string name="player_transitioning">Mixing …</string>
+    <string name="player_queue_empty">Nothing up next – add songs or choose a playlist</string>
+    <string name="player_up_next">Up next: %1$s  (%2$d)</string>
+    <string name="player_next_transition">%1$s in %2$s</string>
+    <string name="early_title">Perfect match – mix now?</string>
+    <string name="early_yes">Yes, mix</string>
+    <string name="early_no">No</string>
+    <string name="early_setting">Early transitions</string>
+    <string name="early_ask">Ask</string>
+    <string name="early_always">Always</string>
+    <string name="early_never">Never</string>
+    <string name="early_help">If two songs fit almost perfectly (same tempo, matching key, no vocals on top of each other), the app may mix before the end. “Ask” shows a short question with a 10-second countdown – no answer means: play to the end as usual.</string>
+    <string name="nav_up_next">Up next</string>
+    <string name="q_arrange">Order by mood</string>
+    <string name="q_arranged">Ordered by mood</string>
+    <string name="flow_title">Party flow</string>
+    <string name="flow_rising">Rising</string>
+    <string name="flow_arc">Party arc</string>
+    <string name="flow_original">Original order</string>
+    <string name="flow_genre_on">Genre blocks: on</string>
+    <string name="flow_genre_off">Genre blocks: off</string>
+    <string name="flow_rising_help">Starts calm and builds up steadily to the peak at the end.</string>
+    <string name="flow_arc_help">Warm-up → peak (at about two thirds) → cool-down at the end.</string>
+    <string name="flow_original_help">Plays the songs in the playlist\'s order.</string>
+    <string name="flow_genre_help">Songs of the same genre stay together (e.g. Rock → Party/Schlager → Techno), from calm to energetic.</string>
+    <string name="lib_play_all">Play all</string>
+    <string name="lib_analysis_done">All songs analysed</string>
+    <string name="pl_play">Play</string>
+    <string name="wish_not_running">Requests are not active.</string>
+    <string name="wish_none_yet">No requests yet – guests scan the QR code.</string>
+    <string name="wish_status_queued">✓ In the queue at a fitting spot</string>
+    <string name="wish_status_available">In your library – tap the queue button</string>
+    <string name="wish_status_missing">Not in your library – tick off when done</string>
+    <string name="set_flow">Flow</string>
+    <string name="set_transitions">Transitions</string>
+    <string name="set_credits">Credits</string>
+    <string name="style_help">Calm = long, soft blends. Club = shorter transitions on the beat with more effects.</string>
+    <string name="about_text2">Your automatic party DJ: choose a playlist, press Play – the app knows every song, orders them by mood and mixes with clean transitions on the beat. Guests can send requests via QR code.</string>
+    <string name="credits_intro">This app uses the following open-source software:</string>
+    <string name="credits_key">Key detection based on the key profiles by Carol Krumhansl (music psychology research)</string>
+    <string name="faq2_q1">How do I start the party?</string>
+    <string name="faq2_a1">Tap “Choose playlist” (or Menu → Playlists) and press Play. The first song starts right away; the rest is analysed in the background and ordered by mood (setting: Flow).</string>
+    <string name="faq2_q2">How do guest requests work?</string>
+    <string name="faq2_a2">Tap the QR button at the top. Guests scan the code with their phone camera (they must be on the same Wi-Fi or your phone\'s hotspot). Songs from your library are added automatically at a fitting spot; others are listed so you can tick them off.</string>
+    <string name="faq2_q3">What do Back and Next do?</string>
+    <string name="faq2_a3">Both make a short, clean transition on the beat – never a hard cut. Back plays the previous song again, then continues where you were.</string>
+    <string name="faq2_q4">Can I change the order?</string>
+    <string name="faq2_a4">Yes: swipe up on “Up next”. Drag songs by the handle (the list scrolls along at the edge) or use the ⋮ menu. Songs you move get a pin 📌 and stay where you put them.</string>
+    <string name="faq2_q5">How do I change the volume?</string>
+    <string name="faq2_a5">With the normal volume buttons of your phone – also on the lock screen.</string>
+    <string name="faq2_q6">Why is “analysing” shown?</string>
+    <string name="faq2_a6">Each song is analysed once (tempo, beats, key, energy, loudness) and saved. Songs of the current playlist come first. You can already play during the analysis.</string>
 </resources>

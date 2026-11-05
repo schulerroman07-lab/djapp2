@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.fadelux.DjViewModel
 import app.fadelux.R
+import app.fadelux.automix.Keys
 import app.fadelux.data.Track
 import app.fadelux.ui.components.AppIcons
 import app.fadelux.ui.components.CoverThumb
@@ -43,88 +44,73 @@ import app.fadelux.ui.theme.AppType
 import app.fadelux.ui.theme.LocalAccent
 import java.util.Locale
 
-/** Musikbibliothek: Suche, Cover, BPM, Energie; Tab "Passt als nächstes". */
+/** Musikbibliothek: Suche, Sortierung, Analyse-Stand; pro Song "Als Nächstes" und "Warteschlange". */
 @Composable
 fun LibraryScreen(vm: DjViewModel, onClose: () -> Unit) {
     val tracks by vm.tracks.collectAsStateWithLifecycle()
     val unanalyzed by vm.unanalyzed.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
-    var tab by rememberSaveable { mutableIntStateOf(0) }
     var sortBpm by rememberSaveable { mutableStateOf(false) }
-    val accent = LocalAccent.current
 
-    OverlayScaffold(stringResource(R.string.nav_library), onClose, actions = {
-        NeonButton(Modifier.width(150.dp).height(44.dp), text = stringResource(R.string.lib_tab_all), active = tab == 0, fontSize = 13) { tab = 0 }
-        NeonButton(Modifier.width(190.dp).height(44.dp), text = stringResource(R.string.lib_tab_suggest), icon = AppIcons.Bulb, active = tab == 1, fontSize = 13, iconSize = 18.dp) { tab = 1 }
-    }) {
-        if (tab == 0) {
-            val filtered = remember(tracks, query, sortBpm) {
-                val q = query.trim().lowercase()
-                val list = if (q.isEmpty()) tracks else tracks.filter { it.title.lowercase().contains(q) || it.artist.lowercase().contains(q) }
-                if (sortBpm) list.sortedBy { it.bpm ?: 999f } else list
+    OverlayScaffold(stringResource(R.string.nav_library), onClose) {
+        val filtered = remember(tracks, query, sortBpm) {
+            val q = query.trim().lowercase()
+            val list = if (q.isEmpty()) tracks else tracks.filter {
+                it.title.lowercase().contains(q) || it.artist.lowercase().contains(q) || it.genre.lowercase().contains(q)
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = query, onValueChange = { query = it }, singleLine = true,
-                    placeholder = { Text(stringResource(R.string.lib_search)) },
-                    leadingIcon = { Icon(AppIcons.Search, null, tint = AppColors.TextDim) },
-                    modifier = Modifier.weight(1f),
-                )
-                NeonButton(Modifier.width(110.dp).height(48.dp), text = if (sortBpm) "BPM ↑" else "A–Z", fontSize = 13) { sortBpm = !sortBpm }
-                NeonButton(Modifier.width(140.dp).height(48.dp), text = stringResource(R.string.lib_rescan), icon = AppIcons.Sync, fontSize = 13, iconSize = 16.dp) { vm.scanLibrary() }
+            if (sortBpm) list.sortedBy { it.bpm ?: 999f } else list
+        }
+        OutlinedTextField(
+            value = query, onValueChange = { query = it }, singleLine = true,
+            placeholder = { Text(stringResource(R.string.lib_search)) },
+            leadingIcon = { Icon(AppIcons.Search, null, tint = AppColors.TextDim) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NeonButton(Modifier.weight(1f).height(44.dp), text = stringResource(R.string.lib_play_all), icon = AppIcons.Play, active = true, fontSize = 13, iconSize = 16.dp) {
+                vm.playLibrary(); onClose()
             }
-            Text(
-                stringResource(R.string.lib_count, tracks.size) + (if (unanalyzed > 0) " · " + stringResource(R.string.lib_analyzing, unanalyzed) else "") +
-                    " · " + stringResource(R.string.pl_hint_longpress),
-                style = AppType.small, modifier = Modifier.padding(vertical = 4.dp),
-            )
-            if (tracks.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.lib_empty), style = AppType.body.copy(color = AppColors.TextDim))
-                }
-                return@OverlayScaffold
+            NeonButton(Modifier.width(92.dp).height(44.dp), text = if (sortBpm) "BPM ↑" else "A–Z", fontSize = 13) { sortBpm = !sortBpm }
+            NeonButton(Modifier.size(44.dp), icon = AppIcons.Sync, fontSize = 13, iconSize = 18.dp) { vm.scanLibrary() }
+        }
+        Text(
+            stringResource(R.string.lib_count, tracks.size) + (if (unanalyzed > 0) " · " + stringResource(R.string.lib_analyzing, unanalyzed) else "") +
+                " · " + stringResource(R.string.pl_hint_longpress),
+            style = AppType.small, modifier = Modifier.padding(bottom = 4.dp),
+        )
+        if (tracks.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(stringResource(R.string.lib_empty), style = AppType.body.copy(color = AppColors.TextDim))
             }
-            LazyColumn(Modifier.fillMaxSize()) {
-                items(filtered, key = { it.id }) { t -> LibraryRow(vm, t, false, onClose) }
-            }
-        } else {
-            val suggestions = remember(tracks, vm.wishes.size, vm.decks[0].track, vm.decks[1].track, vm.mixer.crossfader > 0) { vm.suggestions() }
-            Text(stringResource(R.string.lib_suggest_hint), style = AppType.small, modifier = Modifier.padding(bottom = 6.dp))
-            if (suggestions.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.lib_suggest_empty), style = AppType.body.copy(color = AppColors.TextDim))
-                }
-                return@OverlayScaffold
-            }
-            LazyColumn(Modifier.fillMaxSize()) {
-                items(suggestions, key = { it.track.id }) { s -> LibraryRow(vm, s.track, s.isWish, onClose) }
-            }
+            return@OverlayScaffold
+        }
+        LazyColumn(Modifier.fillMaxSize()) {
+            items(filtered, key = { it.id }) { t -> LibraryRow(vm, t) }
         }
     }
 }
 
-/** Verbindet eine Zeile mit der App-Logik. Lange drücken = "Zu Playlist hinzufügen". */
+/** Verbindet eine Zeile mit der App-Logik. Lange drücken = Menü (Als Nächstes, Ans Ende, Playlist). */
 @Composable
-private fun LibraryRow(vm: DjViewModel, t: Track, isWish: Boolean, onLoaded: () -> Unit) {
-    var addToPlaylist by remember { mutableStateOf(false) }
+private fun LibraryRow(vm: DjViewModel, t: Track) {
+    var menu by remember { mutableStateOf(false) }
     TrackRow(
-        t, isWish,
-        onA = { vm.loadTrack(0, t); onLoaded() },
-        onB = { vm.loadTrack(1, t); onLoaded() },
+        t,
+        onNext = { vm.autoMix.addNext(t); vm.message = UiText(R.string.msg_queued_next, t.title) },
         onQueue = { vm.autoMix.add(t); vm.message = UiText(R.string.msg_queued, t.title) },
-        onLongPress = { addToPlaylist = true },
+        onLongPress = { menu = true },
     )
-    if (addToPlaylist) AddToPlaylistDialog(vm, t) { addToPlaylist = false }
+    if (menu) AddToPlaylistDialog(vm, t) { menu = false }
 }
 
-/** Eine Zeile: Cover, Titel, Interpret, Länge, BPM, Energie, Knöpfe A / B / Warteschlange. */
+/** Eine Zeile: Cover, Titel, Interpret, Länge, BPM, Tonart, Energie, Knöpfe "Als Nächstes" und "Warteschlange". */
 @Composable
-fun TrackRow(t: Track, isWish: Boolean, onA: () -> Unit, onB: () -> Unit, onQueue: () -> Unit, onLongPress: (() -> Unit)? = null) {
+fun TrackRow(t: Track, onNext: () -> Unit, onQueue: () -> Unit, onLongPress: (() -> Unit)? = null) {
     val accent = LocalAccent.current
     val view = androidx.compose.ui.platform.LocalView.current
     val longPress by androidx.compose.runtime.rememberUpdatedState(onLongPress)
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 3.dp).glass(corner = 12.dp, glowColor = if (isWish) AppColors.Amber else null)
+        Modifier.fillMaxWidth().padding(vertical = 3.dp).glass(corner = 12.dp)
             .pointerInput(Unit) {
                 detectTapGestures(onLongPress = {
                     longPress?.let { cb ->
@@ -139,22 +125,26 @@ fun TrackRow(t: Track, isWish: Boolean, onA: () -> Unit, onB: () -> Unit, onQueu
     ) {
         CoverThumb(t, 44.dp)
         Column(Modifier.weight(1f)) {
-            Text((if (isWish) "★ " else "") + t.title, style = AppType.bodyBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(t.artist, style = AppType.small, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(t.title, style = AppType.bodyBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                listOf(t.artist, formatTime(t.durationMs / 1000.0)).joinToString(" · "),
+                style = AppType.small, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
         }
-        Text(formatTime(t.durationMs / 1000.0), style = AppType.small, modifier = Modifier.width(44.dp))
-        Text(
-            when (val b = t.bpm) {
-                null -> "…"
-                0f -> "?"
-                else -> String.format(Locale.US, "%.1f", b)
-            },
-            style = AppType.bodyBold, color = accent, modifier = Modifier.width(52.dp),
-        )
-        EnergyBar(t.energy, Modifier.width(36.dp).height(10.dp))
-        NeonButton(Modifier.size(width = 52.dp, height = 42.dp), text = "A", fontSize = 17) { onA() }
-        NeonButton(Modifier.size(width = 52.dp, height = 42.dp), text = "B", color = AppColors.Cyan, fontSize = 17) { onB() }
-        NeonButton(Modifier.size(width = 52.dp, height = 42.dp), icon = AppIcons.Queue, color = AppColors.Violet, iconSize = 20.dp) { onQueue() }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                when (val b = t.bpm) {
+                    null -> "…"
+                    0f -> "?"
+                    else -> String.format(Locale.US, "%.0f", b)
+                },
+                style = AppType.bodyBold, color = accent,
+            )
+            Text(Keys.label(t.musicalKey), style = AppType.tiny)
+        }
+        EnergyBar(t.energy, Modifier.width(28.dp).height(10.dp))
+        NeonButton(Modifier.size(42.dp), icon = AppIcons.Next, color = AppColors.Cyan, iconSize = 18.dp) { onNext() }
+        NeonButton(Modifier.size(42.dp), icon = AppIcons.Queue, color = AppColors.Violet, iconSize = 18.dp) { onQueue() }
     }
 }
 

@@ -108,16 +108,6 @@ JNIEXPORT jfloat JNICALL FN(sync)(JNIEnv*, jobject, jint d) {
     return ratio;
 }
 
-JNIEXPORT jboolean JNICALL FN(startRecording)(JNIEnv*, jobject, jint fd) {
-    if (!g || g->sampleRate() <= 0) {
-        close(fd);
-        return false;
-    }
-    return g->recorder.start(fd, g->sampleRate());
-}
-JNIEXPORT void JNICALL FN(stopRecording)(JNIEnv*, jobject) { if (g) g->recorder.stop(); }
-JNIEXPORT jdouble JNICALL FN(recordingSeconds)(JNIEnv*, jobject) { return g ? g->recorder.seconds() : 0; }
-
 JNIEXPORT void JNICALL FN(getSpectrum)(JNIEnv* env, jobject, jfloatArray out) {
     if (!g) return;
     jsize n = env->GetArrayLength(out);

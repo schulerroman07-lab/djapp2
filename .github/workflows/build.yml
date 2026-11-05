@@ -36,7 +36,7 @@ jobs:
         run: grep -rhoE "CREATE (TABLE|INDEX) IF NOT EXISTS [^\"]*" app/build/generated/ksp/release | sort -u || true
       - name: Dateien umbenennen (App-Name aus gradle.properties)
         run: |
-          APP_NAME=$(grep '^appName=' gradle.properties | cut -d= -f2- | tr -d '\r')
+          APP_NAME=$(sed -n 's/.*name="app_name"[^>]*>\([^<]*\)<.*/\1/p' app/src/main/res/values/strings.xml | head -1 | tr -d ' \r')
           APP_VERSION=$(grep '^appVersion=' gradle.properties | cut -d= -f2- | tr -d '\r')
           echo "APP_NAME=$APP_NAME" >> "$GITHUB_ENV"
           echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
