@@ -106,8 +106,12 @@ class DeviceSoakTest {
             vm.settings.bgAnimation = 2
             vm.playLibrary()
         }
-        assertTrue("Erster Song startet sofort", waitFor(15_000, "erster Song") { main { vm.isPlaying } })
-        log("Erster Song läuft nach ${(System.currentTimeMillis() - start) / 1000.0} s seit App-Start: ${main { vm.autoMix.current?.title }}")
+        val playAt = System.currentTimeMillis()
+        val started = waitFor(180_000, "erster Song") { main { vm.isPlaying } }
+        val firstStartSec = (System.currentTimeMillis() - playAt) / 1000.0
+        log("Erster Song läuft nach $firstStartSec s ab Play: ${main { vm.autoMix.current?.title }} (Ladezustand Deck A: ${main { vm.decks[0].loadState }}, Status: ${main { vm.autoMix.status?.toString() }})")
+        main { vm.autoMix.logLines.take(10).forEach { log("  Protokoll: $it") } }
+        assertTrue("Erster Song startet", started)
         Thread.sleep(4000)
         shot("3_player_playing")
 
@@ -201,6 +205,7 @@ class DeviceSoakTest {
         val expected = (minutes * 60 / 260).toInt()      // Testsongs ca. 3 min → mindestens 1 Übergang pro 4,3 min
         assertTrue("genug Übergänge ($transitions, erwartet ≥ $expected)", transitions >= expected)
         assertTrue("keine Pausen in der Wiedergabe ($silentChecks s)", silentChecks <= 5)
+        assertTrue("erster Song startet schnell ($firstStartSec s)", firstStartSec <= 8.0)
         log("ERGEBNIS: OK")
     }
 
