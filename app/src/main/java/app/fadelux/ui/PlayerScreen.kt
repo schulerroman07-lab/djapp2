@@ -372,7 +372,9 @@ fun EarlyOfferCard(offer: EarlyOffer?, onAnswer: (Boolean) -> Unit) {
             }
         }
         Column(
-            Modifier.widthIn(max = 460.dp).fillMaxWidth().glass(corner = 20.dp, glowColor = accent, strong = true).padding(16.dp),
+            Modifier.widthIn(max = 460.dp).fillMaxWidth()
+                .background(Color(0xFA0B0E11), RoundedCornerShape(20.dp))   // deckend: Text darunter scheint nicht durch
+                .glass(corner = 20.dp, glowColor = accent, strong = true).padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {

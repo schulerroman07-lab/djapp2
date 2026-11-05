@@ -1,5 +1,134 @@
 # Changelog
 
+## 2.0 – Umbau zum Auto-DJ
+
+Die App ist jetzt ein einfacher, eleganter Auto-DJ: **Playlist wählen, Play drücken** – die App kennt
+alle Songs, ordnet sie nach Stimmung und spielt die Party mit abwechslungsreichen Übergängen im Takt
+selbstständig durch. Gästewünsche per QR-Code werden passend eingebaut.
+
+### 1. Aufgeräumt
+- **Entfernt:** DJ-Deck-Ansicht (2 Decks, Wellenformen, Jog), Crossfader, EQ-/Effekt-Regler,
+  Aufnahme (UI und Aufnahme-Code in der Engine), Ausgabe-Modi für Kopfhörer-Vorhören, Spektrum-Berechnung,
+  Song-Vorschläge, Einführung.
+- **Bleibt:** Audio-Engine (Oboe, Time-Stretch, Filter, Effekte – jetzt nur intern für Übergänge),
+  Bibliothek, Playlists inkl. M3U-/Ordner-Import/Export, Hintergrund-Wiedergabe,
+  Benachrichtigungs-Steuerung, Gästewünsche, Einstellungen.
+
+### 2. Start-Animation
+- System-Startbildschirm (SplashScreen-API): schwarz mit leuchtendem Punkt. Daraus **wächst das Logo**
+  ("Beat-Ring": Ring mit drei Equalizer-Balken, als Vektor gezeichnet), schwingt wie eine Schallwelle
+  und beruhigt sich; die Balken steigen, darunter erscheint der Name. Dauer ca. 1,8 s, dann weicher
+  Übergang in die App.
+- Neues App-Symbol im selben Stil (inkl. einfarbiger Version für Themensymbole).
+- **Name = Platzhalter, nur in `strings.xml` (`app_name`)** – auch die Download-Dateien (`<Name>.apk`)
+  übernehmen ihn automatisch. Das Logo enthält keinen Text.
+
+### 3. Hauptbildschirm (Player)
+- Grosses Cover (atmet leicht im Beat), Titel, Interpret, Länge (+ BPM und Tonart).
+- **Fortschrittsbalken:** tippen = springen, ziehen = spulen (Sprung beim Loslassen).
+- **Zurück · Play/Pause · Weiter** – Zurück/Weiter immer mit kurzem, sauberem Übergang im Takt.
+- Lautstärke über die Handy-Tasten.
+- Oben: **QR-Knopf mit Zahl** neuer Wünsche, **Menü** (Playlists, Wünsche, Als Nächstes, Bibliothek,
+  Einstellungen).
+- Unten: nächster Song + nächster Übergang mit Countdown; **hochwischen** öffnet "Als Nächstes"
+  (Drag & Drop mit Auto-Scroll, Menü pro Song, nach Stimmung ordnen, Smart Shuffle).
+- Ohne Musik: Startansicht "Bereit für die Party" mit "Playlist wählen".
+- Lebendiger Hintergrund (Schwarz/Smaragd), reagiert auf Beat und Energie.
+- **Flüssigkeit:** höchste Bildrate des Displays (z.B. 120 Hz) wird angefordert (ausser im
+  Energiesparmodus); Position/Puls werden nur beim Zeichnen gelesen (keine Neuaufbauten 60×/s);
+  Baseline-Profil (vorkompilierter Code); nichts läuft im Audio-Thread.
+- Hoch- und Querformat (Querformat: Cover links, Bedienung rechts). Abstand zu den Rändern für die
+  Wischgesten.
+
+### 4. Ablauf: Playlist → Play
+- Erster Song startet **sofort**; die übrigen werden im Hintergrund analysiert – **Songs der
+  Warteschlange zuerst** – und das Ergebnis in Room gespeichert (pro Datei nur einmal).
+- Analyse pro Song: BPM, Beat-Raster, Downbeats, Phrasen (8/16/32), Intro/Outro, Energie-Verlauf,
+  Breaks, Gesang (grob), **Lautheit** (neu, wie EBU R128), **Tonart** (neu: Chroma + Krumhansl-Profile,
+  Camelot-Anzeige wie "8A"), **Genre** (ID3-Tag, sonst Schätzung aus Tempo/Energie).
+- **Reihenfolge nach Stimmung** (Einstellungen und beim Start wählbar):
+  - Energie-Kurve **"Steigernd"** (ruhig → Höhepunkt) oder **"Party-Bogen"**
+    (Warm-up → Peak bei ca. 70 % → Ausklang)
+  - **Genre-Blöcke** (z.B. Rock → Party/Schlager → Techno), innerhalb jedes Blocks gilt die Kurve
+  - **Originalreihenfolge**
+- Sobald die Analyse neue Werte liefert, ordnet sich die Warteschlange neu (manuell verschobene Songs
+  bleiben, wo sie sind). Nie "passt nicht"-Meldungen.
+- Datenbank v5 (Tonart, Lautheit) mit Migration ohne Datenverlust; bestehende Songs werden einmal
+  nachanalysiert.
+
+### 5. Übergänge
+- Standard kurz vor dem Liedende (Outro / letzte Phrasen), fertig vor dem natürlichen Ende,
+  Stille am Ende ignoriert; im Takt, auf Phrasengrenzen, Lautheit angeglichen, Begrenzer gegen Übersteuern.
+- Typen (je eine Klasse in `automix/transitions/`): Bass-Swap, Filter-Sweep, Echo-Out, Loop, Hall
+  (Reverb-Wash), **Schnitt auf die "1" nach einem Break** (neu), **langer Blend** (neu: 32 Takte bei
+  gleichem Tempo und passender Tonart).
+- Typ pro Song-Paar nach Tempo-Abstand, Tonart, Energie, Intro/Outro und Gesang (nie zwei Gesangsteile
+  übereinander); **Rotation** für Abwechslung (nie derselbe direkt hintereinander, lange nicht
+  benutzte Typen bevorzugt). Grosse Tempo-Unterschiede → Echo-Out, Hall oder Schnitt.
+- Tempo kehrt nach dem Übergang in 8–16 Takten fliessend zum Original zurück (Tonhöhe bleibt).
+- **Früh-Übergang:** passen zwei Songs fast perfekt (Tempo ±2 %, harmonische Tonart, kein Gesang),
+  darf ab ca. 55 % des Songs auf einer 32er-Phrase gemischt werden. Einstellung **Fragen** (Standard) /
+  **Immer** / **Nie**. Bei "Fragen": Einblendung "Passt perfekt – jetzt mischen?" mit Ja/Nein und
+  10-Sekunden-Kreis; keine Antwort = normal bis zum Ende.
+- Unten klein: nächster Übergang mit Countdown. Protokoll der Entscheidungen (Einstellungen →
+  Übergänge) und in Logcat ("AutoMix").
+- Gesangs-Erkennung verbessert: Vergleich mit den instrumentalen Teilen (unteres Viertel) statt dem
+  Median – erkennt jetzt auch Songs mit Gesang in mehr als der Hälfte.
+
+### 6. Gästewünsche
+- QR-Knopf oben + eigene Seite. Der QR-Code erscheint **sofort ohne Einrichten** (lokaler Webserver
+  im WLAN bzw. Hotspot des Handys; Internet-Modus nur, wenn der Entwickler ein Backend eingetragen hat).
+- Wünsche, die in der Bibliothek sind, werden **automatisch an einer passenden Stelle unter den
+  nächsten 5 Songs** eingereiht (Tempo, Energie, Tonart, Genre) und angeheftet. Fehlende Wünsche werden
+  angezeigt und können abgehakt werden.
+
+### 7. Einstellungen (vereinfacht)
+- Ablauf · Übergänge (Stil ruhig/ausgewogen/Club, Früh-Übergänge, Länge, Typen, Protokoll) ·
+  Bibliothek · Import & Export · Design (Farbe, Hintergrund Aus/Energiesparen/Voll) · Sprache ·
+  Hilfe (neue FAQ, Hintergrund-Wiedergabe) · Über · Credits · Datenschutz.
+- Hochformat: Liste → Bereich; Querformat: Bereiche links.
+
+### Entscheidungen (selbst getroffen)
+- **Hoch- und Querformat** statt nur Querformat: Ein Player mit grossem Cover wirkt im Hochformat am
+  besten; im Querformat wird die Bedienung neben das Cover gelegt.
+- **"Zurück"** spielt den vorherigen Song nochmals (kurzer Übergang) und macht danach mit dem Song
+  weiter, der lief. Ohne Verlauf: aktueller Song von vorne (ebenfalls mit Übergang).
+- **Spulen** ist während eines laufenden Übergangs gesperrt (sonst stimmen die Beats nicht mehr).
+- **Playlist starten, während Musik läuft:** der aktuelle Song läuft fertig, dann geht es mit der neuen
+  Playlist weiter (sauberer Übergang).
+- **Ausgabe:** immer Stereo (Lautsprecher/Kopfhörer/Bluetooth); grösserer Audio-Puffer (4 Bursts) für
+  Aussetzer-Sicherheit – Latenz spielt beim Auto-DJ keine Rolle.
+- **Wünsche** kommen unter die nächsten 5 Songs (Gäste wollen ihren Song bald hören), aber an die Stelle,
+  die musikalisch am besten passt.
+- **Genre-Schätzung** ohne Tag: ruhig (Energie < 0,38) → Chill; ≥ 134 BPM und energiegeladen →
+  Techno/Uptempo; 118–134 BPM energiegeladen → House; sonst Pop.
+- **Version 2.0** (grosser Umbau).
+
+### Tests
+- Unit-Tests (lokal und auf GitHub): Planer (inkl. langer Blend, Schnitt nach Break, Weiter/Zurück,
+  Früh-Übergang), **3000 zufällige Song-Paare** (jede Entscheidung gültig), **2-Stunden-Party-Kette**,
+  stimmungsgeordnete Party (alle Typen kommen vor, keiner dominiert, keine Wiederholung),
+  Stimmungs-Ordnung (Kurven, Bogen, Genre-Blöcke, Pins), Tonarten (Camelot), Genres, Warteschlange,
+  Tempo-Rückführung, M3U.
+- C++ am PC: Tonart-Erkennung (24/24 Tonarten bei synthetischen Akkordfolgen), Lautheit (±0,1 dB),
+  Tempo-Rampe ohne Klicks, **2-Stunden-Dauertest der echten Engine** (beide Decks, Mixer, Begrenzer,
+  geplanter Start, Effekte, Loop, Tempo-Rampen): siehe Ergebnis unten.
+- Bildschirmfotos (Hoch- und Querformat): Start-Animation, Player, Startansicht, Früh-Übergang-Frage,
+  Als Nächstes, Bibliothek, Wünsche, Playlist, Einstellungen.
+
+### Offene Punkte (2.0)
+1. **Nicht auf einem echten Handy getestet** – bitte `TESTEN.md` durchgehen (Abschnitte A–J).
+2. Der 2-Stunden-Dauertest lief am PC mit der echten Engine-Logik, aber ohne echtes Android-Audio
+   (Oboe-Ersatz). Ein echter 2-h-Test auf dem Handy steht aus (TESTEN.md Punkt 34).
+3. Tonart-Erkennung ist bei echten Songs ungenauer als im Test (Schlagzeug, Effekte). Unsichere Songs
+   bekommen "–" und werden neutral behandelt.
+4. Genre ohne ID3-Tag ist nur geschätzt (aus Tempo und Energie).
+5. Laden eines Songs (Dekodieren) dauert je nach Handy 1–3 s; "Weiter" direkt nach einem Übergang
+   wartet so lange.
+6. Hintergrund "Voll" (60/120 Hz) braucht etwas mehr Akku → bei langen Events "Energiesparen".
+7. Gästewünsche ohne Internet funktionieren nur im selben WLAN bzw. Hotspot.
+8. Android Auto: nur Steuerung (Zurück, Play/Pause, Weiter), kein Durchblättern der Bibliothek.
+
 ## 1.2 – Bessere Auto-Mix-Übergänge, Warteschlange, Design
 
 ### Prio 1 – Auto-Mix

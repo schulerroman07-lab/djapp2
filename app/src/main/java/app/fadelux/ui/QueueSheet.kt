@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -209,6 +210,8 @@ fun QueueList(
                 }
             }
 
+            // Schmal (Hochformat): Energie-Balken weglassen, damit der Titel Platz hat
+            val narrow = LocalConfiguration.current.screenWidthDp < 480
             LazyColumn(Modifier.fillMaxSize(), state = listState) {
                 itemsIndexed(queue, key = { _, t -> t.id }) { index, t ->
                     val dragging = dragId == t.id
@@ -227,11 +230,11 @@ fun QueueList(
                             .glass(corner = 12.dp, glowColor = if (dragging) accent else null)
                             .padding(horizontal = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(if (narrow) 4.dp else 8.dp),
                     ) {
                         // Griff zum Verschieben
                         Box(
-                            Modifier.size(40.dp).pointerInput(t.id) {
+                            Modifier.size(if (narrow) 32.dp else 40.dp).pointerInput(t.id) {
                                 detectDragGestures(
                                     onDragStart = { dragId = t.id; dragOffset = 0f },
                                     onDragEnd = { dragId = -1L; dragOffset = 0f },
@@ -249,13 +252,13 @@ fun QueueList(
                             if (t.id in pinned) Icon(AppIcons.Pin, null, tint = accent, modifier = Modifier.size(16.dp))
                             else Text("${index + 1}", style = AppType.small)
                         }
-                        CoverThumb(t, 40.dp)
+                        CoverThumb(t, if (narrow) 34.dp else 40.dp)
                         Column(Modifier.weight(1f)) {
                             Text(t.title, style = AppType.bodyBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(t.artist, style = AppType.small, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Text(t.bpm?.takeIf { it > 0 }?.let { String.format(Locale.US, "%.0f", it) } ?: "–", style = AppType.bodyBold, color = accent)
-                        EnergyBar(t.energy, Modifier.width(30.dp).height(10.dp))
+                        if (!narrow) EnergyBar(t.energy, Modifier.width(30.dp).height(10.dp))
                         Box {
                             NeonButton(Modifier.size(40.dp), icon = AppIcons.More, color = AppColors.TextDim, iconSize = 18.dp) { menu = true }
                             DropdownMenu(
