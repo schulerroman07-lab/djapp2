@@ -81,7 +81,7 @@ fun MainScreen(vm: DjViewModel, onLanguageChanged: () -> Unit) {
                 DeckPanel(vm.decks[0], colors[0], Modifier.weight(1f).fillMaxHeight())
                 MixerPanel(
                     vm.decks, vm.mixer, colors, Modifier.width(204.dp).fillMaxHeight(),
-                    autoMix = vm.autoMix.running, onTakeOver = { vm.autoMix.takeOver() },
+                    autoMix = vm.autoMix.running, onTakeOver = { vm.autoMix.stop() },
                 )
                 DeckPanel(vm.decks[1], colors[1], Modifier.weight(1f).fillMaxHeight())
             }

@@ -26,6 +26,9 @@ class AppSettings(context: Context) {
     var wishMode by pref("wishMode", 0)                  // 0 = Internet, 1 = lokales WLAN
     var queueAutoSort by prefB("queueAutoSort", true)    // neue Songs passend einreihen (Genre, BPM, Energie)
     var bgAnimation by pref("bgAnimation", 2)            // Hintergrund: 0 aus, 1 Energiesparen, 2 voll
+    var flowCurve by pref("flowCurve", 1)                // Ablauf: 0 steigernd, 1 Party-Bogen, 2 Originalreihenfolge
+    var genreBlocks by prefB("genreBlocks", false)       // Songs nach Genre gruppieren
+    var earlyMode by pref("earlyMode", 0)                // Früh-Übergänge: 0 fragen, 1 immer, 2 nie
 
     // --- kleine Helfer: Compose-Zustand + automatisches Speichern ---
     private fun pref(key: String, def: Int) = object {

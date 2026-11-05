@@ -153,6 +153,7 @@ fun transitionLabel(t: TransitionType): String = stringResource(
         TransitionType.LOOP -> R.string.tr_loop
         TransitionType.REVERB_WASH -> R.string.tr_reverb
         TransitionType.CUT -> R.string.tr_cut
+        TransitionType.LONG_BLEND -> R.string.tr_long_blend
     },
 )
 

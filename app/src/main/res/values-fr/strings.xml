@@ -241,4 +241,7 @@ Touchez « Nouvelle playlist » – ou appui long sur un titre dans la biblioth�
     <string name="set_bg_eco">Économie</string>
     <string name="set_bg_full">Complet</string>
     <string name="set_bg_help">Une lueur douce qui bouge lentement et pulse avec le rythme et l’énergie de la musique. « Économie » bouge plus lentement et réagit moins ; « Désactivé » affiche un fond fixe.</string>
+    <string name="msg_choose_playlist">Choisissez d\'abord une playlist</string>
+    <string name="wish_queued">Demande ajoutée au bon endroit : %1$s</string>
+    <string name="tr_long_blend">Long fondu</string>
 </resources>

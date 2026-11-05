@@ -74,5 +74,6 @@ object Transitions {
         TransitionType.LOOP -> LoopTransition()
         TransitionType.REVERB_WASH -> ReverbWashTransition()
         TransitionType.CUT -> CutTransition()
+        TransitionType.LONG_BLEND -> LongBlendTransition()
     }
 }

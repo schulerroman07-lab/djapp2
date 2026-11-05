@@ -24,6 +24,8 @@ data class Track(
     val energy: Float? = null,     // 0..1 Lautheit/Intensität, null = noch nicht analysiert
     val folder: String = "",       // Ordner auf dem Handy (z.B. "Music/Party/")
     val genre: String = "",        // Genre aus dem ID3-Tag (leer = unbekannt)
+    val musicalKey: Int? = null,   // Tonart: 0..11 Dur (C..H), 12..23 Moll, -1 = unklar, null = noch nicht analysiert
+    val loudness: Float? = null,   // Lautheit in dB (wie EBU R128, vereinfacht)
 )
 
 @Dao
@@ -34,10 +36,14 @@ interface TrackDao {
     @Query("SELECT * FROM tracks")
     suspend fun allOnce(): List<Track>
 
-    @Query("SELECT * FROM tracks WHERE bpm IS NULL OR energy IS NULL OR id NOT IN (SELECT trackId FROM track_analysis) LIMIT 1")
+    @Query("SELECT * FROM tracks WHERE bpm IS NULL OR energy IS NULL OR musicalKey IS NULL OR id NOT IN (SELECT trackId FROM track_analysis) LIMIT 1")
     suspend fun nextUnanalyzed(): Track?
 
-    @Query("SELECT COUNT(*) FROM tracks WHERE bpm IS NULL OR energy IS NULL OR id NOT IN (SELECT trackId FROM track_analysis)")
+    /** Zuerst die Songs analysieren, die gleich gespielt werden (Warteschlange). */
+    @Query("SELECT * FROM tracks WHERE id IN (:ids) AND (bpm IS NULL OR energy IS NULL OR musicalKey IS NULL OR id NOT IN (SELECT trackId FROM track_analysis)) LIMIT 1")
+    suspend fun nextUnanalyzedIn(ids: List<Long>): Track?
+
+    @Query("SELECT COUNT(*) FROM tracks WHERE bpm IS NULL OR energy IS NULL OR musicalKey IS NULL OR id NOT IN (SELECT trackId FROM track_analysis)")
     fun unanalyzedCount(): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -46,8 +52,8 @@ interface TrackDao {
     @Query("UPDATE tracks SET title = :title, artist = :artist, durationMs = :durationMs, uri = :uri, folder = :folder, genre = :genre WHERE id = :id")
     suspend fun updateInfo(id: Long, uri: String, title: String, artist: String, durationMs: Long, folder: String, genre: String)
 
-    @Query("UPDATE tracks SET bpm = :bpm, energy = :energy WHERE id = :id")
-    suspend fun setAnalysis(id: Long, bpm: Float, energy: Float)
+    @Query("UPDATE tracks SET bpm = :bpm, energy = :energy, musicalKey = :key, loudness = :loudness WHERE id = :id")
+    suspend fun setAnalysis(id: Long, bpm: Float, energy: Float, key: Int, loudness: Float)
 
     @Query("UPDATE tracks SET bpm = :bpm WHERE id = :id")
     suspend fun setBpm(id: Long, bpm: Float)
@@ -98,7 +104,15 @@ private val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
     }
 }
 
-@Database(entities = [Track::class, TrackAnalysis::class, Playlist::class, PlaylistTrack::class], version = 4, exportSchema = false)
+// Version 5: Tonart und Lautheit pro Titel (bestehende Titel werden einmal neu analysiert)
+private val MIGRATION_4_5 = object : androidx.room.migration.Migration(4, 5) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE tracks ADD COLUMN musicalKey INTEGER")
+        db.execSQL("ALTER TABLE tracks ADD COLUMN loudness REAL")
+    }
+}
+
+@Database(entities = [Track::class, TrackAnalysis::class, Playlist::class, PlaylistTrack::class], version = 5, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun tracks(): TrackDao
     abstract fun analysis(): AnalysisDao
@@ -110,7 +124,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context, AppDatabase::class.java, "fadelux.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build().also { instance = it }
         }
     }

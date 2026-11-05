@@ -97,37 +97,58 @@ private:
 /**
  * Lautheit eines Titels in dB (vereinfacht nach EBU R128): 400-ms-Blöcke, Bass unter 100 Hz
  * abgeschwächt, leise Stellen (Stille, Intro-Pausen) werden ausgeblendet ("Gate").
- * Damit klingen zwei Songs mit gleichem Wert etwa gleich laut.
+ * Damit klingen zwei Songs mit gleichem Wert etwa gleich laut. Kann stückweise gefüttert werden.
  */
-inline float gatedLoudnessDb(const int16_t* pcm, size_t frames, int rate) {
-    if (frames == 0 || rate <= 0) return -70.f;
-    Biquad hp;
-    hp.setHighpass(100.f, 0.707f, (float)rate);
-    size_t block = (size_t)rate * 4 / 10;
-    std::vector<double> ms;
-    double acc = 0;
-    size_t n = 0;
-    for (size_t i = 0; i < frames; i++) {
-        float x = (pcm[i * 2] + pcm[i * 2 + 1]) * (0.5f / 32768.f);
-        float y = hp.process(x, 0);
-        acc += (double)y * y;
-        if (++n == block) {
-            ms.push_back(acc / n);
-            acc = 0;
-            n = 0;
+class LoudnessMeter {
+public:
+    void feed(const int16_t* pcm, size_t frames, int rate) {
+        if (rate != rate_) {
+            rate_ = rate;
+            hp_.setHighpass(100.f, 0.707f, (float)rate);
+            hp_.reset();
+            block_ = (size_t)rate * 4 / 10;
+            acc_ = 0;
+            n_ = 0;
+        }
+        for (size_t i = 0; i < frames; i++) {
+            float x = (pcm[i * 2] + pcm[i * 2 + 1]) * (0.5f / 32768.f);
+            float y = hp_.process(x, 0);
+            acc_ += (double)y * y;
+            if (++n_ == block_) {
+                ms_.push_back(acc_ / n_);
+                acc_ = 0;
+                n_ = 0;
+            }
         }
     }
-    auto gatedMean = [&](double thr) {
-        double s = 0;
-        size_t c = 0;
-        for (double v : ms)
-            if (v > thr) { s += v; c++; }
-        return c ? s / c : 0.0;
-    };
-    double abs = gatedMean(1e-6);               // -60 dB: echte Stille weg
-    if (abs <= 0) return -70.f;
-    double rel = gatedMean(abs * 0.1);          // 10 dB unter dem Mittel: leise Passagen weg
-    return (float)(10.0 * std::log10(std::max(rel, 1e-10)));
+
+    float resultDb() const {
+        auto gatedMean = [&](double thr) {
+            double s = 0;
+            size_t c = 0;
+            for (double v : ms_)
+                if (v > thr) { s += v; c++; }
+            return c ? s / c : 0.0;
+        };
+        double abs = gatedMean(1e-6);               // -60 dB: echte Stille weg
+        if (abs <= 0) return -70.f;
+        double rel = gatedMean(abs * 0.1);          // 10 dB unter dem Mittel: leise Passagen weg
+        return (float)(10.0 * std::log10(std::max(rel, 1e-10)));
+    }
+
+private:
+    Biquad hp_;
+    int rate_ = 0;
+    size_t block_ = 1, n_ = 0;
+    double acc_ = 0;
+    std::vector<double> ms_;
+};
+
+inline float gatedLoudnessDb(const int16_t* pcm, size_t frames, int rate) {
+    if (frames == 0 || rate <= 0) return -70.f;
+    LoudnessMeter m;
+    m.feed(pcm, frames, rate);
+    return m.resultDb();
 }
 
 // Weiche Begrenzung, damit es bei Übersteuerung nicht hart knackt.

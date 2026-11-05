@@ -87,7 +87,14 @@ class DjViewModel private constructor(private val app: Application) {
     var message by mutableStateOf<UiText?>(null)
     var engineInfo by mutableStateOf(DoubleArray(4))
 
-    val autoMix = AutoMix(scope, decks, mixer, settings) { deck, t -> loadTrack(deck, t, force = true) }
+    /** Schneller Zugriff auf die neuesten Titel-Daten (nach der Analyse: BPM, Tonart, Energie). */
+    @Volatile private var trackIndex: Map<Long, Track> = emptyMap()
+
+    val autoMix = AutoMix(
+        scope, decks, mixer, settings,
+        load = { deck, t -> loadTrackNow(deck, t) },
+        refresh = { t -> trackIndex[t.id] ?: t },
+    )
 
     // Aufnahme
     var recording by mutableStateOf(false)
@@ -190,13 +197,52 @@ class DjViewModel private constructor(private val app: Application) {
         else (liveDeck() ?: decks.firstOrNull { it.loadState == 2 })?.play(true)
     }
 
-    /** "Nächster Song" von aussen: sauberer Übergang statt hartem Schnitt. */
+    /** "Weiter" (Bildschirm, Benachrichtigung, Kopfhörer): kurzer, sauberer Übergang im Takt. */
     fun remoteNext() {
+        if (remotePaused.isNotEmpty()) resumePaused()
+        autoMix.next()
+    }
+
+    /** "Zurück": kurzer Übergang zum vorherigen Song. */
+    fun remotePrevious() {
+        if (remotePaused.isNotEmpty()) resumePaused()
+        autoMix.previous()
+    }
+
+    /** Im aktuellen Song an eine Stelle springen (Sekunden). */
+    fun seekTo(seconds: Double) = autoMix.seek(seconds)
+
+    /** Spielt gerade etwas? (für Play/Pause-Knopf) */
+    val isPlaying: Boolean get() = decks.any { it.playing }
+
+    /** Play/Pause-Knopf auf dem Bildschirm. */
+    fun togglePlay() {
         when {
-            autoMix.running -> autoMix.mixNow()
-            autoMix.queue.isNotEmpty() -> { autoMix.start(); autoMix.mixNow() }
-            else -> message = UiText(R.string.msg_queue_empty_next)
+            isPlaying -> pauseAll()
+            remotePaused.isNotEmpty() -> resumePaused()
+            autoMix.running -> decks[autoMix.currentDeck].play(true)
+            autoMix.queue.isNotEmpty() -> autoMix.start()
+            else -> message = UiText(R.string.msg_choose_playlist)
         }
+    }
+
+    /** Playlist wählen + Play: ordnet nach Stimmung und spielt sofort los. */
+    fun playPlaylist(id: Long, shuffle: Boolean = false) {
+        scope.launch {
+            val list = playlists.tracks(id)
+            startTracks(list, shuffle)
+        }
+    }
+
+    /** Ganze Bibliothek abspielen. */
+    fun playLibrary(shuffle: Boolean = false) = startTracks(tracks.value, shuffle)
+
+    private fun startTracks(list: List<Track>, shuffle: Boolean) {
+        if (list.isEmpty()) { message = UiText(R.string.automix_empty); return }
+        if (remotePaused.isNotEmpty()) resumePaused()
+        autoMix.startPlaylist(list, shuffle)
+        startAnalysis()
+        if (!batteryUnrestricted()) message = UiText(R.string.bg_hint_short)
     }
 
     /** Übergangstyp an/aus (mindestens einer bleibt an). Plant den nächsten Übergang neu. */
@@ -235,37 +281,61 @@ class DjViewModel private constructor(private val app: Application) {
         }
     }
 
+    /**
+     * Analyse im Hintergrund: zuerst die Songs der Warteschlange (damit der Ablauf schnell gute
+     * Werte hat), dann die übrige Bibliothek. Jede Datei nur einmal (Ergebnis in der Datenbank).
+     * Sobald neue Werte für Songs der Warteschlange da sind, wird sie neu nach Stimmung geordnet.
+     */
     private fun startAnalysis() {
         if (analyzeJob?.isActive == true) return
         analyzeJob = scope.launch {
-            while (isActive && library.analyzeNext()) delay(50)
+            var sinceArrange = 0
+            while (isActive) {
+                val queued = autoMix.queue.map { it.id } + listOfNotNull(autoMix.nextTrack?.id)
+                val t = library.analyzeNext(queued) ?: break
+                trackIndex = trackIndex + (t.id to t)
+                if (t.id in queued) sinceArrange++
+                val queueDone = autoMix.queue.none { trackIndex[it.id]?.musicalKey == null }
+                if (sinceArrange > 0 && (sinceArrange >= 4 || queueDone)) {
+                    sinceArrange = 0
+                    autoMix.arrangeQueue()
+                }
+                delay(30)
+            }
         }
     }
 
-    fun loadTrack(deck: Int, t: Track, force: Boolean = false) {
+    /**
+     * Titel in ein Deck laden (für den Auto-DJ). Zustand wird sofort gesetzt, damit nie der
+     * vorherige Titel für "bereit" gehalten wird. false = Datei nicht lesbar.
+     */
+    suspend fun loadTrackNow(deck: Int, t: Track): Boolean {
         val d = decks[deck]
-        if (d.playing && !force) {
-            message = UiText(R.string.msg_deck_playing, d.name)
-            return
-        }
-        scope.launch(Dispatchers.IO) {
+        d.track = t
+        d.waveform = FloatArray(0)
+        d.peaks = FloatArray(0)
+        d.loadState = 1
+        d.applyGain(1f)      // Lautheits-Angleichung gilt nur für den vorherigen Titel
+        return withContext(Dispatchers.IO) {
             try {
-                app.contentResolver.openFileDescriptor(Uri.parse(t.uri), "r")?.use { pfd ->
-                    val len = pfd.statSize
-                    val fd = pfd.detachFd()
-                    withContext(Dispatchers.Main) {
-                        d.track = t
-                        d.waveform = FloatArray(0)
-                        d.peaks = FloatArray(0)
-                        d.loadState = 1
-                        d.applyGain(1f)      // Lautheits-Angleichung gilt nur für den vorherigen Titel
-                    }
+                val pfd = app.contentResolver.openFileDescriptor(Uri.parse(t.uri), "r") ?: return@withContext false
+                pfd.use {
+                    val len = it.statSize
+                    val fd = it.detachFd()
                     NativeEngine.loadTrack(deck, fd, len)
                 }
+                true
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { message = UiText(R.string.msg_load_failed) }
+                Log.e("Fadelux", "Laden fehlgeschlagen: ${t.title}", e)
+                false
             }
         }
+    }
+
+    /** Titel direkt in ein Deck laden (nur noch für Tests/Altes). */
+    fun loadTrack(deck: Int, t: Track, force: Boolean = false) {
+        if (decks[deck].playing && !force) return
+        scope.launch { loadTrackNow(deck, t) }
     }
 
     /**
@@ -529,6 +599,7 @@ class DjViewModel private constructor(private val app: Application) {
                 scope.launch {
                     wishes.add(0, w)
                     newWishes++
+                    handleNewWish(w)
                 }
             }
             if (!server.start()) { wishError = UiText(R.string.wish_err_server); return }
@@ -578,8 +649,10 @@ class DjViewModel private constructor(private val app: Application) {
             while (isActive) {
                 try {
                     val list = withContext(Dispatchers.IO) { firestore.listWishes(id) }
-                    val fresh = list.count { it.id !in seenWishes }
+                    val freshList = list.filter { it.id !in seenWishes }
+                    val fresh = freshList.size
                     if (seenWishes.isNotEmpty() || wishes.isNotEmpty()) newWishes += fresh
+                    freshList.forEach { handleNewWish(it) }
                     seenWishes += list.map { it.id }
                     wishes.clear()
                     wishes.addAll(list)
@@ -607,6 +680,19 @@ class DjViewModel private constructor(private val app: Application) {
 
     fun clearNewWishes() { newWishes = 0 }
 
+    /** Wünsche, deren Song automatisch in die Warteschlange eingereiht wurde. */
+    val queuedWishIds = mutableStateListOf<String>()
+
+    /** Neuer Wunsch: Ist der Song in der Bibliothek, kommt er an einer passenden Stelle in die Warteschlange. */
+    private fun handleNewWish(w: Wish) {
+        if (w.id in queuedWishIds) return
+        val t = trackForWish(w) ?: return
+        if (autoMix.insertWish(t)) {
+            queuedWishIds += w.id
+            message = UiText(R.string.wish_queued, t.title)
+        }
+    }
+
     /** Titel aus der Bibliothek, der zu einem Wunsch passt (oder null). */
     fun trackForWish(w: Wish): Track? =
         Suggestions.matchWish(if (w.song.isNotBlank()) w.song else w.text, tracks.value)
@@ -621,6 +707,8 @@ class DjViewModel private constructor(private val app: Application) {
         decks.forEach { it.applyAll() }
         startPolling()
         restoreEvent()
+        // Index der neuesten Titel-Daten (für den Auto-DJ) aktuell halten
+        scope.launch { tracks.collect { list -> trackIndex = list.associateBy { it.id } } }
     }
 
     /** App wird ganz beendet (z.B. "Beenden" in der Benachrichtigung). */

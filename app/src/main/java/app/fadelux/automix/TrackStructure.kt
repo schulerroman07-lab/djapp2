@@ -25,6 +25,7 @@ data class TrackStructure(
     val breaks: List<IntRange>,     // Takte ohne Bass (Break)
     val endBar: Int = bars.size,    // erster Takt NACH dem hörbaren Ende (Stille am Schluss zählt nicht)
     val trackEnergy: Float = -1f,   // Energie des ganzen Titels (0..1, aus der Bibliothek), -1 = unbekannt
+    val musicalKey: Int = -1,       // Tonart (0..23, siehe [Keys]), -1 = unbekannt
 ) {
     val beatSec: Double get() = 60.0 / bpm
     val barSec: Double get() = 4 * beatSec
@@ -107,8 +108,9 @@ object StructureAnalyzer {
         val endByWave = kotlin.math.floor((soundEnd - downbeat) / (4 * beatSec) + 1e-6).toInt()
         val endBar = min(lastLoud + 1, endByWave).coerceIn(min(8, barCount), barCount)
 
-        // 3) Gesang (grob): Mitten deutlich stärker als typisch für diesen Titel
-        val medRatio = median(midRatio)
+        // 3) Gesang (grob): Mitten deutlich stärker als in den instrumentalen Teilen dieses Titels.
+        //    Referenz = unteres Viertel (nicht der Median – sonst fällt Gesang in >50 % des Songs durch)
+        val medRatio = quantile(midRatio, 0.25f)
         val vocal = BooleanArray(barCount) { midRatio[it] > medRatio * 1.15f && mid[it] > 0.35f }
         // einzelne Ausreisser glätten (Gesang dauert meist mehrere Takte)
         val vocalSmooth = BooleanArray(barCount) { i ->
@@ -153,6 +155,12 @@ object StructureAnalyzer {
         var i = peaks.size - 1
         while (i > 0 && peaks[i] < 0.02f) i--
         return min(duration, (i + 1) / 100.0 + 0.1)
+    }
+
+    private fun quantile(a: FloatArray, q: Float): Float {
+        if (a.isEmpty()) return 0f
+        val s = a.copyOf().apply { sort() }
+        return s[((s.size - 1) * q).toInt()]
     }
 
     private fun median(a: FloatArray): Float {

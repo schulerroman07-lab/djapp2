@@ -241,4 +241,7 @@ Tocca «Nuova playlist» – oppure tieni premuto un brano nella libreria.</stri
     <string name="set_bg_eco">Risparmio</string>
     <string name="set_bg_full">Completo</string>
     <string name="set_bg_help">Un bagliore morbido che si muove lentamente e pulsa con il ritmo e l’energia della musica. «Risparmio» si muove più lentamente e reagisce meno; «Spento» mostra uno sfondo fisso.</string>
+    <string name="msg_choose_playlist">Scegli prima una playlist</string>
+    <string name="wish_queued">Richiesta inserita al punto giusto: %1$s</string>
+    <string name="tr_long_blend">Fusione lunga</string>
 </resources>

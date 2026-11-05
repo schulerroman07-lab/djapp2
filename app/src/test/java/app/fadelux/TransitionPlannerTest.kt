@@ -217,4 +217,61 @@ class TransitionPlannerTest {
         val p = TransitionPlanner.plan(track(), 30.0, 1f, track(bpm = 126f), PlannerSettings())
         assertTrue(p.reason, p.reason.contains("Tempo") && p.reason.contains("Takt"))
     }
+
+    // ---------- Langer Blend, Schnitt nach Break, Weiter/Zurück, Früh-Übergang ----------
+
+    @Test
+    fun longBlend_whenSameTempoAndKey() {
+        val a = track(bpm = 124f, bars = 128, intro = 32, outro = 32).copy(musicalKey = 21)   // a-Moll (8A)
+        val b = track(bpm = 124.5f, bars = 128, intro = 32, outro = 32).copy(musicalKey = 0)  // C-Dur (8B)
+        val p = TransitionPlanner.plan(a, 20.0, 1f, b, PlannerSettings(style = MixStyle.CALM))
+        assertEquals(TransitionType.LONG_BLEND, p.type)
+        assertEquals(32, p.lengthBars)
+        assertTrue(p.mixBar + p.lengthBars <= a.endBar)
+        assertTrue(p.reason, p.reason.contains("Tonart"))
+        // Tonart reibt → kein langer Blend
+        val clash = TransitionPlanner.plan(a, 20.0, 1f, b.copy(musicalKey = 6), PlannerSettings(style = MixStyle.CALM))
+        assertNotEquals(TransitionType.LONG_BLEND, clash.type)
+    }
+
+    @Test
+    fun cut_landsRightAfterBreak() {
+        val a = track(bars = 96, outro = 16, breaks = setOf(70, 71, 72, 73)).copy()
+        val b = track(bpm = 100f)            // grosser Tempo-Abstand → kein Blend
+        val p = TransitionPlanner.plan(a, 20.0, 1f, b, PlannerSettings(enabled = setOf(TransitionType.CUT)))
+        assertEquals(TransitionType.CUT, p.type)
+        assertTrue("breaks=${a.breaks} mixBar=${p.mixBar}", a.breaks.any { it.last + 1 == p.mixBar })
+    }
+
+    @Test
+    fun quick_nextBar_shortAndClean() {
+        val a = track()
+        val pos = a.barTime(40) + 0.3
+        val matched = TransitionPlanner.plan(a, pos, 1f, track(bpm = 125f), PlannerSettings(), quick = true)
+        assertEquals(42, matched.mixBar)
+        assertTrue(matched.type in TransitionPlanner.blendTypes && matched.lengthBars == 4)
+        val far = TransitionPlanner.plan(a, pos, 1f, track(bpm = 90f), PlannerSettings(), quick = true)
+        assertTrue(far.type == TransitionType.ECHO_OUT || far.type == TransitionType.CUT)
+        // Abwechslung auch bei Weiter
+        val again = TransitionPlanner.plan(a, pos, 1f, track(bpm = 125f), PlannerSettings(), recent = listOf(matched.type), quick = true)
+        assertNotEquals(matched.type, again.type)
+    }
+
+    @Test
+    fun earlyBar_onlyForPerfectPairs() {
+        val a = track(bpm = 124f, bars = 160, intro = 16, outro = 16).copy(musicalKey = 21)
+        val b = track(bpm = 124f, bars = 128).copy(musicalKey = 16)          // a-Moll → e-Moll: 8A → 9A
+        val normal = TransitionPlanner.plan(a, 20.0, 1f, b, PlannerSettings())
+        val early = TransitionPlanner.earlyBar(a, 20.0, 1f, b, normal.mixBar)
+        assertNotNull(early)
+        assertTrue("early=$early normal=${normal.mixBar}", early!! < normal.mixBar - 16 && early % 16 == 0 && early >= 160 * 0.55)
+        val forced = TransitionPlanner.plan(a, 20.0, 1f, b, PlannerSettings(), atBar = early)
+        assertEquals(early, forced.mixBar)
+        // Tempo zu verschieden oder Tonart reibt → kein Früh-Übergang
+        assertEquals(null, TransitionPlanner.earlyBar(a, 20.0, 1f, track(bpm = 128f, bars = 128).copy(musicalKey = 16), normal.mixBar))
+        assertEquals(null, TransitionPlanner.earlyBar(a, 20.0, 1f, b.copy(musicalKey = 3), normal.mixBar))
+        // Gesang in A überall → nicht mitten in den Gesang mischen
+        val sung = track(bpm = 124f, bars = 160, vocal = (80..159).toSet()).copy(musicalKey = 21)
+        assertEquals(null, TransitionPlanner.earlyBar(sung, 20.0, 1f, b, 140))
+    }
 }

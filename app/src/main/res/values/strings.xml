@@ -254,4 +254,7 @@ Tap “New playlist” – or long-press a song in the library.</string>
     <string name="set_bg_eco">Battery saver</string>
     <string name="set_bg_full">Full</string>
     <string name="set_bg_help">A soft glow that slowly moves and pulses with the beat and energy of the music. “Battery saver” moves more slowly and reacts less; “Off” shows a still background.</string>
+    <string name="msg_choose_playlist">Choose a playlist first</string>
+    <string name="wish_queued">Request added at a fitting spot: %1$s</string>
+    <string name="tr_long_blend">Long blend</string>
 </resources>

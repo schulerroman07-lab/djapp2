@@ -37,6 +37,8 @@ object QueueFlow {
         val eb = b.energy ?: 0.5f
         val d = eb - (ea + 0.03f)                          // leichter Anstieg = ideal
         c += abs(d) * 3f + (if (d < -0.15f) (-d - 0.15f) * 2f else 0f)
+        // Tonart: harmonisch passende Songs bevorzugen (unbekannt = neutral)
+        c += (1f - Keys.compatibility(a.musicalKey, b.musicalKey)) * 0.6f
         return c
     }
 
@@ -116,4 +118,97 @@ object QueueFlow {
         for (t in queue) { last?.let { c += cost(it, t) }; last = t }
         return c
     }
+
+    // ------------------------------------------------------------------
+    // Reihenfolge nach Stimmung: Energie-Kurve und/oder Genre-Blöcke
+    // ------------------------------------------------------------------
+
+    /**
+     * Ziel-Energie (0..1, als Rang innerhalb der Songs) an der Stelle x (0 = erster, 1 = letzter Song).
+     * RISING: ruhig beginnen, stetig steigern bis zum Höhepunkt am Schluss.
+     * ARC ("Party-Bogen"): Warm-up → Höhepunkt bei ca. 70 % → Ausklang.
+     */
+    fun target(curve: FlowCurve, x: Float): Float {
+        val p = x.coerceIn(0f, 1f)
+        return when (curve) {
+            FlowCurve.ARC -> when {
+                p < 0.2f -> 0.1f + p / 0.2f * 0.45f                    // Warm-up 0.10 → 0.55
+                p < 0.7f -> 0.55f + (p - 0.2f) / 0.5f * 0.45f           // Aufbau bis Peak 1.0
+                else -> 1f - (p - 0.7f) / 0.3f * 0.6f                   // Ausklang 1.0 → 0.4
+            }
+            else -> 0.05f + 0.95f * p                                   // RISING (und Original)
+        }
+    }
+
+    /**
+     * Ordnet die Warteschlange nach Stimmung. Angeheftete Songs bleiben an ihrer Position.
+     * - Energie-Kurve: Songs werden den Positionen nach ihrem Energie-Rang zugeteilt; bei
+     *   ähnlicher Energie gewinnt der Song, der vom Tempo/Tonart/Genre her besser anschliesst.
+     * - Genre-Blöcke: Songs derselben Genre-Familie bleiben zusammen; Blöcke von ruhig nach
+     *   energiegeladen (z.B. Rock → Party/Schlager → Techno), innerhalb jedes Blocks gilt die Kurve.
+     * - Original (ohne Blöcke): Reihenfolge bleibt unverändert.
+     * Es gibt nie ein "passt nicht" – es wird immer der bestmögliche Ablauf gebaut.
+     */
+    fun arrangeByMood(queue: List<Track>, prev: Track?, pinned: Set<Long>, flow: FlowSettings): List<Track> {
+        if (queue.size < 2) return queue
+        if (flow.curve == FlowCurve.ORIGINAL && !flow.genreBlocks) return queue
+        val fixed = queue.withIndex().filter { it.value.id in pinned }.associate { it.index to it.value }
+        val free = queue.filter { it.id !in pinned }
+        if (free.isEmpty()) return queue
+        val m = free.size
+
+        // Energie-Rang 0..1 (bei Gleichstand nach Tempo)
+        val ranked = free.sortedWith(compareBy<Track>({ it.energy ?: 0.5f }, { it.bpm ?: 0f }))
+        val rank = HashMap<Long, Float>()
+        ranked.forEachIndexed { i, t -> rank[t.id] = if (m == 1) 0.5f else i / (m - 1f) }
+
+        // Blöcke bilden
+        val blocks: List<List<Track>> = if (flow.genreBlocks) {
+            val groups = LinkedHashMap<GenreFamily, MutableList<Track>>()
+            for (t in free) groups.getOrPut(Genres.family(t)) { mutableListOf() } += t
+            val list = groups.values.toList()
+            if (flow.curve == FlowCurve.ORIGINAL) list                                    // Reihenfolge des ersten Auftretens
+            else list.sortedBy { b -> b.map { rank[it.id] ?: 0.5f }.average() }           // ruhig → energiegeladen
+        } else listOf(free)
+
+        val order = ArrayList<Track>(m)
+        var last = prev
+        var slot = 0
+        for (block in blocks) {
+            val rest = block.toMutableList()
+            if (flow.curve == FlowCurve.ORIGINAL) { order += rest; last = rest.last(); slot += rest.size; continue }
+            // Rang innerhalb des Blocks (damit jeder Block die Kurve "abfährt")
+            val inBlock = block.sortedWith(compareBy<Track>({ it.energy ?: 0.5f }, { it.bpm ?: 0f }))
+            val bRank = HashMap<Long, Float>()
+            inBlock.forEachIndexed { i, t -> bRank[t.id] = if (inBlock.size == 1) 0.5f else i / (inBlock.size - 1f) }
+            // Ziel-Werte dieses Abschnitts der Kurve auf 0..1 strecken
+            val targets = (0 until block.size).map { k -> target(flow.curve, if (m == 1) 0f else (slot + k) / (m - 1f)) }
+            val tMin = targets.min()
+            val tMax = targets.max()
+            for (k in block.indices) {
+                val tn = if (tMax - tMin < 1e-3f) (if (block.size == 1) 0.5f else k / (block.size - 1f))
+                else (targets[k] - tMin) / (tMax - tMin)
+                val ref = last
+                val next = rest.minBy { t ->
+                    abs((bRank[t.id] ?: 0.5f) - tn) * 4f + (ref?.let { cost(it, t) * 0.25f } ?: 0f)
+                }
+                rest.remove(next)
+                order += next
+                last = next
+            }
+            slot += block.size
+        }
+
+        // Angeheftete Songs wieder an ihre Plätze
+        val out = ArrayList<Track>(queue.size)
+        var fi = 0
+        for (i in queue.indices) out += fixed[i] ?: order[fi++]
+        return out
+    }
 }
+
+/** Ablauf-Kurve der Party. */
+enum class FlowCurve { RISING, ARC, ORIGINAL }
+
+/** Einstellungen für die Reihenfolge. */
+data class FlowSettings(val curve: FlowCurve = FlowCurve.ARC, val genreBlocks: Boolean = false)

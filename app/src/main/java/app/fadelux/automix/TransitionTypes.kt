@@ -7,7 +7,8 @@ enum class TransitionType {
     ECHO_OUT,      // alter Song endet mit Echo
     LOOP,          // Outro-Takte loopen, neuer Song kommt darüber
     REVERB_WASH,   // alter Song verschwindet im Hall
-    CUT,           // harter Schnitt auf dem Downbeat
+    CUT,           // harter Schnitt auf dem Downbeat (am liebsten direkt nach einem Break)
+    LONG_BLEND,    // langer, ruhiger Blend (32 Takte) bei gleichem Tempo und passender Tonart
 }
 
 /** Mix-Stil (Einstellungen). */

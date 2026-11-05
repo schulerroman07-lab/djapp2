@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include "BpmAnalyzer.h"
+#include "KeyAnalyzer.h"
 #include "Decoder.h"
 #include "Engine.h"
 
@@ -167,14 +168,25 @@ JNIEXPORT void JNICALL FN(getEngineInfo)(JNIEnv* env, jobject, jdoubleArray out)
 // BPM-Analyse für die Bibliothek (blockiert – im Hintergrund aufrufen!). [bpm, erster Beat]
 JNIEXPORT jfloatArray JNICALL FN(analyzeFile)(JNIEnv* env, jobject, jint fd, jlong length) {
     BpmAnalyzer an;
+    KeyAnalyzer key;
+    LoudnessMeter loud;
     decodeAudio(
-        fd, length, [&](const int16_t* s, size_t frames, int rate) { an.feed(s, frames, rate); },
+        fd, length,
+        [&](const int16_t* s, size_t frames, int rate) {
+            an.feed(s, frames, rate);
+            key.feed(s, frames, rate);
+            loud.feed(s, frames, rate);
+        },
         nullptr, 60 * 8);
     close(fd);
     BpmResult r = an.result();
     std::vector<uint8_t> f = an.beatFeatures(r.bpm, r.firstBeat);
-    // [BPM, erster Beat, Energie, Anzahl Beats, dann 4 Werte pro Beat (0..255)]
-    std::vector<jfloat> v = {r.bpm, r.firstBeat, r.energy, (jfloat)(f.size() / 4)};
+    float keyConf = 0;
+    int k = key.result(&keyConf);
+    // [BPM, erster Beat, Energie, Anzahl Beats, Lautheit dB, Tonart (-1/0..23), Sicherheit,
+    //  dann 4 Werte pro Beat (0..255)]
+    std::vector<jfloat> v = {r.bpm, r.firstBeat, r.energy, (jfloat)(f.size() / 4),
+                             loud.resultDb(), (jfloat)k, keyConf};
     for (uint8_t b : f) v.push_back((jfloat)b);
     jfloatArray arr = env->NewFloatArray((jsize)v.size());
     env->SetFloatArrayRegion(arr, 0, (jsize)v.size(), v.data());

@@ -110,13 +110,20 @@ class LibraryRepository(private val context: Context) {
         return out
     }
 
-    /** Analysiert den nächsten Titel (BPM + Energie). false = alle fertig. */
-    suspend fun analyzeNext(): Boolean = withContext(Dispatchers.IO) {
+    /**
+     * Analysiert den nächsten Titel (BPM, Beat-Raster, Energie, Lautheit, Tonart, Merkmale pro Beat).
+     * Titel aus [preferred] (z.B. die Warteschlange) kommen zuerst dran. Gibt den analysierten
+     * Titel zurück oder null, wenn alles fertig ist. Jede Datei wird nur einmal analysiert.
+     */
+    suspend fun analyzeNext(preferred: List<Long> = emptyList()): Track? = withContext(Dispatchers.IO) {
         // Niedrige Priorität, damit die Musik nie stockt
         android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
-        val t = dao.nextUnanalyzed() ?: return@withContext false
+        val t = (if (preferred.isNotEmpty()) dao.nextUnanalyzedIn(preferred.take(500)) else null)
+            ?: dao.nextUnanalyzed() ?: return@withContext null
         var bpm = 0f
         var energy = 0.5f
+        var loudness = -70f
+        var key = -1
         var firstBeat = 0f
         var features = ByteArray(0)
         try {
@@ -128,15 +135,18 @@ class LibraryRepository(private val context: Context) {
                 firstBeat = r.getOrElse(1) { 0f }
                 energy = r.getOrElse(2) { 0.5f }
                 val n = r.getOrElse(3) { 0f }.toInt()
-                if (n > 0 && r.size >= 4 + n * 4) features = ByteArray(n * 4) { r[4 + it].toInt().toByte() }
+                loudness = r.getOrElse(4) { -70f }
+                key = r.getOrElse(5) { -1f }.toInt()
+                val off = 7
+                if (n > 0 && r.size >= off + n * 4) features = ByteArray(n * 4) { r[off + it].toInt().toByte() }
             }
         } catch (e: Exception) {
             Log.e("Fadelux", "Analyse fehlgeschlagen: ${t.title}", e)
         }
-        dao.setAnalysis(t.id, bpm, energy)
-        // Auch bei Fehler speichern (leere Merkmale), sonst würde der Titel endlos neu analysiert
+        // Auch bei Fehler speichern (Tonart -1, leere Merkmale), sonst würde der Titel endlos neu analysiert
+        dao.setAnalysis(t.id, bpm, energy, key, loudness)
         analysisDao.put(TrackAnalysis(t.id, firstBeat, features))
-        true
+        t.copy(bpm = bpm, energy = energy, musicalKey = key, loudness = loudness)
     }
 
     suspend fun setBpm(id: Long, bpm: Float) = withContext(Dispatchers.IO) { dao.setBpm(id, bpm) }

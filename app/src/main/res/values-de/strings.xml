@@ -241,4 +241,7 @@ Tippe auf „Neue Playlist“ – oder halte in der Bibliothek einen Song gedrü
     <string name="set_bg_eco">Energiesparen</string>
     <string name="set_bg_full">Voll</string>
     <string name="set_bg_help">Ein weiches Leuchten, das sich langsam bewegt und mit Beat und Energie der Musik pulsiert. „Energiesparen“ bewegt sich langsamer und reagiert dezenter; „Aus“ zeigt einen ruhigen Hintergrund.</string>
+    <string name="msg_choose_playlist">Wähle zuerst eine Playlist</string>
+    <string name="wish_queued">Wunsch passend eingereiht: %1$s</string>
+    <string name="tr_long_blend">Langer Blend</string>
 </resources>
