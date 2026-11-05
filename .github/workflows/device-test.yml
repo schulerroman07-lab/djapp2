@@ -60,7 +60,7 @@ jobs:
             adb shell mkdir -p /sdcard/Music/Soak
             adb push songs/. /sdcard/Music/Soak/
             adb shell pm grant app.fadelux android.permission.READ_MEDIA_AUDIO
-            adb shell pm grant app.fadelux android.permission.POST_NOTIFICATIONS
+            adb shell pm grant app.fadelux android.permission.POST_NOTIFICATIONS || true
             adb shell dumpsys battery unplug
             adb logcat -c
             adb shell am instrument -w -e minutes $(cat tools/devicetest/minutes.txt) -e class app.fadelux.DeviceSoakTest app.fadelux.test/androidx.test.runner.AndroidJUnitRunner | tee out/instrument.txt
