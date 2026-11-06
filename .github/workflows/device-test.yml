@@ -66,21 +66,27 @@ jobs:
             adb logcat -c
             adb shell am instrument -w -e minutes $(cat tools/devicetest/minutes.txt) -e class app.fadelux.DeviceSoakTest app.fadelux.test/androidx.test.runner.AndroidJUnitRunner | tee out/instrument.txt
             adb shell dumpsys gfxinfo app.fadelux > out/gfxinfo.txt || true
+            adb shell wm size 1080x2340
+            adb shell wm density 420
+            adb shell am instrument -w -e class app.fadelux.EdgeTest app.fadelux.test/androidx.test.runner.AndroidJUnitRunner | tee out/edge.txt
+            adb shell wm size reset
+            adb shell wm density reset
             adb shell dumpsys activity services app.fadelux > out/services.txt || true
             adb pull /sdcard/Android/data/app.fadelux/files/soak out/ || true
             adb logcat -d > out/logcat.txt || true
-            grep -E "AutoMix|SoakTest|FATAL|AndroidRuntime|Fadelux" out/logcat.txt > out/logcat_kurz.txt || true
+            grep -E "AutoMix|SoakTest|EdgeTest|FATAL|AndroidRuntime|Fadelux" out/logcat.txt > out/logcat_kurz.txt || true
             cat out/soak/report.txt || true
             echo "== Zusammenfassung Logcat =="
             echo "Übergänge nach Typ:"; grep -o "Übergang startet: [A-Z_]*" out/logcat.txt | sort | uniq -c || true
             echo "Tempo-Rückführungen:"; grep "Tempo zurück auf 100" out/logcat.txt | sed 's/.*AutoMix : //' || true
             echo "Früh-Übergänge:"; grep -E "Früh-Übergang" out/logcat.txt | sed 's/.*: //' || true
             echo "Hauptthread beim Start (ausgelassene Bilder):"; grep -E "Choreographer.*Skipped|Davey" out/logcat.txt | head -15 || true
+            echo "Rand-Prüfung (Samsung-Grösse 1080x2340, 420 dpi):"; grep "EdgeTest" out/logcat.txt | sed 's/.*EdgeTest: //' || true
             echo "Pläne ohne Tempo: $(grep -c 'kein Tempo erkannt' out/logcat.txt || true)"
             echo "Weiter/Zurück während Laden: $(grep -c 'Song lädt noch' out/logcat.txt || true)"
             for f in out/soak/small_*.jpg; do echo "BILD $(basename "$f") $(base64 -w0 "$f")"; done || true
             tail -n 300 out/logcat_kurz.txt || true
-            grep -q "OK (1 test)" out/instrument.txt
+            grep -q "OK (1 test)" out/instrument.txt && grep -q "OK (1 test)" out/edge.txt
 
       - name: Ergebnis hochladen
         if: always()
