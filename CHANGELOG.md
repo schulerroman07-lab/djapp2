@@ -165,9 +165,15 @@ App verlassen (Hintergrund) und Dauerbetrieb. Gefundene und behobene Fehler:
   selten aktualisiert) und pulsierte nicht, solange der Song noch lud → liest jetzt direkt aus der
   Engine und nutzt beim Laden das gespeicherte Beat-Raster. Gemessen: **17 Pulse in 8 s bei 124 BPM
   (erwartet 16,5)**.
-- Rand-Prüfung im Gerätetest (Gesten-Navigation, mind. 16 dp): kein Knopf am Rand gefunden – allerdings
-  meldet der Emulator nur wenige Elemente im Bedienungshilfen-Baum; die Prüfung ist daher nur ein
-  Hinweis, kein Beweis (bitte TESTEN.md Punkt 13 auf dem Handy).
+- **Bildschirmrand (Samsung-Gesten):** neue Rand-Prüfung im Gerätetest liest die echten Positionen aller
+  Bedienelemente aus der App (Emulator auf Samsung-Grösse 1080×2340, 420 dpi, hoch + quer, Player und
+  "Als Nächstes"; zusätzlich kleiner 320×640-Bildschirm) und verlangt mind. 16 dp Abstand zum Rand bzw.
+  zu den Gesten-Zonen. Gefunden und behoben:
+  - QR- und Menü-Knopf lagen nur ca. 6 dp unter dem oberen Rand (Wischzone Benachrichtigungen) → 20 dp.
+  - Listen (z.B. "Als Nächstes") reichten bis 6 dp an den unteren Rand (Wischzone Home) → 16 dp.
+  - Knöpfe, Fortschrittsbalken und Griffe waren für Bedienungshilfen (TalkBack) nicht als solche
+    erkennbar → jetzt gemeldet.
+  Ergebnis jetzt: **kein Bedienelement am Rand** (alle vier Ansichten und kleiner Bildschirm).
 
 **Ergebnis 2-Stunden-Dauerbetrieb im Emulator** (echtes Android 14, echte Oboe-Ausgabe, App im
 Hintergrund, Lauf vom 6.11.2026): **bestanden** – 48 Übergänge in 120 min, **0 Aussetzer (xruns)**,
