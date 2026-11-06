@@ -333,7 +333,7 @@ class AutoMix(
      * spielen kann (Anfang dekodiert). Bricht ab bei Fehler, "Zurück"/"Überspringen" oder nach 3 Minuten
      * (langsame Geräte brauchen manchmal lange – das ist kein Lesefehler).
      */
-    private suspend fun waitLoaded(d: DeckModel, playable: () -> Boolean = { false }): Boolean {
+    private suspend fun waitLoaded(d: DeckModel, playable: () -> Boolean = { false }, abort: () -> Boolean = { false }): Boolean {
         val end = System.currentTimeMillis() + 180_000
         while (System.currentTimeMillis() < end) {
             // direkt aus der Engine lesen (die Anzeige wird im Hintergrund seltener aktualisiert)
@@ -345,7 +345,7 @@ class AutoMix(
                 if (d.peaks.isNotEmpty()) return true
             }
             if (s == 4 && playable()) { d.syncFromEngine(); return true }
-            if (prevRequest || skip) return false
+            if (prevRequest || skip || abort()) return false
             delay(30)
         }
         return false
@@ -370,6 +370,22 @@ class AutoMix(
         if (structureCache.size > 50) structureCache.clear()
         structureCache[t.id] = s
         return s
+    }
+
+    /**
+     * "Weiter"/"Zurück" zu einem Song, der noch nie analysiert wurde (kein Beat-Raster bekannt):
+     * A klingt auf seinem nächsten Downbeat mit Echo aus (bzw. Schnitt, falls Echo zuletzt kam),
+     * B beginnt von vorne – kurz, sauber und im Takt von A, ohne auf das Dekodieren zu warten.
+     */
+    private fun quickPlanUnknownB(a: DeckModel, aStruct: TrackStructure): TransitionPlan {
+        val enabled = plannerSettings().enabled
+        val options = listOf(TransitionType.ECHO_OUT, TransitionType.CUT).filter { it in enabled }.ifEmpty { listOf(TransitionType.CUT) }
+        val type = options.firstOrNull { it != typeHistory.lastOrNull() } ?: options.first()
+        val mixBar = aStruct.barAt(a.livePosition()) + 2
+        return TransitionPlan(
+            type, mixBar, aStruct.barTime(mixBar), 0.0, if (type == TransitionType.CUT) 1 else 2, 1f, false,
+            "Weiter/Zurück: ${type.name} ab Takt $mixBar · neuer Song noch nicht analysiert → Ausklang im Takt",
+        )
     }
 
     /** Plan ohne erkennbares Tempo: kurzer Echo- oder Hall-Ausklang am Ende. */
@@ -460,7 +476,8 @@ class AutoMix(
         }
 
         // ---- 0) Läuft A noch "teilweise geladen"? Erst fertig dekodieren/analysieren lassen ----
-        if (a.loadState == 4 && !waitLoaded(a)) {
+        // ("Weiter" wartet nicht darauf – dann eben mit der gespeicherten Analyse bzw. ohne Beat-Raster)
+        if (a.loadState == 4 && !waitLoaded(a, abort = { quickRequest })) {
             if (prevRequest) { prevRequest = false; queueBackToPrevious(a, null); return cur }
             if (a.loadState == 3) log("Fehler beim Laden von ${a.track?.title}")
         }
@@ -474,7 +491,7 @@ class AutoMix(
         // (bei "Zurück" ist der vorherige Song meist schon hier im Speicher, auch wenn die Bibliotheks-Analyse
         // ihn noch nicht erreicht hat)
         val cachedNext = structureCache[next.id] ?: cached(next)
-        if (!loadInto(nxt, next, playable = { quickRequest && cachedNext != null })) {
+        if (!loadInto(nxt, next, playable = { quickRequest })) {
             nextTrack = null
             when {
                 prevRequest -> { prevRequest = false; queueBackToPrevious(a, next); return cur }
@@ -488,7 +505,7 @@ class AutoMix(
         b.changeVolume(a.volume)
         val partial = b.loadState == 4          // B lädt noch fertig (nur bei "Weiter"/"Zurück")
         matchLoudness(a, b, if (partial) next.loudness else null)
-        val aStruct = structureOf(a)
+        val aStruct = structureOf(a) ?: a.track?.let { structureCache[it.id] ?: cached(it) }
         val bStruct = if (partial) cachedNext else structureOf(b)
 
         // ---- 2) Planen (und bei Änderungswünschen neu planen) ----
@@ -529,7 +546,9 @@ class AutoMix(
                 // ausser bei sofortigem Übergang: dann Rückführung anhalten und mit dem aktuellen Tempo planen.
                 if ((mixNow || quick) && rampRunning(a)) stopRamp()
                 val aTempo = if (rampRunning(a)) 1f else a.tempo
-                plan = if (aStruct != null && bStruct != null) {
+                plan = if (aStruct != null && bStruct == null && partial) {
+                    quickPlanUnknownB(a, aStruct)
+                } else if (aStruct != null && bStruct != null) {
                     TransitionPlanner.plan(
                         aStruct, a.livePosition(), aTempo, bStruct, plannerSettings(), typeHistory, mixNow, forcedType,
                         quick = quick, atBar = earlyAccepted,

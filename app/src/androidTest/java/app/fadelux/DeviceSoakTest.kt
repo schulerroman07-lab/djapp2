@@ -143,6 +143,19 @@ class DeviceSoakTest {
         frameStats("Hintergrund Aus")
         main { vm.settings.bgAnimation = 2 }
 
+        // ---- "Weiter", während der nächste Song noch lädt (meist noch nicht analysiert) ----
+        run {
+            val prepared = main { vm.autoMix.nextPlan != null }
+            val before0 = main { vm.autoMix.transitionsDone }
+            main { vm.remoteNext() }
+            val t0 = System.currentTimeMillis()
+            val heard = waitFor(120_000, "Weiter (früh): Übergang beginnt") { main { vm.autoMix.transitioning } }
+            log("Weiter (früh, nächster Song ${if (prepared) "schon bereit" else "lädt noch"}): Übergang hörbar nach ${(System.currentTimeMillis() - t0) / 1000.0} s – " +
+                "${main { vm.autoMix.logLines.firstOrNull { it.contains("Plan ") }?.substringAfter("Plan ") }}")
+            assertTrue("Weiter (früh) macht einen Übergang", heard && waitFor(60_000, "Weiter (früh) fertig") { main { vm.autoMix.transitionsDone } > before0 })
+            Thread.sleep(2000)
+        }
+
         // ---- Weiter / Zurück: kurzer Übergang im Takt ----
         val tPrep = System.currentTimeMillis()
         assertTrue("nächster Song bereit", waitFor(150_000, "nächster Song geladen") { main { vm.autoMix.nextPlan != null } })
