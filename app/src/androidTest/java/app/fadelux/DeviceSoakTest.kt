@@ -88,6 +88,16 @@ class DeviceSoakTest {
         val wide = mutableListOf<String>()
         for (n in nodes) {
             val rb = android.graphics.Rect().also { n.getBoundsInScreen(it) }
+            // auf den sichtbaren Bereich scrollbarer Listen zuschneiden (Zeilen, die unter den Listenrand
+            // gescrollt sind, melden sonst ihre volle Grösse)
+            var p = n.parent
+            while (p != null) {
+                if (p.isScrollable) {
+                    val pb = android.graphics.Rect().also { p.getBoundsInScreen(it) }
+                    if (!rb.intersect(pb)) rb.setEmpty()
+                }
+                p = p.parent
+            }
             if (rb.isEmpty) continue
             val inZone = rb.left < l || rb.right > w - r || rb.bottom > h - b
             if (!inZone) continue
