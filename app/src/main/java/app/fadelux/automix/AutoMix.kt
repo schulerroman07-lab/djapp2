@@ -351,6 +351,13 @@ class AutoMix(
         return false
     }
 
+    /** Beat-Raster für den Hintergrund-Puls, solange der Titel noch lädt. */
+    private fun hint(d: DeckModel, s: TrackStructure?) {
+        if (s == null) return
+        d.hintBpm = s.bpm
+        d.hintFirstBeat = s.firstDownbeat.toFloat()
+    }
+
     /** Titel laden und warten, bis er bereit (bzw. spielbar) ist. */
     private suspend fun loadInto(deck: Int, t: Track, playable: () -> Boolean = { false }): Boolean {
         val started = System.currentTimeMillis()
@@ -409,6 +416,7 @@ class AutoMix(
                 val first = takeNext()
                 // Sofort starten, sobald der Anfang dekodiert ist – der Rest lädt während der Musik
                 if (loadInto(0, first, playable = { true })) {
+                    hint(decks[0], structureCache[first.id] ?: cached(first))
                     mixer.setCurve(false)
                     mixer.moveCrossfader(side(0))
                     decks[0].applyGain(1f)
@@ -507,6 +515,8 @@ class AutoMix(
         matchLoudness(a, b, if (partial) next.loudness else null)
         val aStruct = structureOf(a) ?: a.track?.let { structureCache[it.id] ?: cached(it) }
         val bStruct = if (partial) cachedNext else structureOf(b)
+        if (a.loadState == 4) hint(a, aStruct)
+        if (partial) hint(b, bStruct)
 
         // ---- 2) Planen (und bei Änderungswünschen neu planen) ----
         var plan: TransitionPlan = fallbackPlan(a, false)

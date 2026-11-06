@@ -174,12 +174,15 @@ class DeviceSoakTest {
 
         // ---- Hintergrund im Beat: Puls, der den Hintergrund antreibt, gegen das Song-Tempo ----
         run {
-            val bpm = main { vm.decks[vm.autoMix.currentDeck].bpm }
+            // erster Song: Puls, sobald sein Beat-Raster bekannt ist (gespeicherte Analyse oder fertig geladen)
+            waitFor(120_000, "Beat-Raster des laufenden Songs") { main { vm.decks[vm.autoMix.currentDeck].let { it.bpm > 0f || it.hintBpm > 0f } } }
+            val bpm = main { vm.decks[vm.autoMix.currentDeck].let { if (it.bpm > 0f) it.bpm else it.hintBpm } }
             val samples = ArrayList<Pair<Long, Float>>()
             val tStart = android.os.SystemClock.uptimeMillis()
             while (android.os.SystemClock.uptimeMillis() - tStart < 8000) {
-                samples += android.os.SystemClock.uptimeMillis() to main { vm.beatPulse() }
-                Thread.sleep(10)
+                // direkt lesen (wie der Hintergrund beim Zeichnen) – über den Haupt-Thread wäre es zu langsam
+                samples += android.os.SystemClock.uptimeMillis() to vm.beatPulse()
+                Thread.sleep(5)
             }
             var peaks = 0
             var armed = true

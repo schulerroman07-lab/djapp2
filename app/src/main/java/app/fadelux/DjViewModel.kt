@@ -296,6 +296,8 @@ class DjViewModel private constructor(private val app: Application) {
         val d = decks[deck]
         d.track = t
         d.peaks = FloatArray(0)
+        d.hintBpm = 0f
+        d.hintFirstBeat = 0f
         d.loadState = 1
         d.applyGain(1f)      // Lautheits-Angleichung gilt nur für den vorherigen Titel
         return withContext(Dispatchers.IO) {
@@ -320,9 +322,12 @@ class DjViewModel private constructor(private val app: Application) {
      */
     fun beatPulse(): Float {
         val d = decks[autoMix.currentDeck]
-        if (!d.playing || d.bpm <= 0f) return 0f
-        val beat = 60.0 / d.bpm
-        val phase = ((d.position - d.firstBeat) / beat).mod(1.0)
+        // Lädt der Titel noch fertig, gilt das Beat-Raster aus der gespeicherten Analyse
+        val bpm = if (d.bpm > 0f) d.bpm else d.hintBpm
+        val first = if (d.bpm > 0f) d.firstBeat else d.hintFirstBeat
+        if (!d.playing || bpm <= 0f) return 0f
+        val beat = 60.0 / bpm
+        val phase = ((d.position - first) / beat).mod(1.0)
         return kotlin.math.exp(-phase * 5.0).toFloat()
     }
 

@@ -25,6 +25,9 @@ class DeckModel(val index: Int) {
     var level by mutableFloatStateOf(0f)
     var peaks by mutableStateOf(FloatArray(0))     // volle Auflösung (100 Werte/s)
     var firstBeat by mutableFloatStateOf(0f)
+    /** Beat-Raster aus der gespeicherten Analyse, solange der Titel noch lädt (Engine kennt es dann noch nicht). */
+    @Volatile var hintBpm = 0f
+    @Volatile var hintFirstBeat = 0f
 
     // Bedienelemente
     var tempoRange by mutableIntStateOf(8)      // ±8 % oder ±16 %
