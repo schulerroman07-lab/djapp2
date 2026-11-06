@@ -29,6 +29,7 @@ import app.fadelux.ui.theme.AppType
 import app.fadelux.ui.theme.LocalAccent
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Start-Animation (ca. 1,8 s): Das Logo wächst aus einem Punkt (wie auf dem System-Startbildschirm),
@@ -44,12 +45,20 @@ fun IntroScreen(onDone: () -> Unit) {
     LaunchedEffect(Unit) {
         IntroTiming.started = android.os.SystemClock.uptimeMillis()
         val smooth = CubicBezierEasing(0.2f, 0f, 0f, 1f)
-        // Gesamtdauer inkl. Überblendung höchstens 2 s – auch auf langsamen Geräten (Emulator: +0,3 s)
-        val a = async { morph.animateTo(1f, tween(800, easing = LinearEasing)) }
-        val b = async { delay(250); bars.animateTo(1f, tween(600, easing = smooth)) }
-        val c = async { delay(550); name.animateTo(1f, tween(550, easing = smooth)) }
-        a.await(); b.await(); c.await()
-        delay(100)
+        // Gesamtdauer inkl. Überblendung höchstens 2 s – auch auf langsamen Geräten: Die Animation
+        // dauert 1,2 s; spätestens nach 1,4 s (Uhrzeit, nicht Bilder) geht es weiter, notfalls mit
+        // dem fertigen Logo (wenn das Gerät beim Start mit anderem beschäftigt ist).
+        val anim = async {
+            val a = async { morph.animateTo(1f, tween(800, easing = LinearEasing)) }
+            val b = async { delay(250); bars.animateTo(1f, tween(600, easing = smooth)) }
+            val c = async { delay(550); name.animateTo(1f, tween(550, easing = smooth)) }
+            a.await(); b.await(); c.await()
+            delay(100)
+        }
+        if (withTimeoutOrNull(1400) { anim.await() } == null) {
+            anim.cancel()
+            morph.snapTo(1f); bars.snapTo(1f); name.snapTo(1f)
+        }
         IntroTiming.done = android.os.SystemClock.uptimeMillis()
         android.util.Log.i("Fadelux", "Start-Animation: ${IntroTiming.done - IntroTiming.started} ms (+ 350 ms Überblendung)")
         onDone()
