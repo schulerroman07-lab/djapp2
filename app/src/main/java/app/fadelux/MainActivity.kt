@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
             AppTheme(accent) {
                 // Start-Animation nur beim echten Start (nicht nach Sprachwechsel/Drehen)
                 var intro by rememberSaveable { mutableStateOf(firstStart) }
-                Crossfade(intro, animationSpec = tween(350), label = "intro") { showIntro ->
+                Crossfade(intro, animationSpec = tween(300), label = "intro") { showIntro ->
                     if (showIntro) IntroScreen { intro = false }
                     else MainScreen(vm, onLanguageChanged = { recreate() })
                 }

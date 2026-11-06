@@ -74,6 +74,7 @@ jobs:
             echo "Übergänge nach Typ:"; grep -o "Übergang startet: [A-Z_]*" out/logcat.txt | sort | uniq -c || true
             echo "Tempo-Rückführungen:"; grep "Tempo zurück auf 100" out/logcat.txt | sed 's/.*AutoMix : //' || true
             echo "Früh-Übergänge:"; grep -E "Früh-Übergang" out/logcat.txt | sed 's/.*: //' || true
+            echo "Hauptthread beim Start (ausgelassene Bilder):"; grep -E "Choreographer.*Skipped|Davey" out/logcat.txt | head -15 || true
             echo "Pläne ohne Tempo: $(grep -c 'kein Tempo erkannt' out/logcat.txt || true)"
             echo "Weiter/Zurück während Laden: $(grep -c 'Song lädt noch' out/logcat.txt || true)"
             for f in out/soak/small_*.jpg; do echo "BILD $(basename "$f") $(base64 -w0 "$f")"; done || true

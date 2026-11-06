@@ -18,7 +18,7 @@ selbstständig durch. Gästewünsche per QR-Code werden passend eingebaut.
 - System-Startbildschirm (SplashScreen-API): schwarz mit leuchtendem Punkt. Daraus **wächst das Logo**
   ("Beat-Ring": Ring mit drei Equalizer-Balken, als Vektor gezeichnet), schwingt wie eine Schallwelle
   und beruhigt sich; die Balken steigen, darunter erscheint der Name. Animation 1,2 s + 0,35 s weiche
-  Überblendung in die App, mit fester Obergrenze 1,4 s (Uhrzeit) – auch wenn das Gerät beim Start
+  Überblendung in die App (0,3 s), mit fester Obergrenze 1,25 s (Uhrzeit) – auch wenn das Gerät beim Start
   beschäftigt ist, bleibt es unter 2 s. Im Emulator gemessen: vorher bis 2,3 s → gekürzt und begrenzt.
 - Neues App-Symbol im selben Stil (inkl. einfarbiger Version für Themensymbole).
 - **Name = Platzhalter, nur in `strings.xml` (`app_name`)** – auch die Download-Dateien (`<Name>.apk`)

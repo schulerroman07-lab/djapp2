@@ -98,7 +98,7 @@ class DeviceSoakTest {
                 shot("1_intro_${i}_${at}ms")
             }
             waitFor(30_000, "Start-Animation fertig") { IntroTiming.done > 0 }
-            log("Start-Animation dauerte ${IntroTiming.done - start} ms (+ 350 ms Überblendung)")
+            log("Start-Animation dauerte ${IntroTiming.done - start} ms (+ 300 ms Überblendung)")
             Thread.sleep(800)
             shot("1_intro_5_danach")
         }
