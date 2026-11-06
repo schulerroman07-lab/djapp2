@@ -113,6 +113,14 @@ class DeviceSoakTest {
         Thread.sleep(4000)
         shot("3_player_playing")
 
+        // ---- Flüssigkeit: Bildraten des Hauptbildschirms (animierter Hintergrund, Musik läuft) ----
+        device.executeShellCommand("dumpsys gfxinfo app.fadelux reset")
+        Thread.sleep(15_000)
+        shot("4_player_15s")
+        val gfx = device.executeShellCommand("dumpsys gfxinfo app.fadelux")
+        gfx.lines().filter { l -> listOf("Total frames rendered", "Janky frames", "50th percentile", "90th percentile", "95th percentile", "99th percentile", "Refresh rate").any { l.contains(it) } }
+            .distinct().forEach { log("Bildraten: ${it.trim()}") }
+
         // ---- Weiter / Zurück: kurzer Übergang im Takt ----
         val tPrep = System.currentTimeMillis()
         assertTrue("nächster Song bereit", waitFor(150_000, "nächster Song geladen") { main { vm.autoMix.nextPlan != null } })
@@ -121,6 +129,8 @@ class DeviceSoakTest {
         val titleBefore = main { vm.autoMix.current?.title }
         main { vm.remoteNext() }
         val tNext = System.currentTimeMillis()
+        if (waitFor(120_000, "Weiter: Übergang beginnt") { main { vm.autoMix.transitioning } })
+            log("Weiter: Übergang hörbar nach ${(System.currentTimeMillis() - tNext) / 1000.0} s")
         val nextOk = waitFor(120_000, "Weiter") { main { vm.autoMix.transitionsDone } > before }
         log("Weiter: ${if (nextOk) "OK" else "FEHLER"} nach ${(System.currentTimeMillis() - tNext) / 1000.0} s ($titleBefore → ${main { vm.autoMix.current?.title }}), Typ ${main { vm.autoMix.logLines.firstOrNull { it.contains("Übergang startet") } }}")
         assertTrue("Weiter macht einen Übergang", nextOk)
@@ -128,6 +138,8 @@ class DeviceSoakTest {
         before = main { vm.autoMix.transitionsDone }
         main { vm.remotePrevious() }
         val tPrev = System.currentTimeMillis()
+        if (waitFor(150_000, "Zurück: Übergang beginnt") { main { vm.autoMix.transitioning } })
+            log("Zurück: Übergang hörbar nach ${(System.currentTimeMillis() - tPrev) / 1000.0} s")
         val prevOk = waitFor(150_000, "Zurück") { main { vm.autoMix.transitionsDone } > before }
         log("Zurück: ${if (prevOk) "OK" else "FEHLER"} nach ${(System.currentTimeMillis() - tPrev) / 1000.0} s → ${main { vm.autoMix.current?.title }} (erwartet: $titleBefore)")
         assertTrue("Zurück macht einen Übergang", prevOk)

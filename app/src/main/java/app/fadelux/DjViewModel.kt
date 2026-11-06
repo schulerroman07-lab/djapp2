@@ -81,7 +81,21 @@ class DjViewModel private constructor(private val app: Application) {
         scope, decks, mixer, settings,
         load = { deck, t -> loadTrackNow(deck, t) },
         refresh = { t -> trackIndex[t.id] ?: t },
+        cached = { t -> cachedStructure(t) },
     )
+
+    /**
+     * Struktur eines schon analysierten Titels aus der Datenbank (BPM, Beat-Raster, Merkmale) –
+     * damit "Weiter"/"Zurück" nicht warten müssen, bis der Song ganz dekodiert ist.
+     */
+    private suspend fun cachedStructure(t: Track): app.fadelux.automix.TrackStructure? {
+        val fresh = trackIndex[t.id] ?: t
+        val bpm = fresh.bpm ?: return null
+        if (bpm <= 0f || fresh.durationMs <= 0) return null
+        val an = library.analysis(t.id) ?: return null
+        return app.fadelux.automix.StructureAnalyzer.analyze(bpm, an.firstBeat, an.features, fresh.durationMs / 1000.0)
+            ?.copy(trackEnergy = fresh.energy ?: -1f, musicalKey = fresh.musicalKey ?: -1)
+    }
 
     private var scanning = false
     private var analyzeJob: Job? = null

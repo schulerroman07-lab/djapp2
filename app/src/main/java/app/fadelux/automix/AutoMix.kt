@@ -46,6 +46,8 @@ class AutoMix(
     private val load: suspend (Int, Track) -> Boolean,
     /** Neueste Daten eines Titels (z.B. nach der Analyse: BPM, Tonart, Energie). */
     private val refresh: (Track) -> Track = { it },
+    /** Gespeicherte Struktur eines schon analysierten Titels (aus der Datenbank) oder null. */
+    private val cached: suspend (Track) -> TrackStructure? = { null },
 ) {
     val queue = mutableStateListOf<Track>()
     var running by mutableStateOf(false)
@@ -331,7 +333,7 @@ class AutoMix(
      * spielen kann (Anfang dekodiert). Bricht ab bei Fehler, "Zurück"/"Überspringen" oder nach 3 Minuten
      * (langsame Geräte brauchen manchmal lange – das ist kein Lesefehler).
      */
-    private suspend fun waitLoaded(d: DeckModel, playable: Boolean = false): Boolean {
+    private suspend fun waitLoaded(d: DeckModel, playable: () -> Boolean = { false }): Boolean {
         val end = System.currentTimeMillis() + 180_000
         while (System.currentTimeMillis() < end) {
             // direkt aus der Engine lesen (die Anzeige wird im Hintergrund seltener aktualisiert)
@@ -342,7 +344,7 @@ class AutoMix(
                 if (d.peaks.isEmpty()) d.peaks = NativeEngine.getPeaks(d.index)
                 if (d.peaks.isNotEmpty()) return true
             }
-            if (playable && s == 4) { d.syncFromEngine(); return true }
+            if (s == 4 && playable()) { d.syncFromEngine(); return true }
             if (prevRequest || skip) return false
             delay(30)
         }
@@ -350,11 +352,11 @@ class AutoMix(
     }
 
     /** Titel laden und warten, bis er bereit (bzw. spielbar) ist. */
-    private suspend fun loadInto(deck: Int, t: Track, playable: Boolean = false): Boolean {
+    private suspend fun loadInto(deck: Int, t: Track, playable: () -> Boolean = { false }): Boolean {
         val started = System.currentTimeMillis()
         if (!load(deck, t)) return false
         val ok = waitLoaded(decks[deck], playable)
-        if (ok) log("Geladen in ${"%.1f".format((System.currentTimeMillis() - started) / 1000.0)} s: ${t.title}")
+        if (ok) log("${if (decks[deck].loadState == 4) "Spielbar" else "Geladen"} in ${"%.1f".format((System.currentTimeMillis() - started) / 1000.0)} s: ${t.title}")
         return ok
     }
 
@@ -390,7 +392,7 @@ class AutoMix(
                 if (queue.isEmpty()) { status = UiText(R.string.automix_empty); return }
                 val first = takeNext()
                 // Sofort starten, sobald der Anfang dekodiert ist – der Rest lädt während der Musik
-                if (loadInto(0, first, playable = true)) {
+                if (loadInto(0, first, playable = { true })) {
                     mixer.setCurve(false)
                     mixer.moveCrossfader(side(0))
                     decks[0].applyGain(1f)
@@ -467,7 +469,10 @@ class AutoMix(
         val next = takeNext()
         nextTrack = next
         status = UiText(R.string.automix_next, next.title)
-        if (!loadInto(nxt, next)) {
+        // Für "Weiter"/"Zurück" nicht warten, bis der Song ganz dekodiert ist: Ist er schon analysiert
+        // (Struktur in der Datenbank), startet der kurze Übergang, sobald er spielbar ist.
+        val cachedNext = cached(next)
+        if (!loadInto(nxt, next, playable = { quickRequest && cachedNext != null })) {
             nextTrack = null
             when {
                 prevRequest -> { prevRequest = false; queueBackToPrevious(a, next); return cur }
@@ -479,9 +484,10 @@ class AutoMix(
         }
         b.resetEffects()
         b.changeVolume(a.volume)
-        matchLoudness(a, b)
+        val partial = b.loadState == 4          // B lädt noch fertig (nur bei "Weiter"/"Zurück")
+        matchLoudness(a, b, if (partial) next.loudness else null)
         val aStruct = structureOf(a)
-        val bStruct = structureOf(b)
+        val bStruct = if (partial) cachedNext else structureOf(b)
 
         // ---- 2) Planen (und bei Änderungswünschen neu planen) ----
         var plan: TransitionPlan = fallbackPlan(a, false)
@@ -512,7 +518,7 @@ class AutoMix(
             }
             if (replan) {
                 replan = false
-                if (quickRequest) { quick = true; quickRequest = false; earlyBar = null; earlyOffer = null }
+                if (quickRequest || partial) { quick = true; quickRequest = false; earlyBar = null; earlyOffer = null }
                 NativeEngine.cancelSchedule()
                 b.play(false)
                 b.resetEffects()
@@ -527,6 +533,13 @@ class AutoMix(
                         quick = quick, atBar = earlyAccepted,
                     )
                 } else fallbackPlan(a, mixNow || quick)
+                // B lädt noch: nur der Anfang ist schon dekodiert → B ab dem ersten Downbeat starten
+                if (bStruct != null && b.liveLoadState() == 4) {
+                    plan = plan.copy(
+                        bStartSec = bStruct.barTime(0).coerceAtLeast(0.0),
+                        reason = plan.reason + " · Song lädt noch → ab Anfang",
+                    )
+                }
                 // Tempo des neuen Songs angleichen (nur bei kleinem Unterschied) – Tonhöhe bleibt (Keylock)
                 if (TempoRamp.needed(plan.tempoRatio)) b.ensureKeylock()
                 b.setTempoRatio(plan.tempoRatio)
@@ -675,9 +688,9 @@ class AutoMix(
      * Lautheit angleichen: B so lauter/leiser stellen, dass er so laut klingt wie A gerade
      * (inkl. dessen Angleichung). Begrenzt auf -9…+4 dB, damit nichts übersteuert.
      */
-    private fun matchLoudness(a: DeckModel, b: DeckModel) {
+    private fun matchLoudness(a: DeckModel, b: DeckModel, bLoudness: Float? = null) {
         val la = a.loudness() + 20f * log10(a.gain.coerceAtLeast(0.01f))
-        val lb = b.loudness()
+        val lb = bLoudness ?: b.loudness()
         if (la < -60f || lb < -60f) { b.applyGain(1f); return }
         val db = (la - lb).coerceIn(-9f, 4f)
         b.applyGain(10f.pow(db / 20f))
