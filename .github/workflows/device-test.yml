@@ -62,6 +62,7 @@ jobs:
             adb shell pm grant app.fadelux android.permission.READ_MEDIA_AUDIO
             adb shell pm grant app.fadelux android.permission.POST_NOTIFICATIONS || true
             adb shell dumpsys battery unplug
+            adb shell cmd overlay enable com.android.internal.systemui.navbar.gestural || true
             adb logcat -c
             adb shell am instrument -w -e minutes $(cat tools/devicetest/minutes.txt) -e class app.fadelux.DeviceSoakTest app.fadelux.test/androidx.test.runner.AndroidJUnitRunner | tee out/instrument.txt
             adb shell dumpsys gfxinfo app.fadelux > out/gfxinfo.txt || true

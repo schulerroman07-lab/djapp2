@@ -7,6 +7,9 @@ import android.graphics.Bitmap
 import android.media.MediaScannerConnection
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
+import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import app.fadelux.audio.NativeEngine
 import app.fadelux.playback.PlaybackService
@@ -55,6 +58,35 @@ class DeviceSoakTest {
         // kleine Vorschau (wird vom Workflow als Text ins Protokoll geschrieben)
         val small = Bitmap.createScaledBitmap(bmp, 270, (270f * bmp.height / bmp.width).toInt(), true)
         File(outDir, "small_$name.jpg").outputStream().use { small.compress(Bitmap.CompressFormat.JPEG, 60, it) }
+    }
+
+    /**
+     * Bildschirmrand: echte Gesten-Zonen des Systems (Wischgesten Zurück/Home) auslesen und prüfen,
+     * dass kein Bedienelement darin liegt. Breite Flächen (Listenzeilen, Leisten über die ganze Breite)
+     * werden nur gemeldet – Wischgesten am Rand lösen dort nichts aus, Antippen geht trotzdem.
+     */
+    private fun edgeCheck(label: String): Int {
+        val ins = main {
+            val act = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).firstOrNull()
+            act?.window?.decorView?.rootWindowInsets?.getInsets(android.view.WindowInsets.Type.systemGestures())
+        }
+        val w = device.displayWidth
+        val h = device.displayHeight
+        val l = ins?.left ?: 0; val r = ins?.right ?: 0; val b = ins?.bottom ?: 0
+        val objs = device.findObjects(By.clickable(true).pkg("app.fadelux"))
+        val bad = mutableListOf<String>()
+        val wide = mutableListOf<String>()
+        for (o in objs) {
+            val rb = runCatching { o.visibleBounds }.getOrNull() ?: continue
+            val inZone = rb.left < l || rb.right > w - r || rb.bottom > h - b
+            if (!inZone) continue
+            val desc = "${o.contentDescription ?: o.text ?: "Element"} $rb"
+            if (rb.width() > w * 0.6f) wide += desc else bad += desc
+        }
+        log("Bildschirmrand ($label): ${objs.size} Bedienelemente, Gesten-Zonen links=$l rechts=$r unten=$b px (Bildschirm ${w}x$h) → " +
+            (if (bad.isEmpty()) "kein Knopf in einer Gesten-Zone" else "KNOPF IN GESTEN-ZONE: ${bad.joinToString()}") +
+            (if (wide.isNotEmpty()) " · breite Flächen bis zum Rand: ${wide.size}" else ""))
+        return bad.size
     }
 
     private fun openApp() {
@@ -139,6 +171,35 @@ class DeviceSoakTest {
         }
         frameStats("Hintergrund Voll")
         shot("4_player_15s")
+
+        // ---- Hintergrund im Beat: Puls, der den Hintergrund antreibt, gegen das Song-Tempo ----
+        run {
+            val bpm = main { vm.decks[vm.autoMix.currentDeck].bpm }
+            val samples = ArrayList<Pair<Long, Float>>()
+            val tStart = android.os.SystemClock.uptimeMillis()
+            while (android.os.SystemClock.uptimeMillis() - tStart < 8000) {
+                samples += android.os.SystemClock.uptimeMillis() to main { vm.beatPulse() }
+                Thread.sleep(10)
+            }
+            var peaks = 0
+            var armed = true
+            for ((_, v) in samples) { if (armed && v > 0.5f) { peaks++; armed = false } else if (v < 0.25f) armed = true }
+            val secs = (samples.last().first - samples.first().first) / 1000.0
+            val expected = secs * bpm / 60.0
+            log("Hintergrund-Beat: $peaks Pulse in ${"%.1f".format(secs)} s gemessen, erwartet ${"%.1f".format(expected)} bei $bpm BPM " +
+                "(Puls min ${"%.2f".format(samples.minOf { it.second })}, max ${"%.2f".format(samples.maxOf { it.second })}, ${samples.size} Messungen)")
+            assertTrue("Hintergrund pulsiert im Beat", bpm > 0 && peaks >= expected * 0.6 && peaks <= expected * 1.4)
+        }
+
+        // ---- Bildschirmrand: Player und "Als Nächstes" ----
+        var edgeProblems = edgeCheck("Player")
+        device.findObject(By.textContains("Up next"))?.click() ?: device.findObject(By.textContains("Als Nächstes"))?.click()
+        Thread.sleep(2500)
+        shot("5_als_naechstes")
+        edgeProblems += edgeCheck("Als Nächstes")
+        device.pressBack()
+        Thread.sleep(1500)
+        assertTrue("Kein Knopf in den Gesten-Zonen am Rand", edgeProblems == 0)
         main { vm.settings.bgAnimation = 0 }
         frameStats("Hintergrund Aus")
         main { vm.settings.bgAnimation = 2 }
