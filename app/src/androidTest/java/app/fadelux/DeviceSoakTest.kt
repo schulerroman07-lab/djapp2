@@ -10,6 +10,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import app.fadelux.audio.NativeEngine
 import app.fadelux.playback.PlaybackService
+import app.fadelux.ui.IntroTiming
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -85,11 +86,21 @@ class DeviceSoakTest {
         log("Testsongs: ${files.size}")
 
         // ---- Start-Animation: Bildschirmfotos während des Logo-Morphs ----
+        val launch = android.os.SystemClock.uptimeMillis()
         openApp()
-        val start = System.currentTimeMillis()
-        for ((i, at) in listOf(250L, 600L, 1000L, 1500L, 2600L).withIndex()) {
-            Thread.sleep((start + at - System.currentTimeMillis()).coerceAtLeast(0))
-            shot("1_intro_${i}_${at}ms")
+        // Fotos ab dem Moment, in dem die Animation wirklich beginnt (der Emulator braucht ohne
+        // Grafikkarte mehrere Sekunden bis zum ersten Bild)
+        if (waitFor(60_000, "Start-Animation beginnt") { IntroTiming.started > 0 }) {
+            val start = IntroTiming.started
+            log("Start-Animation beginnt ${start - launch} ms nach dem Öffnen")
+            for ((i, at) in listOf(150L, 500L, 900L, 1400L).withIndex()) {
+                Thread.sleep((start + at - android.os.SystemClock.uptimeMillis()).coerceAtLeast(0))
+                shot("1_intro_${i}_${at}ms")
+            }
+            waitFor(30_000, "Start-Animation fertig") { IntroTiming.done > 0 }
+            log("Start-Animation dauerte ${IntroTiming.done - start} ms (+ 450 ms Überblendung)")
+            Thread.sleep(800)
+            shot("1_intro_5_danach")
         }
 
         val app = ctx.applicationContext as Application

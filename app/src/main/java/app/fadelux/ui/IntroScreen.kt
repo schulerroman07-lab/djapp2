@@ -42,15 +42,24 @@ fun IntroScreen(onDone: () -> Unit) {
     val bars = remember { Animatable(0f) }
     val name = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
+        IntroTiming.started = android.os.SystemClock.uptimeMillis()
         val smooth = CubicBezierEasing(0.2f, 0f, 0f, 1f)
         val a = async { morph.animateTo(1f, tween(950, easing = LinearEasing)) }
         val b = async { delay(300); bars.animateTo(1f, tween(750, easing = smooth)) }
         val c = async { delay(700); name.animateTo(1f, tween(650, easing = smooth)) }
         a.await(); b.await(); c.await()
         delay(200)
+        IntroTiming.done = android.os.SystemClock.uptimeMillis()
+        android.util.Log.i("Fadelux", "Start-Animation: ${IntroTiming.done - IntroTiming.started} ms (+ 450 ms Überblendung)")
         onDone()
     }
     IntroContent(morph.value, bars.value, name.value)
+}
+
+/** Zeitpunkte der Start-Animation (für den Gerätetest). */
+object IntroTiming {
+    @Volatile var started = 0L
+    @Volatile var done = 0L
 }
 
 /** Ein Bild der Start-Animation (morph/bars/name je 0..1) – auch für den Screenshot-Test. */
