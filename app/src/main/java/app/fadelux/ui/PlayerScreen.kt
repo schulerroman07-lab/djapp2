@@ -412,7 +412,8 @@ private fun TopBar(newWishes: Int, onQr: () -> Unit, onMenu: (MenuTarget) -> Uni
     val accent = LocalAccent.current
     var menu by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 14.dp),
+        // oben Abstand zum Rand: dort zieht man bei Samsung die Benachrichtigungen herunter
+        Modifier.fillMaxWidth().padding(top = 14.dp).height(60.dp).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
