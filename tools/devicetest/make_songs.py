@@ -16,6 +16,7 @@ SONGS = [  # BPM, Grundton (Hz), Lautstärke, Genre, Länge (s)
     (120, 196.00, 0.6, "Schlager", 165), (122, 233.08, 0.7, "Schlager", 170), (95, 261.63, 0.4, "Chill", 180),
     (125, 220.00, 0.9, "House", 170), (127, 277.18, 0.85, "House", 165), (130, 207.65, 1.0, "Techno", 170),
     (110, 246.94, 0.6, "Pop", 175), (116, 293.66, 0.65, "Pop", 170), (124, 220.00, 0.95, "House", 170),
+    (127, 220.00, 0.92, "House", 85),   # kurz: Tempo-Rückführung hat nur wenig Platz (→ 8 Takte)
 ]
 RATE = 44100
 

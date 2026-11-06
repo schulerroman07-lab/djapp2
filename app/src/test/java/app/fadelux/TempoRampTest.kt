@@ -50,7 +50,7 @@ class TempoRampTest {
     fun rampLength_8to16Bars() {
         assertEquals(16, TempoRamp.bars(60))
         assertEquals(8, TempoRamp.bars(15))
-        assertEquals(4, TempoRamp.bars(5))
+        assertEquals(8, TempoRamp.bars(5))   // nie kürzer als 8 Takte
     }
 
     /**

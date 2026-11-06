@@ -17,11 +17,9 @@ selbstständig durch. Gästewünsche per QR-Code werden passend eingebaut.
 ### 2. Start-Animation
 - System-Startbildschirm (SplashScreen-API): schwarz mit leuchtendem Punkt. Daraus **wächst das Logo**
   ("Beat-Ring": Ring mit drei Equalizer-Balken, als Vektor gezeichnet), schwingt wie eine Schallwelle
-  und beruhigt sich; die Balken steigen, darunter erscheint der Name. Animation 1,2 s + 0,35 s weiche
-  Überblendung in die App (0,3 s), mit fester Obergrenze 1,25 s (Uhrzeit) – auch wenn das Gerät beim Start
-  beschäftigt ist, bleibt es kurz. Im Emulator gemessen: vorher bis 2,3 s, jetzt 1,77 s + 0,3 s; der Rest
-  über 1,25 s entsteht dort beim Zeichnen ohne Grafikkarte (Logcat: bis 3 s pro Bild im Grafik-Treiber),
-  auf dem Handy sind es planmässig 1,2 s + 0,3 s.
+  und beruhigt sich; die Balken steigen, darunter erscheint der Name. Animation 1,0 s + 0,25 s weiche
+  Überblendung in die App, mit fester Obergrenze 1,05 s (Uhrzeit) – auch wenn das Gerät beim Start
+  beschäftigt ist oder langsam zeichnet. (Im Emulator vorher bis 2,3 s gemessen → gekürzt und begrenzt.)
 - Neues App-Symbol im selben Stil (inkl. einfarbiger Version für Themensymbole).
 - **Name = Platzhalter, nur in `strings.xml` (`app_name`)** – auch die Download-Dateien (`<Name>.apk`)
   übernehmen ihn automatisch. Das Logo enthält keinen Text.
@@ -69,6 +67,7 @@ selbstständig durch. Gästewünsche per QR-Code werden passend eingebaut.
   übereinander); **Rotation** für Abwechslung (nie derselbe direkt hintereinander, lange nicht
   benutzte Typen bevorzugt). Grosse Tempo-Unterschiede → Echo-Out, Hall oder Schnitt.
 - Tempo kehrt nach dem Übergang in 8–16 Takten fliessend zum Original zurück (Tonhöhe bleibt).
+  Bei sehr kurzen Songs waren es bisher nur 4 Takte → jetzt **nie weniger als 8 Takte** (Fix).
 - **Früh-Übergang:** passen zwei Songs fast perfekt (Tempo ±2 %, harmonische Tonart, kein Gesang),
   darf ab ca. 55 % des Songs auf einer 32er-Phrase gemischt werden. Einstellung **Fragen** (Standard) /
   **Immer** / **Nie**. Bei "Fragen": Einblendung "Passt perfekt – jetzt mischen?" mit Ja/Nein und

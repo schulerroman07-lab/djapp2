@@ -7,12 +7,12 @@ import kotlin.math.abs
  * Weiche S-Kurve (langsam los, langsam an): keine hörbare "Kante" am Anfang oder Ende.
  */
 object TempoRamp {
-    /** Länge der Rückführung in Takten (8–16), kürzer nur, wenn der Song sonst schon zu Ende geht. */
-    fun bars(barsUntilNextMix: Int): Int = when {
-        barsUntilNextMix >= 20 -> 16
-        barsUntilNextMix >= 12 -> 8
-        else -> 4
-    }
+    /**
+     * Länge der Rückführung in Takten: 16, bei wenig Platz bis zum nächsten Übergang 8 – nie kürzer
+     * (kürzer wäre hörbar). Reicht es bei sehr kurzen Songs nicht, wird der kleine Rest kurz vor dem
+     * nächsten Übergang angeglichen.
+     */
+    fun bars(barsUntilNextMix: Int): Int = if (barsUntilNextMix >= 20) 16 else 8
 
     /** Tempo an der Stelle progress (0..1) zwischen start und 1.0 (Original). */
     fun value(start: Float, progress: Float): Float {

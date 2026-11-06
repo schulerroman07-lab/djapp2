@@ -93,12 +93,12 @@ class DeviceSoakTest {
         if (waitFor(60_000, "Start-Animation beginnt") { IntroTiming.started > 0 }) {
             val start = IntroTiming.started
             log("Start-Animation beginnt ${start - launch} ms nach dem Öffnen")
-            for ((i, at) in listOf(150L, 450L, 800L, 1200L).withIndex()) {
+            for ((i, at) in listOf(120L, 380L, 650L, 950L).withIndex()) {
                 Thread.sleep((start + at - android.os.SystemClock.uptimeMillis()).coerceAtLeast(0))
                 shot("1_intro_${i}_${at}ms")
             }
             waitFor(30_000, "Start-Animation fertig") { IntroTiming.done > 0 }
-            log("Start-Animation dauerte ${IntroTiming.done - start} ms (+ 300 ms Überblendung)")
+            log("Start-Animation dauerte ${IntroTiming.done - start} ms (+ 250 ms Überblendung)")
             Thread.sleep(800)
             shot("1_intro_5_danach")
         }
