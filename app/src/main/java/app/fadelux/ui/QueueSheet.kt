@@ -1,5 +1,6 @@
 package app.fadelux.ui
 
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -234,7 +235,7 @@ fun QueueList(
                     ) {
                         // Griff zum Verschieben
                         Box(
-                            Modifier.size(if (narrow) 32.dp else 40.dp).pointerInput(t.id) {
+                            Modifier.size(if (narrow) 32.dp else 40.dp).testTag("touch:Griff").pointerInput(t.id) {
                                 detectDragGestures(
                                     onDragStart = { dragId = t.id; dragOffset = 0f },
                                     onDragEnd = { dragId = -1L; dragOffset = 0f },

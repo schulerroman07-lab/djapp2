@@ -1,5 +1,7 @@
 package app.fadelux.ui
 
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -263,6 +265,10 @@ fun SeekBar(position: () -> Double, duration: Double, enabled: Boolean, onSeek: 
     Canvas(
         modifier
             .height(34.dp)
+            // als Regler melden (Bedienungshilfen/Tests): Wert 0..1, setzen = spulen
+            .semantics {
+                if (enabled && duration > 0) setProgress { v -> onSeek(duration * v.coerceIn(0f, 1f)); true }
+            }
             .pointerInput(enabled, duration) {
                 if (!enabled) return@pointerInput
                 detectTapGestures { o -> onSeek(duration * (o.x / size.width).coerceIn(0f, 1f)) }

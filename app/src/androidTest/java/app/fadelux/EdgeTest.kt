@@ -61,6 +61,8 @@ class EdgeTest {
 
     private fun label(n: SemanticsNode): String =
         n.config.getOrNull(SemanticsProperties.ContentDescription)?.firstOrNull()
+            ?: n.config.getOrNull(SemanticsProperties.TestTag)
+            ?: (if (n.config.getOrNull(SemanticsActions.SetProgress) != null) "Fortschrittsbalken" else null)
             ?: n.config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text } ?: "Element"
 
     /** Gibt die Anzahl Knöpfe in Rand-Zonen zurück. */
@@ -73,7 +75,12 @@ class EdgeTest {
             Win(root.width, root.height, maxOf(ins?.left ?: 0, minPx), maxOf(ins?.right ?: 0, minPx), maxOf(ins?.bottom ?: 0, minPx),
                 ins?.left ?: 0, ins?.right ?: 0, ins?.bottom ?: 0, minPx)
         }
-        val clickables = allNodes().filter { it.config.getOrNull(SemanticsActions.OnClick) != null }
+        // antippbar: Knöpfe (Klick), Regler (Fortschrittsbalken) und Griffe (Ziehen)
+        val clickables = allNodes().filter {
+            it.config.getOrNull(SemanticsActions.OnClick) != null ||
+                it.config.getOrNull(SemanticsActions.SetProgress) != null ||
+                it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("touch:") == true
+        }
         val bad = mutableListOf<String>()
         var wide = 0
         for (n in clickables) {
@@ -81,7 +88,8 @@ class EdgeTest {
             if (rb.width <= 0f || rb.height <= 0f) continue
             val inZone = rb.left < win.l || rb.right > win.w - win.r || rb.bottom > win.h - win.b || rb.top < win.min
             if (!inZone) continue
-            if (rb.width > win.w * 0.6f) { wide++; continue }   // Listenzeilen/Leisten über die ganze Breite
+            // Listenzeilen/Leisten über die ganze Breite (nicht der Fortschrittsbalken – der muss Abstand haben)
+            if (rb.width > win.w * 0.6f && n.config.getOrNull(SemanticsActions.SetProgress) == null) { wide++; continue }
             bad += "${label(n)} [${rb.left.toInt()},${rb.top.toInt()} – ${rb.right.toInt()},${rb.bottom.toInt()}]"
         }
         log("Bildschirmrand ($label): ${clickables.size} antippbare Elemente, Fenster ${win.w}x${win.h} px, " +

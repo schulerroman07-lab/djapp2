@@ -1,5 +1,9 @@
 package app.fadelux.ui.components
 
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -85,7 +89,9 @@ fun NeonButton(
                     },
                     onTap = { if (!instant) click() },
                 )
-            },
+            }
+            // als Knopf melden (Bedienungshilfen/TalkBack, Tests)
+            .semantics { role = Role.Button; onClick(label = text) { click(); true } },
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
