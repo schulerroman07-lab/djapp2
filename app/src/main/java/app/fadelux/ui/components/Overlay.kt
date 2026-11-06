@@ -74,4 +74,4 @@ fun HSpace(w: Int) = Spacer(Modifier.width(w.dp))
 fun Modifier.safeEdges(): Modifier = this
     .windowInsetsPadding(WindowInsets.mandatorySystemGestures.only(WindowInsetsSides.Bottom))
     .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
-    .padding(start = 10.dp, end = 10.dp, bottom = 6.dp)
+    .padding(start = 10.dp, end = 10.dp, bottom = 16.dp)   // unten mind. 16 dp: Wischzone "Home" (Samsung-Gesten)
