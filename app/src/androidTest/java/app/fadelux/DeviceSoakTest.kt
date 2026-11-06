@@ -118,19 +118,30 @@ class DeviceSoakTest {
         log("Testsongs: ${files.size}")
 
         // ---- Start-Animation: Bildschirmfotos während des Logo-Morphs ----
+        // 1. Start ohne Bildschirmfotos: Dauer messen (Fotos bremsen den Emulator beim Zeichnen)
         val launch = android.os.SystemClock.uptimeMillis()
         openApp()
-        // Fotos ab dem Moment, in dem die Animation wirklich beginnt (der Emulator braucht ohne
-        // Grafikkarte mehrere Sekunden bis zum ersten Bild)
         if (waitFor(60_000, "Start-Animation beginnt") { IntroTiming.started > 0 }) {
             val start = IntroTiming.started
             log("Start-Animation beginnt ${start - launch} ms nach dem Öffnen")
+            waitFor(30_000, "Start-Animation fertig") { IntroTiming.done > 0 }
+            log("Start-Animation dauerte ${IntroTiming.done - start} ms (+ 250 ms Überblendung)")
+        }
+        Thread.sleep(2000)
+        // 2. Start nur für die Fotos des Logo-Morphs
+        main { ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).forEach { it.finish() } }
+        Thread.sleep(2000)
+        IntroTiming.started = 0
+        IntroTiming.done = 0
+        openApp()
+        if (waitFor(60_000, "Start-Animation beginnt (Fotos)") { IntroTiming.started > 0 }) {
+            val start = IntroTiming.started
             for ((i, at) in listOf(120L, 380L, 650L, 950L).withIndex()) {
                 Thread.sleep((start + at - android.os.SystemClock.uptimeMillis()).coerceAtLeast(0))
                 shot("1_intro_${i}_${at}ms")
             }
-            waitFor(30_000, "Start-Animation fertig") { IntroTiming.done > 0 }
-            log("Start-Animation dauerte ${IntroTiming.done - start} ms (+ 250 ms Überblendung)")
+            waitFor(30_000, "Start-Animation fertig (Fotos)") { IntroTiming.done > 0 }
+            log("Start-Animation mit Fotos dauerte ${IntroTiming.done - start} ms (Fotos bremsen den Emulator)")
             Thread.sleep(800)
             shot("1_intro_5_danach")
         }

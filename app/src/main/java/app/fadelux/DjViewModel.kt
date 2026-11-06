@@ -325,9 +325,13 @@ class DjViewModel private constructor(private val app: Application) {
         // Lädt der Titel noch fertig, gilt das Beat-Raster aus der gespeicherten Analyse
         val bpm = if (d.bpm > 0f) d.bpm else d.hintBpm
         val first = if (d.bpm > 0f) d.firstBeat else d.hintFirstBeat
-        if (!d.playing || bpm <= 0f) return 0f
+        if (bpm <= 0f) return 0f
+        // Position direkt aus der Engine (genau auf den Beat, unabhängig von der Anzeige-Aktualisierung)
+        val st = DoubleArray(9)
+        NativeEngine.getDeckState(d.index, st)
+        if (st[1] < 0.5) return 0f
         val beat = 60.0 / bpm
-        val phase = ((d.position - first) / beat).mod(1.0)
+        val phase = ((st[2] - first) / beat).mod(1.0)
         return kotlin.math.exp(-phase * 5.0).toFloat()
     }
 
