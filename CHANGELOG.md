@@ -19,7 +19,7 @@ selbstständig durch. Gästewünsche per QR-Code werden passend eingebaut.
   ("Beat-Ring": Ring mit drei Equalizer-Balken, als Vektor gezeichnet), schwingt wie eine Schallwelle
   und beruhigt sich; die Balken steigen, darunter erscheint der Name. Animation 1,0 s + 0,25 s weiche
   Überblendung in die App, mit fester Obergrenze 1,05 s (Uhrzeit) – auch wenn das Gerät beim Start
-  beschäftigt ist oder langsam zeichnet. (Im Emulator vorher bis 2,3 s gemessen → gekürzt und begrenzt.)
+  beschäftigt ist oder langsam zeichnet. Im Emulator gemessen: **1,18 s + 0,25 s = 1,43 s** (vorher bis 2,3 s).
 - Neues App-Symbol im selben Stil (inkl. einfarbiger Version für Themensymbole).
 - **Name = Platzhalter, nur in `strings.xml` (`app_name`)** – auch die Download-Dateien (`<Name>.apk`)
   übernehmen ihn automatisch. Das Logo enthält keinen Text.
@@ -68,6 +68,7 @@ selbstständig durch. Gästewünsche per QR-Code werden passend eingebaut.
   benutzte Typen bevorzugt). Grosse Tempo-Unterschiede → Echo-Out, Hall oder Schnitt.
 - Tempo kehrt nach dem Übergang in 8–16 Takten fliessend zum Original zurück (Tonhöhe bleibt).
   Bei sehr kurzen Songs waren es bisher nur 4 Takte → jetzt **nie weniger als 8 Takte** (Fix).
+  Im Gerätetest (30 min) belegt: "Tempo zurück auf 100 % (-0,8 % über 8 Takte)", "(3,4 % über 16 Takte)" u.a.
 - **Früh-Übergang:** passen zwei Songs fast perfekt (Tempo ±2 %, harmonische Tonart, kein Gesang),
   darf ab ca. 55 % des Songs auf einer 32er-Phrase gemischt werden. Einstellung **Fragen** (Standard) /
   **Immer** / **Nie**. Bei "Fragen": Einblendung "Passt perfekt – jetzt mischen?" mit Ja/Nein und
@@ -186,8 +187,9 @@ Mischen als passend).
 5. "Weiter"/"Zurück" zu einem noch nie analysierten Song: Echo-Ausklang im Takt des laufenden Songs,
    aber ohne Tempo-Angleichung des neuen Songs (sein Beat ist noch unbekannt).
 6. Flüssigkeit (60/120 Hz) lässt sich im Emulator nicht messen: er zeichnet ohne Grafikkarte
-   (ca. 10 Bilder/s mit, 13 Bilder/s ohne animierten Hintergrund). Bitte auf dem Handy prüfen (TESTEN.md Punkt 13);
-   falls es ruckelt: Einstellungen → Design → Hintergrund "Energiesparen".
+   (ca. 10 Bilder/s mit, 13 Bilder/s ohne animierten Hintergrund; Logcat: bis 3 s pro Bild im
+   Grafik-Treiber). Bitte auf dem Handy prüfen (TESTEN.md Punkt 13); falls es ruckelt:
+   Einstellungen → Design → Hintergrund "Energiesparen".
 7. Hintergrund "Voll" (60/120 Hz) braucht etwas mehr Akku → bei langen Events "Energiesparen".
 8. Gästewünsche ohne Internet funktionieren nur im selben WLAN bzw. Hotspot.
 9. Android Auto: nur Steuerung (Zurück, Play/Pause, Weiter), kein Durchblättern der Bibliothek.
