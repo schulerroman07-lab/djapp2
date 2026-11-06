@@ -35,6 +35,17 @@ class MoodFlowTest {
         assertTrue(res.first().energy!! < 0.2f && res.last().energy!! > 0.8f)
     }
 
+    /** Gerätetest-Fall: ein ruhiger Song, der im Tempo/Genre zu keinem passt, darf nicht am Höhepunkt landen. */
+    @Test
+    fun rising_outlierDoesNotEndUpAtPeak() {
+        val house = (1L..14L).map { t(it, 0.45f + it * 0.014f, 122f + (it % 5), "House", key = 9) }
+        val chill = t(99L, 0.33f, 95f, "Chill", key = 0)
+        val current = t(50L, 0.62f, 126f, "House", key = 9)
+        val res = QueueFlow.arrangeByMood((house + chill).shuffled(Random(5)), current, emptySet(), FlowSettings(FlowCurve.RISING))
+        val pos = res.indexOfFirst { it.id == 99L }
+        assertTrue("Chill-Song an Platz $pos", pos <= 3)
+    }
+
     @Test
     fun arc_peaksLateThenCoolsDown() {
         val res = QueueFlow.arrangeByMood(songs, null, emptySet(), FlowSettings(FlowCurve.ARC))

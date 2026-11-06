@@ -141,15 +141,31 @@ App verlassen (Hintergrund) und Dauerbetrieb. Gefundene und behobene Fehler:
 - Test-Songs wie DJ-Tracks gebaut (Intro/Outro nur Schlagzeug, Bass + Akkord, Break), damit Outro,
   Break und Früh-Übergang realistisch geprüft werden.
 
+- Ordnung "Steigernd": Ein Song, der im Tempo/Genre zu keinem anderen passt (z.B. ein ruhiger
+  Chill-Song), blieb bis zum Schluss übrig und landete ausgerechnet am Höhepunkt → die Übergangs-Kosten
+  zählen jetzt nur noch begrenzt, die Energie-Kurve hat Vorrang (neuer Unit-Test).
+
+**Ergebnis 2-Stunden-Dauerbetrieb im Emulator** (echtes Android 14, echte Oboe-Ausgabe, App im
+Hintergrund, Lauf vom 6.11.2026): **bestanden** – 48 Übergänge in 120 min, **0 Aussetzer (xruns)**,
+**0 Sekunden ohne Musik**, kein Absturz, Vordergrund-Dienst die ganze Zeit aktiv. Alle Übergänge
+starteten im Outro bzw. auf der letzten Phrase vor dem Ende; nie zweimal derselbe Typ hintereinander
+(Filter 8, Bass-Swap 7, Echo-Out 6, Loop 6, Hall 2 in den letzten 29). **Früh-Übergang:** 1× gefragt
+und angenommen. Erster Song nach 1,7–4,7 s ab Play, "Weiter" nach ca. 12 s und "Zurück" nach
+ca. 37 s mit Übergang im Takt, Gästewunsch (HTTP 200) an Platz 2 eingereiht. Kein einziger Plan mehr
+mit "kein Tempo erkannt". Der Gerätetest läuft bei jeder App-Änderung automatisch (15 min; für
+2 Stunden in `tools/devicetest/minutes.txt` 120 eintragen).
+
 **Tonart-Test mit echten Aufnahmen** (`.github/workflows/key-test.yml`, 30 frei lizenzierte Aufnahmen
 von Wikimedia Commons mit bekannter Tonart): 50 % exakt, 10 % Paralleltonart, 20 % Quint-Nachbar,
 20 % falsch → **80 % für harmonisches Mischen brauchbar** (Paralleltonart und Quinte gelten beim
 Mischen als passend).
 
 ### Offene Punkte (2.0)
-1. **Nicht auf einem echten Handy getestet** – bitte `TESTEN.md` durchgehen (Abschnitte A–J).
-2. Der 2-Stunden-Dauertest lief am PC mit der echten Engine-Logik, aber ohne echtes Android-Audio
-   (Oboe-Ersatz). Ein echter 2-h-Test auf dem Handy steht aus (TESTEN.md Punkt 34).
+1. **Noch nicht auf einem echten Samsung-Handy getestet** – getestet im Android-Emulator (siehe oben).
+   Bitte `TESTEN.md` durchgehen (Abschnitte A–J). Was der Emulator nicht zeigen kann: echter Klang über
+   Lautsprecher/Bluetooth, 120-Hz-Bildschirm, Samsung-Akku-Optimierung, echte Musikdateien.
+2. Der 2-Stunden-Dauertest lief im Emulator mit künstlichen Test-Songs; ein 2-h-Test mit echter Musik
+   auf dem Handy steht aus (TESTEN.md Punkt 34).
 3. Tonart-Erkennung ist bei echten Songs ungenauer als im Test (Schlagzeug, Effekte). Unsichere Songs
    bekommen "–" und werden neutral behandelt.
 4. Genre ohne ID3-Tag ist nur geschätzt (aus Tempo und Energie).

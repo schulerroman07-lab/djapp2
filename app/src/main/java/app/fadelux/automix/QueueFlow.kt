@@ -2,6 +2,7 @@ package app.fadelux.automix
 
 import app.fadelux.data.Track
 import kotlin.math.abs
+import kotlin.math.min
 import kotlin.random.Random
 
 /**
@@ -189,8 +190,11 @@ object QueueFlow {
                 val tn = if (tMax - tMin < 1e-3f) (if (block.size == 1) 0.5f else k / (block.size - 1f))
                 else (targets[k] - tMin) / (tMax - tMin)
                 val ref = last
+                // Übergangs-Kosten begrenzt (max. 0,5 ≈ 2 Plätze Abweichung): sonst bleibt ein Song, der
+                // schlecht zu allen anderen passt (z.B. ruhiger Chill-Song), bis zum Schluss übrig
+                // und landet beim "Steigernd"-Ablauf ausgerechnet am Höhepunkt.
                 val next = rest.minBy { t ->
-                    abs((bRank[t.id] ?: 0.5f) - tn) * 4f + (ref?.let { cost(it, t) * 0.25f } ?: 0f)
+                    abs((bRank[t.id] ?: 0.5f) - tn) * 4f + (ref?.let { min(cost(it, t), 2f) * 0.25f } ?: 0f)
                 }
                 rest.remove(next)
                 order += next
