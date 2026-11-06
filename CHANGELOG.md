@@ -19,7 +19,9 @@ selbstständig durch. Gästewünsche per QR-Code werden passend eingebaut.
   ("Beat-Ring": Ring mit drei Equalizer-Balken, als Vektor gezeichnet), schwingt wie eine Schallwelle
   und beruhigt sich; die Balken steigen, darunter erscheint der Name. Animation 1,2 s + 0,35 s weiche
   Überblendung in die App (0,3 s), mit fester Obergrenze 1,25 s (Uhrzeit) – auch wenn das Gerät beim Start
-  beschäftigt ist, bleibt es unter 2 s. Im Emulator gemessen: vorher bis 2,3 s → gekürzt und begrenzt.
+  beschäftigt ist, bleibt es kurz. Im Emulator gemessen: vorher bis 2,3 s, jetzt 1,77 s + 0,3 s; der Rest
+  über 1,25 s entsteht dort beim Zeichnen ohne Grafikkarte (Logcat: bis 3 s pro Bild im Grafik-Treiber),
+  auf dem Handy sind es planmässig 1,2 s + 0,3 s.
 - Neues App-Symbol im selben Stil (inkl. einfarbiger Version für Themensymbole).
 - **Name = Platzhalter, nur in `strings.xml` (`app_name`)** – auch die Download-Dateien (`<Name>.apk`)
   übernehmen ihn automatisch. Das Logo enthält keinen Text.
