@@ -19,7 +19,8 @@ selbstständig durch. Gästewünsche per QR-Code werden passend eingebaut.
   ("Beat-Ring": Ring mit drei Equalizer-Balken, als Vektor gezeichnet), schwingt wie eine Schallwelle
   und beruhigt sich; die Balken steigen, darunter erscheint der Name. Animation 1,0 s + 0,25 s weiche
   Überblendung in die App, mit fester Obergrenze 1,05 s (Uhrzeit) – auch wenn das Gerät beim Start
-  beschäftigt ist oder langsam zeichnet. Im Emulator gemessen: **1,18 s + 0,25 s = 1,43 s** (vorher bis 2,3 s).
+  beschäftigt ist oder langsam zeichnet. Im Emulator gemessen (ohne Bildschirmfotos): 1,18–1,68 s + 0,25 s
+  = **1,43–1,93 s** (vorher bis 2,3 s).
 - Neues App-Symbol im selben Stil (inkl. einfarbiger Version für Themensymbole).
 - **Name = Platzhalter, nur in `strings.xml` (`app_name`)** – auch die Download-Dateien (`<Name>.apk`)
   übernehmen ihn automatisch. Das Logo enthält keinen Text.
@@ -159,6 +160,14 @@ App verlassen (Hintergrund) und Dauerbetrieb. Gefundene und behobene Fehler:
   laufende Song fertig geladen ist.
 
 - Start-Animation im Emulator fotografiert (Punkt → Welle → Ring mit Balken → Name) und gemessen.
+
+- **Hintergrund-Puls** las die Song-Position aus der Anzeige (im Hintergrund/bei voller Auslastung zu
+  selten aktualisiert) und pulsierte nicht, solange der Song noch lud → liest jetzt direkt aus der
+  Engine und nutzt beim Laden das gespeicherte Beat-Raster. Gemessen: **17 Pulse in 8 s bei 124 BPM
+  (erwartet 16,5)**.
+- Rand-Prüfung im Gerätetest (Gesten-Navigation, mind. 16 dp): kein Knopf am Rand gefunden – allerdings
+  meldet der Emulator nur wenige Elemente im Bedienungshilfen-Baum; die Prüfung ist daher nur ein
+  Hinweis, kein Beweis (bitte TESTEN.md Punkt 13 auf dem Handy).
 
 **Ergebnis 2-Stunden-Dauerbetrieb im Emulator** (echtes Android 14, echte Oboe-Ausgabe, App im
 Hintergrund, Lauf vom 6.11.2026): **bestanden** – 48 Übergänge in 120 min, **0 Aussetzer (xruns)**,
