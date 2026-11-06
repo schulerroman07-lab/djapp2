@@ -154,10 +154,11 @@ App verlassen (Hintergrund) und Dauerbetrieb. Gefundene und behobene Fehler:
   gespeicherten Analyse (Datenbank) bzw. – bei "Zurück" – aus dem Speicher des eben gespielten Songs;
   der Song startet dann ab seinem ersten Downbeat. Gemessen im Emulator: **"Weiter" nach 2,5–3,7 s,
   "Zurück" nach 4,2–4,6 s hörbar** (vorher 30 s).
-- Ist der Ziel-Song noch nie analysiert worden, klingt der laufende Song auf seinem nächsten Downbeat
-  mit Echo aus (bzw. Schnitt, falls zuletzt Echo kam) und der neue Song beginnt von vorne – ebenfalls
-  ohne Warten (Emulator: 6,5 s, inkl. 1 Takt Echo-Aufbau). "Weiter" wartet auch nicht mehr, bis der
-  laufende Song fertig geladen ist.
+- Ist der Ziel-Song noch nie analysiert worden, misst die Engine sein Tempo aus den ersten ca. 18 s
+  (zwei überlappende Messungen müssen übereinstimmen) → trotzdem kurzer Übergang **mit angeglichenem
+  Tempo im Takt** (Emulator: Filter-Übergang nach 2,9 s hörbar; alle 19 Test-Songs am PC richtig
+  erkannt). Nur wenn die Messung unsicher ist (z.B. Intro ohne Beat), klingt der laufende Song im Takt
+  mit Echo aus. "Weiter" wartet auch nicht mehr, bis der laufende Song fertig geladen ist.
 
 - Start-Animation im Emulator fotografiert (Punkt → Welle → Ring mit Balken → Name) und gemessen.
 
@@ -199,8 +200,8 @@ Mischen als passend).
 3. Tonart-Erkennung ist bei echten Songs ungenauer als im Test (Schlagzeug, Effekte). Unsichere Songs
    bekommen "–" und werden neutral behandelt.
 4. Genre ohne ID3-Tag ist nur geschätzt (aus Tempo und Energie).
-5. "Weiter"/"Zurück" zu einem noch nie analysierten Song: Echo-Ausklang im Takt des laufenden Songs,
-   aber ohne Tempo-Angleichung des neuen Songs (sein Beat ist noch unbekannt).
+5. "Weiter"/"Zurück" zu einem noch nie analysierten Song ohne klaren Beat am Anfang (z.B. Intro nur mit
+   Gesang/Klavier): Echo-Ausklang im Takt statt Tempo-Angleichung (Tempo noch unbekannt).
 6. Flüssigkeit (60/120 Hz) lässt sich im Emulator nicht messen: er zeichnet ohne Grafikkarte
    (ca. 10 Bilder/s mit, 13 Bilder/s ohne animierten Hintergrund; Logcat: bis 3 s pro Bild im
    Grafik-Treiber). Bitte auf dem Handy prüfen (TESTEN.md Punkt 13); falls es ruckelt:
