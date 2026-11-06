@@ -17,8 +17,8 @@ selbstständig durch. Gästewünsche per QR-Code werden passend eingebaut.
 ### 2. Start-Animation
 - System-Startbildschirm (SplashScreen-API): schwarz mit leuchtendem Punkt. Daraus **wächst das Logo**
   ("Beat-Ring": Ring mit drei Equalizer-Balken, als Vektor gezeichnet), schwingt wie eine Schallwelle
-  und beruhigt sich; die Balken steigen, darunter erscheint der Name. Dauer ca. 1,8 s, dann weicher
-  Übergang in die App.
+  und beruhigt sich; die Balken steigen, darunter erscheint der Name. Animation 1,2 s + 0,35 s weiche
+  Überblendung in die App (im Emulator gemessen: vorher 1,86 s + 0,45 s = zu lang → gekürzt).
 - Neues App-Symbol im selben Stil (inkl. einfarbiger Version für Themensymbole).
 - **Name = Platzhalter, nur in `strings.xml` (`app_name`)** – auch die Download-Dateien (`<Name>.apk`)
   übernehmen ihn automatisch. Das Logo enthält keinen Text.
@@ -150,6 +150,8 @@ App verlassen (Hintergrund) und Dauerbetrieb. Gefundene und behobene Fehler:
   gespeicherten Analyse (Datenbank) bzw. – bei "Zurück" – aus dem Speicher des eben gespielten Songs;
   der Song startet dann ab seinem ersten Downbeat. Gemessen im Emulator: **"Weiter" nach 2,5 s,
   "Zurück" nach 4,2 s hörbar** (vorher 30 s).
+
+- Start-Animation im Emulator fotografiert (Punkt → Welle → Ring mit Balken → Name) und gemessen.
 
 **Ergebnis 2-Stunden-Dauerbetrieb im Emulator** (echtes Android 14, echte Oboe-Ausgabe, App im
 Hintergrund, Lauf vom 6.11.2026): **bestanden** – 48 Übergänge in 120 min, **0 Aussetzer (xruns)**,
