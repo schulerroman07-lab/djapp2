@@ -169,8 +169,11 @@ Mischen als passend).
 3. Tonart-Erkennung ist bei echten Songs ungenauer als im Test (Schlagzeug, Effekte). Unsichere Songs
    bekommen "–" und werden neutral behandelt.
 4. Genre ohne ID3-Tag ist nur geschätzt (aus Tempo und Energie).
-5. Laden eines Songs (Dekodieren) dauert je nach Handy 1–3 s; "Weiter" direkt nach einem Übergang
-   wartet so lange.
+5. "Weiter"/"Zurück" warten, bis der Ziel-Song fertig geladen ist (für den Übergang im Takt braucht es
+   seine vollständige Analyse). Im Emulator dauerte das 10–47 s (langsames Dekodieren dort); auf dem
+   Handy noch nicht gemessen – bitte bei TESTEN.md Punkt 9/10 auf die Wartezeit achten. Falls es zu lange
+   dauert: Idee für später – Übergang schon mit den gespeicherten Analyse-Werten planen, während der Song
+   noch lädt.
 6. Hintergrund "Voll" (60/120 Hz) braucht etwas mehr Akku → bei langen Events "Energiesparen".
 7. Gästewünsche ohne Internet funktionieren nur im selben WLAN bzw. Hotspot.
 8. Android Auto: nur Steuerung (Zurück, Play/Pause, Weiter), kein Durchblättern der Bibliothek.
