@@ -66,26 +66,38 @@ class DeviceSoakTest {
      * werden nur gemeldet – Wischgesten am Rand lösen dort nichts aus, Antippen geht trotzdem.
      */
     private fun edgeCheck(label: String): Int {
+        // Gesten-Zonen auch dann, wenn die Systemleisten ausgeblendet sind (Vollbild)
         val ins = main {
             val act = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).firstOrNull()
-            act?.window?.decorView?.rootWindowInsets?.getInsets(android.view.WindowInsets.Type.systemGestures())
+            act?.window?.decorView?.rootWindowInsets?.getInsetsIgnoringVisibility(android.view.WindowInsets.Type.systemGestures())
         }
+        val density = ctx.resources.displayMetrics.density
+        val minPx = (16 * density).toInt()       // mind. 16 dp Abstand zum Rand (typische Samsung-Gestenbreite)
         val w = device.displayWidth
         val h = device.displayHeight
-        val l = ins?.left ?: 0; val r = ins?.right ?: 0; val b = ins?.bottom ?: 0
-        val objs = device.findObjects(By.clickable(true).pkg("app.fadelux"))
+        val l = maxOf(ins?.left ?: 0, minPx); val r = maxOf(ins?.right ?: 0, minPx); val b = maxOf(ins?.bottom ?: 0, minPx)
+        // alle antippbaren Elemente aus dem Bedienungshilfen-Baum (Compose meldet Knöpfe dort)
+        val nodes = mutableListOf<android.view.accessibility.AccessibilityNodeInfo>()
+        fun walk(n: android.view.accessibility.AccessibilityNodeInfo?) {
+            if (n == null) return
+            if (n.isClickable || n.isLongClickable) nodes += n
+            for (k in 0 until n.childCount) walk(n.getChild(k))
+        }
+        walk(inst.uiAutomation.rootInActiveWindow)
         val bad = mutableListOf<String>()
         val wide = mutableListOf<String>()
-        for (o in objs) {
-            val rb = runCatching { o.visibleBounds }.getOrNull() ?: continue
+        for (n in nodes) {
+            val rb = android.graphics.Rect().also { n.getBoundsInScreen(it) }
+            if (rb.isEmpty) continue
             val inZone = rb.left < l || rb.right > w - r || rb.bottom > h - b
             if (!inZone) continue
-            val desc = "${o.contentDescription ?: o.text ?: "Element"} $rb"
+            val desc = "${n.contentDescription ?: n.text ?: n.className} $rb"
             if (rb.width() > w * 0.6f) wide += desc else bad += desc
         }
-        log("Bildschirmrand ($label): ${objs.size} Bedienelemente, Gesten-Zonen links=$l rechts=$r unten=$b px (Bildschirm ${w}x$h) → " +
-            (if (bad.isEmpty()) "kein Knopf in einer Gesten-Zone" else "KNOPF IN GESTEN-ZONE: ${bad.joinToString()}") +
-            (if (wide.isNotEmpty()) " · breite Flächen bis zum Rand: ${wide.size}" else ""))
+        log("Bildschirmrand ($label): ${nodes.size} antippbare Elemente, Rand-Zonen links=$l rechts=$r unten=$b px " +
+            "(System-Gesten ${ins?.left ?: 0}/${ins?.right ?: 0}/${ins?.bottom ?: 0} px, mind. 16 dp; Bildschirm ${w}x$h) → " +
+            (if (bad.isEmpty()) "kein Knopf in einer Rand-Zone" else "KNOPF AM RAND: ${bad.joinToString()}") +
+            (if (wide.isNotEmpty()) " · breite Flächen bis zum Rand: ${wide.joinToString()}" else ""))
         return bad.size
     }
 
