@@ -51,6 +51,9 @@ class DeviceSoakTest {
     private fun shot(name: String) {
         val bmp = inst.uiAutomation.takeScreenshot() ?: return
         File(outDir, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 90, it) }
+        // kleine Vorschau (wird vom Workflow als Text ins Protokoll geschrieben)
+        val small = Bitmap.createScaledBitmap(bmp, 270, (270f * bmp.height / bmp.width).toInt(), true)
+        File(outDir, "small_$name.jpg").outputStream().use { small.compress(Bitmap.CompressFormat.JPEG, 60, it) }
     }
 
     private fun openApp() {
@@ -113,13 +116,21 @@ class DeviceSoakTest {
         Thread.sleep(4000)
         shot("3_player_playing")
 
-        // ---- Flüssigkeit: Bildraten des Hauptbildschirms (animierter Hintergrund, Musik läuft) ----
-        device.executeShellCommand("dumpsys gfxinfo app.fadelux reset")
-        Thread.sleep(15_000)
+        // ---- Flüssigkeit: Bildraten des Hauptbildschirms, Hintergrund "Voll" vs. "Aus" (Musik läuft) ----
+        // (Der Emulator rechnet die Grafik ohne Grafikkarte – absolute Werte sind viel schlechter als auf
+        // einem Handy; der Vergleich zeigt, was der animierte Hintergrund kostet.)
+        fun frameStats(label: String) {
+            device.executeShellCommand("dumpsys gfxinfo app.fadelux reset")
+            Thread.sleep(15_000)
+            val gfx = device.executeShellCommand("dumpsys gfxinfo app.fadelux")
+            val keys = listOf("Total frames rendered", "Janky frames:", "50th percentile", "90th percentile")
+            log("Bildraten ($label): " + gfx.lines().map { it.trim() }.filter { l -> keys.any { l.startsWith(it) } }.distinct().joinToString(" | "))
+        }
+        frameStats("Hintergrund Voll")
         shot("4_player_15s")
-        val gfx = device.executeShellCommand("dumpsys gfxinfo app.fadelux")
-        gfx.lines().filter { l -> listOf("Total frames rendered", "Janky frames", "50th percentile", "90th percentile", "95th percentile", "99th percentile", "Refresh rate").any { l.contains(it) } }
-            .distinct().forEach { log("Bildraten: ${it.trim()}") }
+        main { vm.settings.bgAnimation = 0 }
+        frameStats("Hintergrund Aus")
+        main { vm.settings.bgAnimation = 2 }
 
         // ---- Weiter / Zurück: kurzer Übergang im Takt ----
         val tPrep = System.currentTimeMillis()

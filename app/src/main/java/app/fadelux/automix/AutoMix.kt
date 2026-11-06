@@ -471,7 +471,9 @@ class AutoMix(
         status = UiText(R.string.automix_next, next.title)
         // Für "Weiter"/"Zurück" nicht warten, bis der Song ganz dekodiert ist: Ist er schon analysiert
         // (Struktur in der Datenbank), startet der kurze Übergang, sobald er spielbar ist.
-        val cachedNext = cached(next)
+        // (bei "Zurück" ist der vorherige Song meist schon hier im Speicher, auch wenn die Bibliotheks-Analyse
+        // ihn noch nicht erreicht hat)
+        val cachedNext = structureCache[next.id] ?: cached(next)
         if (!loadInto(nxt, next, playable = { quickRequest && cachedNext != null })) {
             nextTrack = null
             when {

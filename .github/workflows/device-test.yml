@@ -76,7 +76,7 @@ jobs:
             echo "Früh-Übergänge:"; grep -E "Früh-Übergang" out/logcat.txt | sed 's/.*: //' || true
             echo "Pläne ohne Tempo: $(grep -c 'kein Tempo erkannt' out/logcat.txt || true)"
             echo "Weiter/Zurück während Laden: $(grep -c 'Song lädt noch' out/logcat.txt || true)"
-            for f in out/soak/1_intro_*.png out/soak/3_player_playing.png out/soak/4_player_15s.png; do [ -f "$f" ] && echo "BILD $(basename "$f") $(convert "$f" -resize 270x -quality 60 jpg:- | base64 -w0)"; done || true
+            for f in out/soak/small_*.jpg; do echo "BILD $(basename "$f") $(base64 -w0 "$f")"; done || true
             tail -n 300 out/logcat_kurz.txt || true
             grep -q "OK (1 test)" out/instrument.txt
 
