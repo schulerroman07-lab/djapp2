@@ -18,7 +18,7 @@ Tipp: Für die Tests eine Playlist mit 6–10 Songs verschiedener Stile anlegen 
 
 ## C. Bedienung
 8. Fortschrittsbalken antippen → springt an die Stelle. Am Punkt ziehen → beim Loslassen wird gespult.
-9. Play/Pause in der Mitte. „Weiter“ (rechts) → nach 1–2 Sekunden kurzer, sauberer Übergang im Takt
+9. Play/Pause in der Mitte. „Weiter“ (rechts) → nach wenigen Sekunden (nächster 4-Takt-Abschnitt) kurzer, sauberer Übergang im Takt
    (nie ein harter Schnitt mitten im Takt).
 10. „Zurück“ (links) → kurzer Übergang zum vorherigen Song; danach geht es mit dem Song weiter, der
     vorher lief.
