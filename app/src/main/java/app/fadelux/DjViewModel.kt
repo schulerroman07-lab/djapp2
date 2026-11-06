@@ -12,6 +12,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import app.fadelux.audio.NativeEngine
 import app.fadelux.automix.AutoMix
+import app.fadelux.automix.StructureAnalyzer
+import app.fadelux.automix.TrackStructure
 import app.fadelux.automix.TransitionType
 import app.fadelux.automix.Suggestions
 import app.fadelux.data.AppSettings
@@ -88,12 +90,12 @@ class DjViewModel private constructor(private val app: Application) {
      * Struktur eines schon analysierten Titels aus der Datenbank (BPM, Beat-Raster, Merkmale) –
      * damit "Weiter"/"Zurück" nicht warten müssen, bis der Song ganz dekodiert ist.
      */
-    private suspend fun cachedStructure(t: Track): app.fadelux.automix.TrackStructure? {
+    private suspend fun cachedStructure(t: Track): TrackStructure? {
         val fresh = trackIndex[t.id] ?: t
         val bpm = fresh.bpm ?: return null
         if (bpm <= 0f || fresh.durationMs <= 0) return null
         val an = library.analysis(t.id) ?: return null
-        return app.fadelux.automix.StructureAnalyzer.analyze(bpm, an.firstBeat, an.features, fresh.durationMs / 1000.0)
+        return StructureAnalyzer.analyze(bpm, an.firstBeat, an.features, fresh.durationMs / 1000.0)
             ?.copy(trackEnergy = fresh.energy ?: -1f, musicalKey = fresh.musicalKey ?: -1)
     }
 
