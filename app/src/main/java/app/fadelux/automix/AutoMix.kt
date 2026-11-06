@@ -511,10 +511,28 @@ class AutoMix(
         }
         b.resetEffects()
         b.changeVolume(a.volume)
-        val partial = b.loadState == 4          // B lädt noch fertig (nur bei "Weiter"/"Zurück")
+        var partial = b.loadState == 4          // B lädt noch fertig (nur bei "Weiter"/"Zurück")
+        // Noch nie analysiert? Die Engine misst das Tempo aus dem Anfang (sobald ca. 18 s dekodiert sind,
+        // nur wenn zwei Messungen übereinstimmen) → dann trotzdem ein Übergang mit angeglichenem Tempo.
+        var earlyStruct: TrackStructure? = null
+        if (partial && cachedNext == null) {
+            val until = System.currentTimeMillis() + 4000
+            while (System.currentTimeMillis() < until) {
+                val st = b.syncFromEngine()
+                if (st == 2 || st == 3 || b.bpm > 0f || prevRequest || skip) break
+                delay(50)
+            }
+            if (b.liveLoadState() == 2 && waitLoaded(b)) {
+                partial = false                     // inzwischen ganz geladen → normaler Weg
+            } else if (b.bpm > 0f) {
+                earlyStruct = StructureAnalyzer.analyze(b.bpm, b.firstBeat, b.features(), next.durationMs / 1000.0)
+                    ?.copy(trackEnergy = next.energy ?: -1f, musicalKey = next.musicalKey ?: -1)
+                earlyStruct?.let { log("Tempo aus dem Anfang erkannt: ${"%.1f".format(it.bpm)} BPM (${next.title})") }
+            }
+        }
         matchLoudness(a, b, if (partial) next.loudness else null)
         val aStruct = structureOf(a) ?: a.track?.let { structureCache[it.id] ?: cached(it) }
-        val bStruct = if (partial) cachedNext else structureOf(b)
+        val bStruct = if (partial) (cachedNext ?: earlyStruct) else structureOf(b)
         if (a.loadState == 4) hint(a, aStruct)
         if (partial) hint(b, bStruct)
 

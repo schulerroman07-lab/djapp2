@@ -83,6 +83,7 @@ jobs:
             echo "Hauptthread beim Start (ausgelassene Bilder):"; grep -E "Choreographer.*Skipped|Davey" out/logcat.txt | head -15 || true
             echo "Rand-Prüfung (Samsung-Grösse 1080x2340, 420 dpi):"; grep "EdgeTest" out/logcat.txt | sed 's/.*EdgeTest: //' || true
             echo "Pläne ohne Tempo: $(grep -c 'kein Tempo erkannt' out/logcat.txt || true)"
+            echo "Tempo aus dem Anfang:"; grep -E "Vorläufiges Tempo|Tempo aus dem Anfang erkannt" out/logcat.txt | sed 's/.*: //' | head -10 || true
             echo "Weiter/Zurück während Laden: $(grep -c 'Song lädt noch' out/logcat.txt || true)"
             for f in out/soak/small_*.jpg; do echo "BILD $(basename "$f") $(base64 -w0 "$f")"; done || true
             tail -n 300 out/logcat_kurz.txt || true

@@ -89,6 +89,36 @@ void Deck::load(int fd, int64_t length, int engineRate) {
             }
         };
 
+        // Vorläufiges Tempo aus dem Anfang (für "Weiter"/"Zurück" zu einem noch nie analysierten Titel):
+        // zwei überlappende Abschnitte messen – nur wenn beide übereinstimmen, gilt das Ergebnis.
+        bool earlyBpmDone = false;
+        auto earlyBpm = [&]() {
+            const size_t total = src.size() / 2;
+            auto measure = [&](size_t from, size_t to, float& fb, std::vector<uint8_t>* feat) {
+                BpmAnalyzer a;
+                for (size_t f = from; f < to; f += 4096) a.feed(&src[f * 2], std::min<size_t>(4096, to - f), srcRate);
+                BpmResult r = a.result();
+                fb = r.firstBeat + (float)((double)from / srcRate);
+                if (feat && r.bpm > 0) *feat = a.beatFeatures(r.bpm, r.firstBeat);
+                return r.bpm;
+            };
+            float fb1 = 0, fb2 = 0;
+            std::vector<uint8_t> feat;
+            float b1 = measure(0, total, fb1, &feat);
+            float b2 = measure(total / 3, total, fb2, nullptr);
+            if (b1 > 0 && b2 > 0 && std::fabs(b1 - b2) / b1 < 0.01f && state_.load() == LoadState::Playable) {
+                {
+                    std::lock_guard<std::mutex> lk(peaksMutex_);
+                    featuresCopy_ = feat;
+                }
+                firstBeat_.store(fb1);
+                bpm_.store(b1);
+                LOGI("Vorläufiges Tempo aus dem Anfang: %.1f BPM (Kontrolle %.1f)", b1, b2);
+            } else {
+                LOGI("Vorläufiges Tempo unsicher (%.1f / %.1f BPM) – erst nach dem Laden", b1, b2);
+            }
+        };
+
         bool ok = decodeAudio(
             fd, length,
             [&](const int16_t* s, size_t frames, int rate) {
@@ -99,6 +129,10 @@ void Deck::load(int fd, int64_t length, int engineRate) {
                 if (have >= nextPublish && !cancelLoad_.load()) {
                     publishPartial();
                     nextPublish = (size_t)(have * 1.6);                         // danach wachsend (wenig Mehraufwand)
+                }
+                if (!earlyBpmDone && published && have >= (size_t)rate * 18 && !cancelLoad_.load()) {
+                    earlyBpmDone = true;
+                    earlyBpm();
                 }
             },
             &cancelLoad_, 60 * 30);  // max. 30 Minuten pro Titel
