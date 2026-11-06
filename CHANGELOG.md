@@ -145,6 +145,12 @@ App verlassen (Hintergrund) und Dauerbetrieb. Gefundene und behobene Fehler:
   Chill-Song), blieb bis zum Schluss übrig und landete ausgerechnet am Höhepunkt → die Übergangs-Kosten
   zählen jetzt nur noch begrenzt, die Energie-Kurve hat Vorrang (neuer Unit-Test).
 
+- **"Weiter"/"Zurück" warteten, bis der Ziel-Song ganz dekodiert war** (im Emulator 10–47 s). Jetzt
+  startet der kurze Übergang, sobald der Song spielbar ist: Beat-Raster und Struktur kommen aus der
+  gespeicherten Analyse (Datenbank) bzw. – bei "Zurück" – aus dem Speicher des eben gespielten Songs;
+  der Song startet dann ab seinem ersten Downbeat. Gemessen im Emulator: **"Weiter" nach 2,5 s,
+  "Zurück" nach 4,2 s hörbar** (vorher 30 s).
+
 **Ergebnis 2-Stunden-Dauerbetrieb im Emulator** (echtes Android 14, echte Oboe-Ausgabe, App im
 Hintergrund, Lauf vom 6.11.2026): **bestanden** – 48 Übergänge in 120 min, **0 Aussetzer (xruns)**,
 **0 Sekunden ohne Musik**, kein Absturz, Vordergrund-Dienst die ganze Zeit aktiv. Alle Übergänge
@@ -169,14 +175,14 @@ Mischen als passend).
 3. Tonart-Erkennung ist bei echten Songs ungenauer als im Test (Schlagzeug, Effekte). Unsichere Songs
    bekommen "–" und werden neutral behandelt.
 4. Genre ohne ID3-Tag ist nur geschätzt (aus Tempo und Energie).
-5. "Weiter"/"Zurück" warten, bis der Ziel-Song fertig geladen ist (für den Übergang im Takt braucht es
-   seine vollständige Analyse). Im Emulator dauerte das 10–47 s (langsames Dekodieren dort); auf dem
-   Handy noch nicht gemessen – bitte bei TESTEN.md Punkt 9/10 auf die Wartezeit achten. Falls es zu lange
-   dauert: Idee für später – Übergang schon mit den gespeicherten Analyse-Werten planen, während der Song
-   noch lädt.
-6. Hintergrund "Voll" (60/120 Hz) braucht etwas mehr Akku → bei langen Events "Energiesparen".
-7. Gästewünsche ohne Internet funktionieren nur im selben WLAN bzw. Hotspot.
-8. Android Auto: nur Steuerung (Zurück, Play/Pause, Weiter), kein Durchblättern der Bibliothek.
+5. "Weiter"/"Zurück": Ist der Ziel-Song noch nie analysiert worden (ganz neu in der Bibliothek), wartet
+   der Übergang, bis er fertig geladen ist (im Emulator bis 40 s; auf dem Handy noch nicht gemessen).
+6. Flüssigkeit (60/120 Hz) lässt sich im Emulator nicht messen: er zeichnet ohne Grafikkarte
+   (ca. 10 Bilder/s mit, 13 Bilder/s ohne animierten Hintergrund). Bitte auf dem Handy prüfen (TESTEN.md Punkt 13);
+   falls es ruckelt: Einstellungen → Design → Hintergrund "Energiesparen".
+7. Hintergrund "Voll" (60/120 Hz) braucht etwas mehr Akku → bei langen Events "Energiesparen".
+8. Gästewünsche ohne Internet funktionieren nur im selben WLAN bzw. Hotspot.
+9. Android Auto: nur Steuerung (Zurück, Play/Pause, Weiter), kein Durchblättern der Bibliothek.
 
 ## 1.2 – Bessere Auto-Mix-Übergänge, Warteschlange, Design
 
