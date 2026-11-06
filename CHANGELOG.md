@@ -18,7 +18,8 @@ selbstständig durch. Gästewünsche per QR-Code werden passend eingebaut.
 - System-Startbildschirm (SplashScreen-API): schwarz mit leuchtendem Punkt. Daraus **wächst das Logo**
   ("Beat-Ring": Ring mit drei Equalizer-Balken, als Vektor gezeichnet), schwingt wie eine Schallwelle
   und beruhigt sich; die Balken steigen, darunter erscheint der Name. Animation 1,2 s + 0,35 s weiche
-  Überblendung in die App. Im Emulator gemessen: 1,52 s + 0,35 s = 1,87 s (vorher 2,3 s → gekürzt).
+  Überblendung in die App, mit fester Obergrenze 1,4 s (Uhrzeit) – auch wenn das Gerät beim Start
+  beschäftigt ist, bleibt es unter 2 s. Im Emulator gemessen: vorher bis 2,3 s → gekürzt und begrenzt.
 - Neues App-Symbol im selben Stil (inkl. einfarbiger Version für Themensymbole).
 - **Name = Platzhalter, nur in `strings.xml` (`app_name`)** – auch die Download-Dateien (`<Name>.apk`)
   übernehmen ihn automatisch. Das Logo enthält keinen Text.
@@ -148,8 +149,12 @@ App verlassen (Hintergrund) und Dauerbetrieb. Gefundene und behobene Fehler:
 - **"Weiter"/"Zurück" warteten, bis der Ziel-Song ganz dekodiert war** (im Emulator 10–47 s). Jetzt
   startet der kurze Übergang, sobald der Song spielbar ist: Beat-Raster und Struktur kommen aus der
   gespeicherten Analyse (Datenbank) bzw. – bei "Zurück" – aus dem Speicher des eben gespielten Songs;
-  der Song startet dann ab seinem ersten Downbeat. Gemessen im Emulator: **"Weiter" nach 2,5 s,
-  "Zurück" nach 4,2 s hörbar** (vorher 30 s).
+  der Song startet dann ab seinem ersten Downbeat. Gemessen im Emulator: **"Weiter" nach 2,5–3,7 s,
+  "Zurück" nach 4,2–4,6 s hörbar** (vorher 30 s).
+- Ist der Ziel-Song noch nie analysiert worden, klingt der laufende Song auf seinem nächsten Downbeat
+  mit Echo aus (bzw. Schnitt, falls zuletzt Echo kam) und der neue Song beginnt von vorne – ebenfalls
+  ohne Warten (Emulator: 6,5 s, inkl. 1 Takt Echo-Aufbau). "Weiter" wartet auch nicht mehr, bis der
+  laufende Song fertig geladen ist.
 
 - Start-Animation im Emulator fotografiert (Punkt → Welle → Ring mit Balken → Name) und gemessen.
 
@@ -177,8 +182,8 @@ Mischen als passend).
 3. Tonart-Erkennung ist bei echten Songs ungenauer als im Test (Schlagzeug, Effekte). Unsichere Songs
    bekommen "–" und werden neutral behandelt.
 4. Genre ohne ID3-Tag ist nur geschätzt (aus Tempo und Energie).
-5. "Weiter"/"Zurück": Ist der Ziel-Song noch nie analysiert worden (ganz neu in der Bibliothek), wartet
-   der Übergang, bis er fertig geladen ist (im Emulator bis 40 s; auf dem Handy noch nicht gemessen).
+5. "Weiter"/"Zurück" zu einem noch nie analysierten Song: Echo-Ausklang im Takt des laufenden Songs,
+   aber ohne Tempo-Angleichung des neuen Songs (sein Beat ist noch unbekannt).
 6. Flüssigkeit (60/120 Hz) lässt sich im Emulator nicht messen: er zeichnet ohne Grafikkarte
    (ca. 10 Bilder/s mit, 13 Bilder/s ohne animierten Hintergrund). Bitte auf dem Handy prüfen (TESTEN.md Punkt 13);
    falls es ruckelt: Einstellungen → Design → Hintergrund "Energiesparen".
