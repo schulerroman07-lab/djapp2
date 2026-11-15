@@ -32,27 +32,55 @@ def main():
     audio, out = sys.argv[1], sys.argv[2]
     os.makedirs(audio, exist_ok=True)
     os.makedirs(out, exist_ok=True)
-    from beat_this.inference import File2Beats
-    f2b = File2Beats(checkpoint_path="final0", device="cpu", dbn=False)
+    # Beat-Referenz 1: "Beat This!" (Modell wird von der Uni Linz geladen – der Server ist nicht immer erreichbar)
+    f2b = None
+    ckpt = os.environ.get("BEAT_THIS_CKPT", "final0")
+    try:
+        from beat_this.inference import File2Beats
+        f2b = File2Beats(checkpoint_path=ckpt, device="cpu", dbn=False)
+        print("Beat This! geladen", flush=True)
+    except Exception as e:
+        print("Beat This! nicht verfügbar:", repr(e)[:300], flush=True)
+    # Beat-Referenz 2: madmom (RNN + DBN, seit Jahren Standard in der Forschung)
+    mm = None
+    try:
+        from madmom.features.downbeats import RNNDownBeatProcessor, DBNDownBeatTrackingProcessor
+        mm = (RNNDownBeatProcessor(), DBNDownBeatTrackingProcessor(beats_per_bar=[3, 4], fps=100))
+        print("madmom geladen", flush=True)
+    except Exception as e:
+        print("madmom nicht verfügbar:", repr(e)[:300], flush=True)
+    if f2b is None and mm is None:
+        raise SystemExit("Keine Beat-Referenz-Software verfügbar")
     for s in songs(sys.argv):
         mp3 = fetch(s, audio)
         with tempfile.TemporaryDirectory() as tmp:
             wav = os.path.join(tmp, s["id"] + ".wav")
             subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", mp3, "-ar", "44100", "-ac", "2", wav], check=True)
             x, rate = sf.read(wav, dtype="float32")
-            beats, downbeats = f2b(wav)
+            extra = {}
+            tools = []
+            if f2b is not None:
+                b, d = f2b(wav)
+                extra["bt"] = ([round(float(v), 3) for v in b], [round(float(v), 3) for v in d])
+                tools.append("beat_this final0 (ohne DBN)")
+            if mm is not None:
+                act = mm[1](mm[0](wav))
+                extra["mm"] = ([round(float(t), 3) for t, _ in act], [round(float(t), 3) for t, p in act if int(p) == 1])
+                tools.append("madmom 0.16 RNNDownBeat + DBN")
+            beats, downbeats = extra.get("bt") or extra["mm"]
             subprocess.run([sys.executable, "-m", "demucs", "--two-stems", "vocals", "-n", "htdemucs", "-d", "cpu",
                             "-o", tmp, wav], check=True, stdout=subprocess.DEVNULL)
             v, vrate = sf.read(os.path.join(tmp, "htdemucs", s["id"], "vocals.wav"), dtype="float32")
             # Mitte/Seite der Gesangsspur: Gesang liegt fast immer in der Mitte
             ref = {
                 "id": s["id"], "duration": round(len(x) / rate, 3),
-                "beats": [round(float(b), 3) for b in beats],
-                "downbeats": [round(float(b), 3) for b in downbeats],
+                "beats": beats, "downbeats": downbeats,
+                "beats_madmom": extra["mm"][0] if "mm" in extra else None,
+                "downbeats_madmom": extra["mm"][1] if "mm" in extra else None,
                 "hop": HOP,
                 "mix_db": envelope_db(x, rate).tolist(),
                 "vocal_db": envelope_db(v, vrate).tolist(),
-                "tools": "beat_this final0 (ohne DBN); demucs htdemucs two-stems vocals",
+                "tools": "; ".join(tools) + "; demucs htdemucs two-stems vocals",
             }
         json.dump(ref, open(os.path.join(out, s["id"] + ".json"), "w"))
         packed = base64.b64encode(gzip.compress(json.dumps(ref, separators=(",", ":")).encode())).decode()

@@ -21,15 +21,27 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.9'
       - name: Werkzeuge
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          pip install -q "numpy==1.23.5" cython
           pip install -q torch torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install -q numpy soundfile demucs soxr einops rotary-embedding-torch
-          pip install -q https://github.com/CPJKU/beat_this/archive/main.zip
+          pip install -q soundfile demucs soxr einops rotary-embedding-torch
+          pip install -q https://github.com/CPJKU/beat_this/archive/main.zip || true
+          pip install -q madmom==0.16.1 || pip install -q git+https://github.com/CPJKU/madmom || true
+          pip install -q "numpy==1.23.5"
+          # Modell für Beat This! mit Wiederholungen laden (Server der Uni Linz ist manchmal nicht erreichbar)
+          for i in 1 2 3 4 5; do
+            curl -sS -L -m 300 -o final0.ckpt "https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/final0.ckpt" && [ $(stat -c %s final0.ckpt) -gt 1000000 ] && break
+            sleep 20
+          done
+          ls -la final0.ckpt || true
+          python3 -c "import madmom; print('madmom', madmom.__version__)" || true
       - name: Referenzen erzeugen
-        run: python3 tools/realmusic/make_refs.py audio refs_raw --shard ${{ matrix.shard }}/7
+        run: |
+          if [ -f final0.ckpt ] && [ $(stat -c %s final0.ckpt) -gt 1000000 ]; then export BEAT_THIS_CKPT=$PWD/final0.ckpt; fi
+          python3 tools/realmusic/make_refs.py audio refs_raw --shard ${{ matrix.shard }}/7
       - uses: actions/upload-artifact@v4
         if: always()
         with:
