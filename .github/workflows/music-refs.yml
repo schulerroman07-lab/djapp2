@@ -1,0 +1,37 @@
+# Erzeugt Referenz-Daten (Beats, Downbeats, Gesang) für die echten Test-Songs in tools/realmusic/songs.json
+# mit bewährter Analyse-Software. Läuft nur, wenn sich die Songliste oder das Skript ändert (dauert ca. 1 h).
+name: Referenzen (echte Musik)
+on:
+  push:
+    paths:
+      - 'tools/realmusic/songs.json'
+      - 'tools/realmusic/make_refs.py'
+      - 'tools/realmusic/fetch.py'
+      - '.github/workflows/music-refs.yml'
+  workflow_dispatch:
+jobs:
+  refs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Werkzeuge
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          pip install -q torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install -q numpy soundfile demucs soxr einops rotary-embedding-torch
+          pip install -q https://github.com/CPJKU/beat_this/archive/main.zip
+      - name: Referenzen erzeugen
+        run: python3 tools/realmusic/make_refs.py audio refs_raw --shard ${{ matrix.shard }}/7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: refs-${{ matrix.shard }}
+          path: refs_raw/
