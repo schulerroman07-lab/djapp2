@@ -27,6 +27,9 @@ object TransitionPlanner {
     /** Abstand nach dem letzten Gesang von A, bevor der Übergang beginnen darf (Sekunden). */
     const val VOCAL_MARGIN = 0.5
 
+    /** Einblenden von B, wenn A schon zu Ende ist (Sekunden): kurz, damit zwischen den Songs kein Loch entsteht. */
+    const val QUICK_IN = 0.4
+
     /** Elektronische Musik mit langen Outros (Blends über Phrasen)? */
     fun electronic(s: TrackStructure): Boolean = when (s.family) {
         GenreFamily.HOUSE, GenreFamily.TECHNO -> true
@@ -116,7 +119,7 @@ object TransitionPlanner {
             val t = allowedOr(TransitionType.FADE, settings.enabled)
             why += note
             return TransitionPlan(
-                type = t, mixBar = a.barAt(start), mixSec = start, bStartSec = 0.0,
+                type = t, mixBar = a.barAt(start), mixSec = start, bStartSec = b.soundStart,
                 lengthBars = max(1, kotlin.math.ceil(lengthSec / max(0.5, b.barSec)).toInt()),
                 tempoRatio = 1f, matchTempo = false, reason = why.joinToString(" · "),
                 lengthSec = if (t == TransitionType.FADE) lengthSec else -1.0,
@@ -163,11 +166,11 @@ object TransitionPlanner {
                 }
             }
             // ohne Beatmatching: kurzer Fade ganz am Ende, fertig bevor B singt
-            val l = room(0.0).coerceIn(0.3, 4.0)
+            val l = room(b.soundStart).coerceIn(0.3, 4.0)
             val start = max(p.mixSec, aEnd - l)
             val t = allowedOr(TransitionType.FADE, settings.enabled)
             return TransitionPlan(
-                type = t, mixBar = a.barAt(start), mixSec = start, bStartSec = 0.0,
+                type = t, mixBar = a.barAt(start), mixSec = start, bStartSec = b.soundStart,
                 lengthBars = max(1, kotlin.math.ceil(l / max(0.5, b.barSec)).toInt()), tempoRatio = 1f, matchTempo = false,
                 reason = "${p.reason} · $note → kurzer Fade ${String.format(java.util.Locale.ROOT, "%.1f", l)} s am Ende",
                 lengthSec = if (t == TransitionType.FADE) l else -1.0,
@@ -247,8 +250,9 @@ object TransitionPlanner {
                 return guard(beatPlan(TransitionType.BLEND, bar, min(len, endBar - bar).coerceAtLeast(2), bFirst,
                     (if (fadeOut != null) "im Fade-out" else "kurzer Blend am Ende") + " (Takt $bar von ${a.endBar}, ${min(len, endBar - bar)} Takte)"))
             }
-            // kaum Platz nach dem letzten Gesang: Schnitt auf die "1" nach dem Gesang
-            if (releaseBar < a.barCount && a.barTime(releaseBar) < aEnd + 1.0) {
+            // kaum Platz nach dem letzten Gesang: Schnitt auf die "1" nach dem Gesang – nur solange A noch klingt
+            // (ist A schon zu Ende, wäre das Warten auf den nächsten Takt nur ein Loch)
+            if (releaseBar < a.barCount && a.barTime(releaseBar) < aEnd - 0.05) {
                 return beatPlan(TransitionType.CUT, releaseBar, 1, bFirst, "Gesang bis kurz vor Schluss → Schnitt auf die 1 (Takt $releaseBar)")
             }
         }
@@ -259,7 +263,9 @@ object TransitionPlanner {
             else -> min(4.0, max(1.5, tail))
         }
         val start = max(release, aEnd - fadeLen)
-        return guard(fadePlan(start, max(1.0, min(fadeLen, aEnd - start + 0.5)),
+        // A ist schon zu Ende (Gesang bis zum Schluss): B kommt sofort, nur ganz kurz eingeblendet – kein Loch
+        val len = if (start >= aEnd - 0.05) QUICK_IN else max(1.0, min(fadeLen, aEnd - start + 0.5))
+        return guard(fadePlan(start, len,
             (if (fadeOut != null) "Fade im Fade-out" else "kurzer Fade am Ende") + " ab ${mmss(start)}"))
     }
 

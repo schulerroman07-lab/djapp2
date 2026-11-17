@@ -155,7 +155,8 @@ class RealMixPlanTest {
             val d = AnalysisData(bpm, beats.firstOrNull() ?: 0.0, (j["downbeat"] as Double).toInt(), (j["confidence"] as Double).toFloat(),
                 j["steady"] as Boolean, hex(j["features"] as String), vocal, j["duration"] as Double)
             val s = StructureAnalyzer.analyze(d, j["soundEnd"] as Double, fam) ?: continue
-            songs[id] = Song(track, s.copy(musicalKey = key, trackEnergy = track.energy ?: -1f), j["loudness"] as Double)
+            songs[id] = Song(track, s.copy(musicalKey = key, trackEnergy = track.energy ?: -1f,
+                soundStart = (j["soundStart"] as? Double) ?: 0.0), j["loudness"] as Double)
         }
         val byTrack = songs.entries.associate { it.value.track.id to it.key }
         val orders = listOf(

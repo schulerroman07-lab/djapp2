@@ -28,12 +28,13 @@ struct AnalyzerTuning {
     float priorBpm = 120.f;       // bevorzugtes Tempo (bei halb/doppelt-Entscheidung)
     float priorOct = 0.9f;        // Breite der Vorliebe in Oktaven
     float tightness = 100.f;      // wie streng der Beat-Abstand eingehalten wird
-    float steadyFrac = 0.85f;     // Anteil der Beats im festen Raster, ab dem das Tempo als fest gilt
+    float steadyFrac = 0.75f;     // Anteil der (deutlichen) Beats im festen Raster, ab dem das Tempo als fest gilt
     float latencySec = 0.f;       // gemessene Verzögerung der Onset-Kurve gegenüber dem hörbaren Einsatz
     float confBias = -6.f, confInlier = 5.f, confSalience = 0.8f, confClarity = 2.f;
     float dbLow = 1.f, dbNov = 1.f, dbLow3 = 0.3f;
     // Vertrauen mit Beat-Netz: aus der Netz-Kurve an den Beats, Raster-Treue und Tempo-Eindeutigkeit
     float netBias = -6.f, netAct = 8.f, netInlier = 3.f, netClarity = 1.f;
+    float netEvident = 0.5f;      // Netz-Kurve, ab der ein Beat für die Raster-Treue zählt (Breaks zählen nicht)
 };
 AnalyzerTuning& tuning();
 

@@ -609,9 +609,19 @@ Analysis TrackAnalyzer::result() const {
                 t0 = (sy - T * sx) / cnt;
             }
         }
-        size_t in = 0;
-        for (size_t i = 0; i < bt.size(); i++) if (std::fabs(bt[i] - (t0 + T * idx[i])) <= tolFrames) in++;
-        inlierFrac = (double)in / bt.size();
+        // Raster-Treue: Anteil der Beats im festen Raster. Mit Beat-Netz zählen nur Beats, die das Netz deutlich
+        // hört – in Breaks ohne Schlagzeug "rät" die Beat-Suche nur und darf das feste Tempo nicht widerlegen.
+        size_t in = 0, ev = 0;
+        for (size_t i = 0; i < bt.size(); i++) {
+            if (useNet && at(netBeat, std::max(0.0, (bt[i] - 1.5) / kMelBlock)) < tuning().netEvident) continue;
+            ev++;
+            if (std::fabs(bt[i] - (t0 + T * idx[i])) <= tolFrames) in++;
+        }
+        if (ev < std::max<size_t>(16, bt.size() / 4)) {          // zu wenig deutliche Beats: alle zählen
+            in = ev = 0;
+            for (size_t i = 0; i < bt.size(); i++) { ev++; if (std::fabs(bt[i] - (t0 + T * idx[i])) <= tolFrames) in++; }
+        }
+        inlierFrac = (double)in / std::max<size_t>(1, ev);
     }
     // Onset-Stärke an den Beats gegenüber dem Durchschnitt ("wie deutlich ist der Beat?")
     double atBeats = 0, overall = 0;

@@ -165,6 +165,10 @@ def evaluate(n, mixdir, rdir, pcmdir, cache):
     ref_lvl = max(np.median(before) if len(before) else -99, np.median(after) if len(after) else -99)
     res["bump_db"] = float(np.max(during) - ref_lvl) if len(during) else 0.0
     res["dip_db"] = float(np.min(during) - min(np.median(before) if len(before) else 0, np.median(after) if len(after) else 0)) if len(during) else 0.0
+    # "Loch" zwischen den Songs: Zeit, in der der Mix mehr als 20 dB unter dem leiseren der beiden Songs liegt
+    body = min(np.median(before) if len(before) else -99, np.median(after) if len(after) else -99)
+    win = st[max(0, int(t0 / FR) - 30):min(nfr, int(t1 / FR) + 20)]
+    res["gap_sec"] = float(np.sum(win < body - 20) * FR)
 
     # ---- Beat-Versatz (nur Beatmatching) ----
     if res["match"]:
@@ -245,7 +249,7 @@ def main():
         bm = f"{r['beat_mean_ms']:5.1f} ms" if "beat_mean_ms" in r else "   -    "
         sv = f"{r['start_vs_vocal']:+6.1f}" if r.get("start_vs_vocal") is not None else "     -"
         print(f"{n:03d} {r['a']}→{r['b']} {r['type']:10s} Beat {bm}  Gesang-über-Gesang {r.get('clash_sec', 0):4.1f} s  "
-              f"Einsatz−letzterGesang {sv} s  Buckel {r.get('bump_db', 0):+4.1f} dB  Spitze {r.get('peak', 0):.2f}"
+              f"Einsatz−letzterGesang {sv} s  Buckel {r.get('bump_db', 0):+4.1f} dB  Loch {r.get('gap_sec', 0):.1f} s  Spitze {r.get('peak', 0):.2f}"
               + (f"  FEHLER {r['error']}" if "error" in r else ""), flush=True)
     json.dump(rows, open(os.path.join(rdir, "eval.json"), "w"), indent=1)
     summary(rows, report)
@@ -289,6 +293,9 @@ def block(rows, title):
             L.append(f"  Übergänge mit Versatz > 30 ms: {bad}")
         lat = [r["lat_b_ms"] - r["lat_a_ms"] for r in m]
         L.append(f"  gemessene Verzögerung B gegen A (Engine): Mittel {np.mean(lat):+.1f} ms")
+    gaps = [r["gap_sec"] for r in ok]
+    L.append(f"Loch zwischen den Songs (Mix > 20 dB leiser): Median {np.median(gaps):.1f} s, max {max(gaps):.1f} s, "
+             f"Übergänge mit Loch ≥ 1 s: {sum(g >= 1.0 for g in gaps)}")
     bumps = [r for r in ok if r["bump_db"] > 3.0]
     L.append(f"Lautheits-Buckel > 3 dB: {len(bumps)}" + (f" → {[(r['n'], round(r['bump_db'], 1)) for r in bumps]}" if bumps else ""))
     L.append(f"Höchster Spitzenwert: {max(r['peak'] for r in ok):.2f} (Begrenzer bei 0,90)")

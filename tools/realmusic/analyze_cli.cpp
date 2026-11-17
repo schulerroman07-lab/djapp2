@@ -35,6 +35,7 @@ int main(int argc, char** argv) {
         else if (k == "dbLow") t.dbLow = v; else if (k == "dbNov") t.dbNov = v; else if (k == "dbLow3") t.dbLow3 = v;
         else if (k == "netBias") t.netBias = v; else if (k == "netAct") t.netAct = v;
         else if (k == "netInlier") t.netInlier = v; else if (k == "netClarity") t.netClarity = v;
+        else if (k == "netEvident") t.netEvident = v;
         else { fprintf(stderr, "unbekannt: %s\n", k.c_str()); return 2; }
     }
     FILE* f = std::string(argv[1]) == "-" ? stdin : fopen(argv[1], "rb");   // "-" = von der Standardeingabe
@@ -61,15 +62,19 @@ int main(int argc, char** argv) {
     long pi = (long)peaks.size() - 1;
     while (pi > 0 && peaks[pi] < 0.02f) pi--;
     const double soundEnd = peaks.empty() ? duration : std::min(duration, (pi + 1) / 100.0 + 0.1);
+    // erster hörbarer Ton wie StructureAnalyzer.soundStart
+    size_t si = 0;
+    while (si < peaks.size() && peaks[si] < 0.02f) si++;
+    const double soundStart = (si == 0 || si >= peaks.size()) ? 0.0 : std::max(0.0, si / 100.0 - 0.05);
     float keyConf = 0;
     const int musicalKey = key.result(&keyConf);
     if (f != stdin) fclose(f);
     Analysis r = an.result();
     printf("{\"inlier\":%.3f,\"salience\":%.3f,\"clarity\":%.3f,\"netAct\":%.3f,", r.inlierFrac, r.salience, r.clarity, r.netAct);
     printf("\"bpm\":%.3f,\"confidence\":%.3f,\"steady\":%s,\"downbeat\":%d,\"downbeatConf\":%.3f,\"energy\":%.3f,"
-           "\"duration\":%.3f,\"soundEnd\":%.3f,\"key\":%d,\"keyConf\":%.3f,\"loudness\":%.2f,\"beats\":[",
+           "\"duration\":%.3f,\"soundEnd\":%.3f,\"soundStart\":%.3f,\"key\":%d,\"keyConf\":%.3f,\"loudness\":%.2f,\"beats\":[",
            r.bpm, r.confidence, r.steady ? "true" : "false", r.downbeat, r.downbeatConf, r.energy,
-           duration, soundEnd, musicalKey, keyConf, loud.resultDb());
+           duration, soundEnd, soundStart, musicalKey, keyConf, loud.resultDb());
     for (size_t i = 0; i < r.beats.size(); i++) printf(i ? ",%.4f" : "%.4f", r.beats[i]);
     printf("],\"vocal\":[");
     for (size_t i = 0; i < r.vocal.size(); i++) printf(i ? ",%d" : "%d", r.vocal[i]);

@@ -32,6 +32,7 @@ data class TrackStructure(
     val vocalSegments: List<ClosedFloatingPointRange<Double>> = emptyList(),
     val vocalKnown: Boolean = false,  // true = Gesang aus der genauen Erkennung (sonst grob pro Takt)
     val soundEnd: Double = duration,  // ab hier nur noch Stille
+    val soundStart: Double = 0.0,     // erster hörbarer Ton (Stille am Dateianfang überspringen)
     val fadeOutStart: Double = -1.0,  // Beginn des Ausblendens (-1 = kein Fade-out)
     val family: GenreFamily? = null,  // Genre-Familie (aus dem ID3-Tag bzw. geschätzt)
 ) {
@@ -156,9 +157,9 @@ object StructureAnalyzer {
         val raw = vocalSegments(d.vocal)
         val tail = if (family == GenreFamily.HOUSE || family == GenreFamily.TECHNO) VOCAL_TAIL_ELECTRONIC else VOCAL_TAIL_SONG
         val lastSeg = raw.lastOrNull()
-        // Gesang kurz vor dem Ende: gilt bis zum hörbaren Ende (der neue Song beginnt dann genau dort)
-        val segs = if (lastSeg != null && soundEnd - lastSeg.endInclusive < tail && soundEnd - TransitionPlanner.VOCAL_MARGIN > lastSeg.endInclusive)
-            raw.dropLast(1) + listOf(lastSeg.start..(soundEnd - TransitionPlanner.VOCAL_MARGIN))
+        // Gesang kurz vor dem Ende: gilt bis zum hörbaren Ende (der neue Song beginnt danach, mit dem üblichen Abstand)
+        val segs = if (lastSeg != null && soundEnd - lastSeg.endInclusive < tail && soundEnd > lastSeg.endInclusive)
+            raw.dropLast(1) + listOf(lastSeg.start..soundEnd)
         else raw
         val bars = base.bars.map { bar ->
             val a = base.barTime(bar.index)
@@ -275,6 +276,12 @@ object StructureAnalyzer {
         var i = peaks.size - 1
         while (i > 0 && peaks[i] < 0.02f) i--
         return min(duration, (i + 1) / 100.0 + 0.1)
+    }
+
+    /** Erster hörbarer Ton (Sekunden, 100 Spitzenwerte pro Sekunde): Stille am Dateianfang zählt nicht. */
+    fun soundStart(peaks: FloatArray): Double {
+        val i = peaks.indexOfFirst { it >= 0.02f }
+        return if (i <= 0) 0.0 else max(0.0, i / 100.0 - 0.05)
     }
 
     private fun quantile(a: FloatArray, q: Float): Float {

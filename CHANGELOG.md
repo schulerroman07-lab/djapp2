@@ -65,6 +65,24 @@
   bei 2 von 52 Songs** (je ca. 1 s; vorher 14). Die 0,5 s Sicherheitsabstand des Planers kommen dazu.
 - Das alte Verfahren (92 Merkmale) ist entfernt.
 
+### Beat-Erkennung neu (Beat-Netz)
+- Ein zweites kleines Netz hört aus dem Klangspektrum, **wo Beats und wo die "1" (Downbeat) liegen**
+  (gerechnet in der App, ca. 1 s pro Song). Tempo, Beat-Raster, Phase und Downbeat werden daraus bestimmt.
+  Gelernt nur an den Übungs-Songs (Beat This!/madmom als Vorlage).
+- Das gefährlichste alte Problem – Raster sicher "zwischen" den Beats (Gegentakt) – ist damit behoben.
+- Festes Tempo: nur Beats, die das Netz deutlich hört, zählen (Breaks ohne Schlagzeug widerlegen das feste
+  Tempo nicht mehr).
+- **Messung an den 56 Test-Songs** (±30 ms): Beats **85,6 %** (vorher 80,1 %), Downbeats **63,1 %**
+  (vorher 54,2 %). Nur Songs mit sicherer Referenz: Beats 88,9 %, Downbeats 72,6 %. Ziel 90 % / 80 % ist
+  **nicht ganz erreicht** (siehe Bericht `tools/realmusic/BERICHT.md`).
+- Die App nutzt die neue Analyse beim Laden jedes Titels (Deck) für den Auto-DJ; "Weiter"/"Zurück",
+  Bibliothek und Tempo-Anzeige bleiben unverändert.
+
+### Planer: Feinschliff mit echter Musik
+- Ist A schon zu Ende (Gesang bis zum Schluss), kommt B **sofort** (0,4 s eingeblendet) statt nach einem
+  Takt Wartezeit – kein Loch. Schnitt auf die "1" nur, solange A noch klingt.
+- **Stille am Dateianfang von B wird übersprungen** (bei 19 von 56 Test-Songs über 0,3 s, bis 2,8 s).
+
 ### Objektive Prüfung am PC (Werkzeuge)
 - `RealMixPlanTest` plant mit den echten Test-Songs ganze Partys (zwei Reihenfolgen, über 100 Übergänge,
   dazu Früh-Übergänge als eigene Variante) und schreibt pro Übergang eine Abspiel-Datei.

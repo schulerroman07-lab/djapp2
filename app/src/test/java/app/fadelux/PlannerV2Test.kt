@@ -64,7 +64,7 @@ class PlannerV2Test {
     fun vocalNearTheEnd_countsUntilTheEnd() {
         // Erkennung verpasst leise Reste am Schluss: Gesang < 30 s vor dem Ende gilt bis zum Ende (Pop) …
         val pop = song(vocal = listOf(20.0..170.0))                          // Ende ca. 186 s
-        assertEquals(pop.soundEnd - TransitionPlanner.VOCAL_MARGIN, pop.lastVocalEnd, 0.01)
+        assertEquals(pop.soundEnd, pop.lastVocalEnd, 0.01)
         // … bei Techno/House nur < 12 s: das lange Outro bleibt für den Blend
         val techno = song(vocal = listOf(20.0..170.0), family = GenreFamily.TECHNO)
         assertEquals(170.0, techno.lastVocalEnd, 0.3)
@@ -90,7 +90,7 @@ class PlannerV2Test {
         val b = song(bpm = 126f, vocal = listOf(20.0..100.0))
         val p = TransitionPlanner.plan(a, 30.0, 1f, b, pop)
         assertTrue("Start ${p.mixSec} am hörbaren Ende (${a.soundEnd})", p.mixSec >= a.soundEnd - 2 * a.barSec - 1e-6)
-        assertFalse("A singt nach dem Start nicht mehr", a.vocalBetween(p.mixSec, a.soundEnd - TransitionPlanner.VOCAL_MARGIN))
+        assertFalse("A singt nach dem Start nicht mehr", a.vocalBetween(p.mixSec, a.soundEnd))
     }
 
     @Test

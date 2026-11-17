@@ -427,7 +427,8 @@ class AutoMix(
         val data = d.analysisData()
         val s = (data?.let { StructureAnalyzer.analyze(it, soundEnd, Genres.family(fresh)) }
             ?: StructureAnalyzer.analyze(d.bpm, d.firstBeat, d.features(), d.duration, soundEnd))
-            ?.copy(trackEnergy = fresh.energy ?: -1f, musicalKey = fresh.musicalKey ?: -1, family = Genres.family(fresh))
+            ?.copy(trackEnergy = fresh.energy ?: -1f, musicalKey = fresh.musicalKey ?: -1, family = Genres.family(fresh),
+                soundStart = StructureAnalyzer.soundStart(d.peaks))
         if (structureCache.size > 50) structureCache.clear()
         structureCache[t.id] = s
         return s
