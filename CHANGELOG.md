@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.1 – Übergänge mit echter Musik, Drag-Fehler (in Arbeit)
+## 2.1 – Übergänge mit echter Musik, Drag-Fehler
 
 ### Drag-Fehler in "Als Nächstes" behoben
 - **Fehler:** Beim Ziehen eines Songs nach OBEN blieb er stecken, sobald die Liste mitscrollen musste.
@@ -90,6 +90,18 @@
   Filter, Echo, Crossfader-Kurve, Begrenzer, sample-genauer Start) – je einmal als Mix, nur A, nur B.
 - `eval_mix.py` misst gegen die Referenzen: Beat-Versatz (inkl. Verzögerung der Engine), hörbarer Gesang
   über Gesang, Einsatz gegen das Ende des letzten Gesangs, Pegel-Spitzen und Lautheits-Buckel.
+
+### Ergebnis der objektiven Prüfung (110 Übergänge, echte Engine, 56 Test-Songs)
+Ausführlich: `tools/realmusic/BERICHT.md`.
+- **Gesang über Gesang:** 0 von 110 (0 %). Gesang von A nach dem Einsatz von B: nie hörbar.
+- **Einsatz vor dem Ende des letzten Gesangs:** 2 von 102 (beide derselbe Song, 0,6 s, Nachhall).
+- **Beatmatching:** 4 Übergänge, mittlerer Beat-Versatz 19,5 ms (einer mit 59 ms).
+- **Pegel:** höchstens 0,79 (nie übersteuert), Lautheits-Buckel höchstens +3,8 dB.
+- **Beats/Downbeats** (Analyse): 85,6 % / 63,1 % – Ziel 90 % / 80 % nicht erreicht.
+- **Früh-Übergänge:** mit echter Musik 0 Angebote (Bedingungen nie sicher genug erfüllt).
+- **Folge der strengen Gesangs-Regel:** 105 von 110 Übergängen sind kurze Fades ganz am Ende. Viele Songs
+  singen bis kurz vor Schluss; dazwischen klingt der alte Song natürlich aus (Median 0,7 s). Vorschläge im
+  Bericht (Vocal-Samples bei Techno/House erlauben, im Ausklang mischen).
 
 ## 2.0 – Umbau zum Auto-DJ
 
