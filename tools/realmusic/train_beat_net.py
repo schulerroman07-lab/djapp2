@@ -23,6 +23,8 @@ import train_vocal_net as V            # gleicher Mel-Eingang (analyze_cli --mel
 
 RATE, HOP, MELBLOCK, NFFT, NMEL = 44100, 256, 4, 1024, 40
 C1, C2, CH, DIL, K = 8, 8, 32, (1, 2, 4, 8, 16, 32), 5
+AUGMENT = "--no-augment" not in sys.argv     # Tempo-Vielfalt beim Lernen
+ALL_REFS = "--all-refs" in sys.argv           # auch Songs lernen, bei denen sich die zwei Referenzen bei den Beats uneins sind
 
 
 def frame_times(n):
@@ -80,9 +82,12 @@ def load(cli, audio_dir, cache_dir, listfile="songs_dev.json", ref_dir=None):
         ref = R.load(s["id"], ref_dir)
         x = V.mel_input(cli, mp3, os.path.join(cache_dir, s["id"] + ".mel"))[:, :NMEL]
         n = len(x)
+        ft = frame_times(n)
         data.append(dict(id=s["id"], genre=s.get("genre", ""), x=x, ref=ref,
                          yb=targets(ref["beats"], n), yd=targets(ref["downbeats"], n),
-                         use_b=R.reliable(ref), use_d=R.reliable_downbeats(ref)))
+                         fb=(np.asarray(ref["beats"]) - ft[0]) / (ft[1] - ft[0]),
+                         fd=(np.asarray(ref["downbeats"]) - ft[0]) / (ft[1] - ft[0]),
+                         use_b=R.reliable(ref) or ALL_REFS, use_d=R.reliable_downbeats(ref)))
     return data
 
 
@@ -106,13 +111,24 @@ def train(tr, epochs, seed=0, log=None):
         for s in tr:
             n = len(s["x"])
             for _ in range(3):
-                a = int(rng.integers(0, max(1, n - L)))
-                x = s["x"][a:a + L].copy()
-                yb, yd = s["yb"][a:a + L], s["yd"][a:a + L]
-                if len(x) < L:
-                    pad = L - len(x)
-                    x = np.pad(x, ((0, pad), (0, 0))); yb = np.pad(yb, (0, pad)); yd = np.pad(yd, (0, pad))
-                x += rng.normal(0, 3)       # Lautstärke
+                # Tempo-Vielfalt: Ausschnitt zufällig 15 % schneller/langsamer (Mel-Rahmen umgerechnet)
+                st = float(np.exp(rng.uniform(np.log(0.85), np.log(1.15)))) if AUGMENT else 1.0
+                span = L * st
+                a = float(rng.uniform(0, max(1.0, n - span)))
+                src = a + np.arange(L) * st
+                i0 = np.clip(np.floor(src).astype(int), 0, n - 1); i1 = np.clip(i0 + 1, 0, n - 1)
+                fr = (src - np.floor(src))[:, None]
+                x = s["x"][i0] * (1 - fr) + s["x"][i1] * fr
+                x[src >= n] = s["x"].min(0)                   # hinter dem Song-Ende: leise
+                yb, yd = np.zeros(L, np.float32), np.zeros(L, np.float32)
+                for pos, y in ((s["fb"], yb), (s["fd"], yd)):
+                    for p_ in (pos - a) / st:
+                        k = int(round(p_))
+                        if 0 <= k < L:
+                            y[k] = 1.0
+                            for j in (k - 1, k + 1):
+                                if 0 <= j < L: y[j] = max(y[j], 0.5)
+                x = (x + rng.normal(0, 3)).astype(np.float32)    # Lautstärke
                 crops.append((x, yb, yd, 1.0 if s["use_d"] else 0.0))
         order = rng.permutation(len(crops))
         for b in range(0, len(order), 8):
