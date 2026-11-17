@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <complex>
 #include <numeric>
 
 #include "VocalModel.h"
@@ -13,29 +12,49 @@ namespace {
 
 const double kPi = 3.14159265358979323846;
 
-// Radix-2-FFT (in place)
-void fft(std::vector<std::complex<float>>& a) {
-    const size_t n = a.size();
-    for (size_t i = 1, j = 0; i < n; i++) {
-        size_t bit = n >> 1;
-        for (; j & bit; bit >>= 1) j ^= bit;
-        j ^= bit;
-        if (i < j) std::swap(a[i], a[j]);
+// Radix-2-FFT (in place) mit vorberechneten Tabellen – getrennte Real-/Imaginärteile (schnell auf dem Handy)
+struct Fft {
+    int n = 0;
+    std::vector<int> rev;
+    std::vector<float> cs, sn;
+    void init(int size) {
+        n = size;
+        rev.resize(n);
+        for (int i = 0, j = 0; i < n; i++) {
+            rev[i] = j;
+            int bit = n >> 1;
+            for (; j & bit; bit >>= 1) j ^= bit;
+            j ^= bit;
+        }
+        cs.resize(n / 2);
+        sn.resize(n / 2);
+        for (int k = 0; k < n / 2; k++) {
+            cs[k] = (float)std::cos(-2 * kPi * k / n);
+            sn[k] = (float)std::sin(-2 * kPi * k / n);
+        }
     }
-    for (size_t len = 2; len <= n; len <<= 1) {
-        const double ang = -2 * kPi / len;
-        const std::complex<float> wl((float)std::cos(ang), (float)std::sin(ang));
-        for (size_t i = 0; i < n; i += len) {
-            std::complex<float> w(1, 0);
-            for (size_t k = 0; k < len / 2; k++) {
-                const std::complex<float> u = a[i + k], v = a[i + k + len / 2] * w;
-                a[i + k] = u + v;
-                a[i + k + len / 2] = u - v;
-                w *= wl;
+    // re/im: Eingabe in natürlicher Reihenfolge, Ausgabe = Spektrum
+    void run(float* re, float* im) const {
+        for (int i = 0; i < n; i++) {
+            const int j = rev[i];
+            if (i < j) { std::swap(re[i], re[j]); std::swap(im[i], im[j]); }
+        }
+        for (int len = 2; len <= n; len <<= 1) {
+            const int half = len >> 1, step = n / len;
+            for (int i = 0; i < n; i += len) {
+                for (int k = 0; k < half; k++) {
+                    const float wr = cs[k * step], wi = sn[k * step];
+                    const float xr = re[i + k + half] * wr - im[i + k + half] * wi;
+                    const float xi = re[i + k + half] * wi + im[i + k + half] * wr;
+                    re[i + k + half] = re[i + k] - xr;
+                    im[i + k + half] = im[i + k] - xi;
+                    re[i + k] += xr;
+                    im[i + k] += xi;
+                }
             }
         }
     }
-}
+};
 
 float quantile(std::vector<float> v, double q) {
     if (v.empty()) return 0;
@@ -108,22 +127,26 @@ void TrackAnalyzer::feed(const int16_t* stereo, size_t frames, int sampleRate) {
 }
 
 void TrackAnalyzer::frame() {
-    static thread_local std::vector<std::complex<float>> xm, xs;
-    xm.resize(kN);
-    xs.resize(kN);
+    // Mitte und Seite in EINER FFT: z = Mitte + i·Seite  →  M[k] = (Z[k] + conj(Z[N−k]))/2, S[k] = (Z[k] − conj(Z[N−k]))/(2i)
+    static const Fft fftTab = [] { Fft f; f.init(kN); return f; }();
+    static thread_local std::vector<float> re, im;
+    re.resize(kN);
+    im.resize(kN);
     for (int i = 0; i < kN; i++) {
-        size_t p = (ringPos_ + i) % kN;
-        xm[i] = mid_[p] * window_[i];
-        xs[i] = side_[p] * window_[i];
+        const size_t p = (ringPos_ + i) % kN;
+        re[i] = mid_[p] * window_[i];
+        im[i] = side_[p] * window_[i];
     }
-    fft(xm);
-    fft(xs);
+    fftTab.run(re.data(), im.data());
     const float norm = 1.f / (kN / 4.f);        // Sinus mit voller Amplitude → 1
     double bm[kBands] = {0}, bs[kBands] = {0};
     double all = 0, low = 0, midp = 0, high = 0;
     for (int k = 1; k <= kN / 2; k++) {
-        const float pm = std::norm(xm[k]) * norm * norm;
-        const float ps = std::norm(xs[k]) * norm * norm;
+        const float ar = re[k], ai = im[k], br = re[kN - k], bi = im[kN - k];
+        const float mr = 0.5f * (ar + br), mi = 0.5f * (ai - bi);
+        const float sr = 0.5f * (ai + bi), si = 0.5f * (br - ar);
+        const float pm = (mr * mr + mi * mi) * norm * norm;
+        const float ps = (sr * sr + si * si) * norm * norm;
         const double f = (double)k * rate_ / kN;
         all += pm;
         if (f < 150) low += pm;

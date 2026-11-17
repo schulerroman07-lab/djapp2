@@ -2,7 +2,7 @@
 """
 Lädt die Test-Songs aus songs.json (frei lizenzierte Musik: Free Music Archive, ccMixter, Jamendo).
 Die Audiodateien werden NICHT ins Projekt gelegt – nur Adresse, Lizenz und Referenz-Daten.
-Aufruf: python3 fetch.py <Zielordner> [--shard i/n] [--ids s01,s02]
+Aufruf: python3 fetch.py <Zielordner> [--list dev] [--shard i/n] [--ids s01,s02]
 """
 import json, os, subprocess, sys, time
 
@@ -11,7 +11,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def songs(argv):
-    all_songs = json.load(open(os.path.join(HERE, "songs.json"), encoding="utf-8"))
+    # --list dev: Übungs-Songs (zum Abstimmen/Trainieren), sonst die Test-Songs (für die Messung)
+    name = "songs_dev.json" if "--list" in argv and argv[argv.index("--list") + 1] == "dev" else "songs.json"
+    all_songs = json.load(open(os.path.join(HERE, name), encoding="utf-8"))
     if "--ids" in argv:
         ids = argv[argv.index("--ids") + 1].split(",")
         all_songs = [s for s in all_songs if s["id"] in ids]

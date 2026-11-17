@@ -1,22 +1,35 @@
 # Erzeugt Referenz-Daten (Beats, Downbeats, Gesang) für die echten Test-Songs in tools/realmusic/songs.json
-# mit bewährter Analyse-Software. Läuft nur, wenn sich die Songliste oder das Skript ändert (dauert ca. 1 h).
+# mit bewährter Analyse-Software. Läuft nur, wenn tools/realmusic/refs_request.txt geändert wird (dauert ca. 1–2 h).
 name: Referenzen (echte Musik)
 on:
   push:
     paths:
-      - 'tools/realmusic/songs.json'
-      - 'tools/realmusic/make_refs.py'
-      - 'tools/realmusic/fetch.py'
-      - '.github/workflows/music-refs.yml'
+      - 'tools/realmusic/refs_request.txt'
   workflow_dispatch:
 jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      list: ${{ steps.p.outputs.list }}
+      shards: ${{ steps.p.outputs.shards }}
+      n: ${{ steps.p.outputs.n }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: p
+        # refs_request.txt: "<liste> <anzahl-teile>", z.B. "test 7" oder "dev 12"
+        run: |
+          read LIST N < tools/realmusic/refs_request.txt
+          echo "list=$LIST" >> $GITHUB_OUTPUT
+          echo "n=$N" >> $GITHUB_OUTPUT
+          echo "shards=$(python3 -c "import json;print(json.dumps(list(range($N))))")" >> $GITHUB_OUTPUT
   refs:
+    needs: plan
     runs-on: ubuntu-24.04
     timeout-minutes: 300
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6]
+        shard: ${{ fromJson(needs.plan.outputs.shards) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -41,7 +54,7 @@ jobs:
       - name: Referenzen erzeugen
         run: |
           if [ -f final0.ckpt ] && [ $(stat -c %s final0.ckpt) -gt 1000000 ]; then export BEAT_THIS_CKPT=$PWD/final0.ckpt; fi
-          python3 tools/realmusic/make_refs.py audio refs_raw --shard ${{ matrix.shard }}/7
+          python3 tools/realmusic/make_refs.py audio refs_raw --list ${{ needs.plan.outputs.list }} --shard ${{ matrix.shard }}/${{ needs.plan.outputs.n }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

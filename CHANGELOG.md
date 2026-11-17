@@ -11,6 +11,22 @@
 - **Test (echte Berührungen im Emulator, 40 Songs):** letzter Song ganz nach oben, erster ganz nach unten.
   Mit dem alten Code schlägt der Test fehl ("Song 40 von Platz 40 → Platz 31", steckt fest) – der Fehler
   ist damit nachgestellt. Dazu Unit-Tests der Rechen-Regeln (beide Richtungen, ganze Liste simuliert).
+  **Ergebnis mit dem neuen Code: grün** – Song 40 → Platz 1 in 6,3 s, danach Platz 1 → Platz 40 in 4,3 s.
+
+### Testmaterial mit echter Musik
+- **56 Test-Songs** (frei lizenziert, Creative Commons; Free Music Archive, ccMixter, Jamendo):
+  Pop 14, Schlager 10, Rock 10, House 10, Techno 11, Hip-Hop 1 – rund 40 mit Gesang, keine DJ-Edits.
+  Liste mit Lizenz und Quelle: `tools/realmusic/songs.json`. Die Audiodateien liegen NICHT im Projekt.
+- Zusätzlich **102 Übungs-Songs** (andere Künstler) nur zum Abstimmen (`songs_dev.json`) – gemessen
+  wird ausschliesslich mit den 56 Test-Songs, damit nichts "auswendig gelernt" wird.
+- **Referenzen** für alle 56 Test-Songs, automatisch im CI mit anerkannter Forschungs-Software:
+  Beats/Downbeats mit **Beat This!** (CPJKU 2024) und zur Kontrolle **madmom**; Gesang über
+  Stimm-Trennung (**Demucs**). Gesang gilt als hörbar, wenn die Gesangsspur höchstens 15 dB leiser
+  ist als der Song an derselben Stelle. Daraus: Gesangsabschnitte, Ende des letzten Gesangs,
+  hörbares Songende, Fade-out (`tools/realmusic/refs/`, Regeln in `refs.py`).
+- Zuverlässigkeit der Referenz: Beide Beat-Programme stimmen bei 49 von 56 Songs überein (Beats),
+  bei 37 auch bei den Downbeats. Wo sie sich widersprechen, ist schon die Referenz unsicher – das wird
+  im Bericht getrennt ausgewiesen.
 
 ## 2.0 – Umbau zum Auto-DJ
 
