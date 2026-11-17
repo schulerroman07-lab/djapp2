@@ -10,6 +10,7 @@ find_package(oboe REQUIRED CONFIG)
 add_library(fadelux SHARED
         Decoder.cpp
         BpmAnalyzer.cpp
+        Analyzer.cpp
         Deck.cpp
         Engine.cpp
         jni_bridge.cpp)

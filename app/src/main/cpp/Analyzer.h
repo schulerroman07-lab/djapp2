@@ -18,6 +18,8 @@ struct Analysis {
     float energy = 0;           // 0..1 Lautheit/Intensität
     std::vector<uint8_t> features;   // pro Beat kFeat Bytes (siehe kFeat)
     std::vector<uint8_t> vocal;      // Gesangs-Wahrscheinlichkeit 0..255 pro 0,25 s
+    // Zwischenwerte des Vertrauens (zum Eichen an echter Musik, tools/realmusic)
+    float inlierFrac = 0, salience = 0, clarity = 0, netAct = 0;
 };
 
 /** Stellgrössen der Analyse (an echter Musik abgestimmt, siehe tools/realmusic). */
@@ -30,6 +32,8 @@ struct AnalyzerTuning {
     float latencySec = 0.f;       // gemessene Verzögerung der Onset-Kurve gegenüber dem hörbaren Einsatz
     float confBias = -6.f, confInlier = 5.f, confSalience = 0.8f, confClarity = 2.f;
     float dbLow = 1.f, dbNov = 1.f, dbLow3 = 0.3f;
+    // Vertrauen mit Beat-Netz: aus der Netz-Kurve an den Beats, Raster-Treue und Tempo-Eindeutigkeit
+    float netBias = -6.f, netAct = 8.f, netInlier = 3.f, netClarity = 1.f;
 };
 AnalyzerTuning& tuning();
 
@@ -40,10 +44,15 @@ public:
 
     void feed(const int16_t* stereo, size_t frames, int sampleRate);
     Analysis result() const;
+    /** Sind Beat- und Gesangs-Netz trainiert? Erst dann nutzt die App diese Analyse (sonst die bisherige). */
+    static bool netsReady();
 
     // --- für Entwicklungs-Werkzeuge (tools/realmusic) ---
     double frameRate() const { return fps_; }
     const std::vector<float>& onset() const { return ose_; }
+    /** Spektralfluss pro Rahmen in kGroups Frequenzgruppen (Bass, Tiefmitten, Mitten, Präsenz, Höhen). */
+    const std::vector<float>& groupFlux() const { return fluxG_; }
+    static constexpr int kGroups = 5;
     /** Merkmale für die Gesangserkennung pro Block (kVocalDim Werte je Block), Blocklänge vocalHop() s. */
     std::vector<float> vocalFeatures() const;
     /** Eingang des Gesangs-Klassifikators: alle 0,25 s je 2·kVocalDim Werte (Mittel + Streuung über ±0,75 s). */
@@ -53,6 +62,8 @@ public:
      *  Mitte relativ zum Song (kMel), dann Seite gegen Mitte (kMel). */
     std::vector<float> melInput() const;
     double melHop() const { return fps_ > 0 ? kMelBlock / fps_ : 0; }
+    /** Beat- und Downbeat-Kurve (0..1) des Beat-Netzes pro Mel-Rahmen; leer, solange kein Netz trainiert ist. */
+    void beatNet(std::vector<float>& beat, std::vector<float>& down) const;
     /** Gesangs-Wahrscheinlichkeit pro Ausgabe-Schritt des Netzes (8 Mel-Rahmen ≈ 0,19 s) + Zeiten (s). */
     std::vector<float> vocalNet(std::vector<float>* times) const;
     static constexpr int kBands = 20;       // Frequenzbänder (Mitte) – dieselben für die Seite
@@ -79,6 +90,7 @@ private:
     int lowBands_ = 0;
     // pro Rahmen
     std::vector<float> ose_, oseLow_;
+    std::vector<float> fluxG_;              // kGroups Werte pro Rahmen
     std::vector<float> pAll_, pLow_, pMid_, pHigh_;
     // pro Block: Bänder Mitte/Seite (log), für Gesang und Downbeats
     std::vector<float> blkMid_, blkSide_;

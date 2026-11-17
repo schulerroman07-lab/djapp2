@@ -41,6 +41,10 @@ void Deck::load(int fd, int64_t length, int engineRate) {
 
     playing_.store(false);
     state_.store(LoadState::Loading);
+    {
+        std::lock_guard<std::mutex> lk(peaksMutex_);
+        analysisCopy_ = Analysis();          // alte Analyse gilt nicht mehr
+    }
 
     loader_ = std::thread([this, fd, length, engineRate]() {
         auto t0 = std::chrono::steady_clock::now();
@@ -144,23 +148,55 @@ void Deck::load(int fd, int64_t length, int engineRate) {
         }
         double decodeSec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
 
+        // Analyse Version 2 (Beat-Netz, Vertrauen, Downbeat, Gesang) auf dem Original-Ton – mit 44,1 kHz wie beim
+        // Lernen der Netze (andere Abtastraten werden dafür umgerechnet)
+        Analysis an2;
+        if (TrackAnalyzer::netsReady()) {
+            TrackAnalyzer ta;
+            auto feedAll = [&](const std::vector<int16_t>& pcm, int rate) {
+                const size_t frames = pcm.size() / 2;
+                for (size_t f = 0; f < frames && !cancelLoad_.load(); f += 4096)
+                    ta.feed(&pcm[f * 2], std::min<size_t>(4096, frames - f), rate);
+            };
+            if (srcRate == 44100) {
+                feedAll(src, srcRate);
+            } else {
+                std::vector<int16_t> tmp;
+                resampleTo(src, src.size() / 2, srcRate, 44100, tmp);
+                feedAll(tmp, 44100);
+            }
+            if (cancelLoad_.load()) return;
+            an2 = ta.result();
+        }
+
         auto t = std::make_unique<TrackData>();
         t->rate = engineRate;
         resampleTo(src, src.size() / 2, srcRate, engineRate, t->pcm);
         std::vector<int16_t>().swap(src);   // Speicher sofort freigeben
         t->frames = t->pcm.size() / 2;
 
-        // BPM und ersten Beat erkennen
-        BpmAnalyzer an;
-        const size_t chunk = 4096;
-        for (size_t f = 0; f < t->frames; f += chunk) {
-            size_t n = std::min(chunk, t->frames - f);
-            an.feed(&t->pcm[f * 2], n, engineRate);
+        if (an2.bpm > 0) {
+            // BPM und Beat-Raster aus der neuen Analyse; Merkmale im bisherigen Format (4 Bytes pro Beat, ohne Gesang)
+            t->bpm = an2.bpm;
+            t->firstBeat = an2.firstBeat;
+            const size_t nb = an2.features.size() / TrackAnalyzer::kFeat;
+            t->features.resize(nb * 4);
+            for (size_t k = 0; k < nb; k++)
+                for (int b = 0; b < 4; b++) t->features[k * 4 + b] = an2.features[k * TrackAnalyzer::kFeat + b];
+        } else {
+            // zu kurz/kein Beat: bisherige Erkennung
+            BpmAnalyzer an;
+            const size_t chunk = 4096;
+            for (size_t f = 0; f < t->frames; f += chunk) {
+                size_t n = std::min(chunk, t->frames - f);
+                an.feed(&t->pcm[f * 2], n, engineRate);
+            }
+            BpmResult r = an.result();
+            t->bpm = r.bpm;
+            t->firstBeat = r.firstBeat;
+            t->features = an.beatFeatures(r.bpm, r.firstBeat);
         }
-        BpmResult r = an.result();
-        t->bpm = r.bpm;
-        t->firstBeat = r.firstBeat;
-        t->features = an.beatFeatures(r.bpm, r.firstBeat);
+        t->analysis = std::move(an2);
         loudness_.store(gatedLoudnessDb(t->pcm.data(), t->frames, engineRate));
 
         // Wellenform: 100 Spitzenwerte pro Sekunde
@@ -180,6 +216,7 @@ void Deck::load(int fd, int64_t length, int engineRate) {
             std::lock_guard<std::mutex> lk(peaksMutex_);
             peaks_ = t->peaks;
             featuresCopy_ = t->features;
+            analysisCopy_ = t->analysis;
         }
         if (!published) {
             loopOn_.store(false);
@@ -204,6 +241,11 @@ void Deck::setLoop(double startSec, double lengthSec, bool on) {
 std::vector<uint8_t> Deck::features() {
     std::lock_guard<std::mutex> lk(peaksMutex_);
     return featuresCopy_;
+}
+
+Analysis Deck::analysis() {
+    std::lock_guard<std::mutex> lk(peaksMutex_);
+    return analysisCopy_;
 }
 
 void Reverb::prepare(int rate) {

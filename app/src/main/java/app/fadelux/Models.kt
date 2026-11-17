@@ -169,6 +169,21 @@ class DeckModel(val index: Int) : app.fadelux.automix.transitions.MixDeck {
 
     /** Merkmale pro Beat des geladenen Titels (für die Struktur-Analyse). */
     fun features(): ByteArray = NativeEngine.getDeckFeatures(index)
+
+    /** Analyse Version 2 (Beat-Raster mit Vertrauen, Downbeat, Gesang) – null, solange der Titel lädt. */
+    fun analysisData(): app.fadelux.automix.AnalysisData? {
+        val r = NativeEngine.getDeckAnalysis(index)
+        if (r.size < 9 || r[0] != 2f || r[1] <= 0f) return null
+        val nf = r[7].toInt()
+        val nv = r[8].toInt()
+        if (r.size < 9 + nf + nv) return null
+        return app.fadelux.automix.AnalysisData(
+            bpm = r[1], firstBeat = r[2].toDouble(), downbeat = r[5].toInt(), confidence = r[3], steady = r[4] > 0.5f,
+            features = ByteArray(nf) { r[9 + it].toInt().toByte() },
+            vocal = ByteArray(nv) { r[9 + nf + it].toInt().toByte() },
+            duration = duration,
+        )
+    }
     fun toggleKeylock() { keylock = !keylock; NativeEngine.setKeylock(index, keylock) }
     /** Keylock einschalten (Tempo ändern ohne Tonhöhe) – für Auto-Mix. */
     fun applyGain(g: Float) { gain = g; NativeEngine.setGain(index, g) }

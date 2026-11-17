@@ -72,6 +72,8 @@ object NativeEngine {
     external fun isScheduled(): Boolean
     /** Merkmale pro Beat des geladenen Titels: je 4 Bytes (Energie, Bass, Mitten, Höhen). */
     external fun getDeckFeatures(deck: Int): ByteArray
+    /** Analyse Version 2 des geladenen Titels (Aufbau siehe jni_bridge.cpp), leer solange er lädt. */
+    external fun getDeckAnalysis(deck: Int): FloatArray
 
     /** Analyse einer Datei (blockiert!). Ergebnis: [BPM, erster Beat s, Energie 0..1, Anzahl Beats n, dann 4·n Merkmale 0..255] */
     external fun analyzeFile(fd: Int, length: Long): FloatArray

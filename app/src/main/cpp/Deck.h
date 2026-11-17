@@ -6,6 +6,7 @@
 #include <thread>
 #include <vector>
 
+#include "Analyzer.h"
 #include "BpmAnalyzer.h"
 #include "Dsp.h"
 
@@ -20,6 +21,7 @@ struct TrackData {
     float firstBeat = 0;  // Sekunden
     std::vector<float> peaks;  // Wellenform (Spitzenwerte, 0..1), ca. 100 pro Sekunde
     std::vector<uint8_t> features;  // pro Beat: Energie, Bass, Mitten, Höhen (für Auto-Mix)
+    Analysis analysis;              // Analyse Version 2 (Beat-Raster mit Vertrauen, Downbeat, Gesang)
 };
 
 /** Einfacher Hall (Freeverb-Prinzip): 4 Kammfilter + 2 Allpass pro Kanal. */
@@ -94,6 +96,8 @@ public:
     // Loop: Abschnitt [start, start+length) wiederholen (Sekunden). on=false beendet den Loop.
     void setLoop(double startSec, double lengthSec, bool on);
     std::vector<uint8_t> features();
+    /** Analyse Version 2 des geladenen Titels (leer, solange er lädt). */
+    Analysis analysis();
     double positionFrames() const { return pos_.load(); }
     double durationFrames() const { return (double)frames_.load(); }
 
@@ -159,6 +163,7 @@ private:
     Reverb reverb_;
     int reverbTail_ = 0;      // wie lange der Hall noch nachklingt (Frames)
     std::vector<uint8_t> featuresCopy_;
+    Analysis analysisCopy_;
 
     // DSP-Zustand (nur Audio-Thread)
     Biquad eqLow_, eqHigh_, filterLp_, filterHp_;

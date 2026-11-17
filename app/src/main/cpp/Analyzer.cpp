@@ -6,6 +6,7 @@
 
 #include "VocalModel.h"
 #include "VocalNet.h"
+#include "BeatNet.h"
 
 namespace dj {
 
@@ -74,6 +75,8 @@ inline float at(const std::vector<float>& v, double x) {
 }
 
 }  // namespace
+
+bool TrackAnalyzer::netsReady() { return bn::kReady && vn::kReady; }
 
 AnalyzerTuning& tuning() {
     static AnalyzerTuning t;
@@ -190,12 +193,16 @@ void TrackAnalyzer::frame() {
     sumLow_ += low;
     // Spektralfluss (nur Anstiege), in logarithmischer Lautstärke – gegen den Rahmen 2 Schritte zuvor
     float flux = 0, fluxLow = 0;
+    float fg[kGroups] = {0, 0, 0, 0, 0};
+    // Gruppen der 20 Bänder: 40–130 Hz, 130–320 Hz, 320–1070 Hz, 1,1–3,6 kHz, 3,6–16 kHz
+    static const int groupOf[kBands] = {0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4};
     for (int b = 0; b < kBands; b++) {
         const float lg = std::log(1.f + 200.f * (float)std::sqrt(bm[b]));
         const float d = lg - prev2Log_[b];
         if (d > 0) {
             flux += d;
             if (b < lowBands_) fluxLow += d;
+            fg[groupOf[b]] += d;
         }
         prev2Log_[b] = prevLog_[b];
         prevLog_[b] = lg;
@@ -204,6 +211,7 @@ void TrackAnalyzer::frame() {
     }
     ose_.push_back(flux);
     oseLow_.push_back(fluxLow);
+    for (int g = 0; g < kGroups; g++) fluxG_.push_back(fg[g]);
     pAll_.push_back((float)all);
     pLow_.push_back((float)low);
     pMid_.push_back((float)midp);
@@ -368,6 +376,86 @@ void convPool(const std::vector<float>& in, int cin, int F, int T, const float* 
 }
 }  // namespace
 
+namespace {
+// Faltung 3×3 (Rand mit Nullen) + ReLU + Max-Pooling nur über pf Bänder: in [cin][F][T] → out [cout][F/pf][T]
+void convPoolF(const std::vector<float>& in, int cin, int F, int T, const float* W, const float* B, int cout, int pf,
+               std::vector<float>& out) {
+    const int F2 = F / pf;
+    out.assign((size_t)cout * F2 * T, 0.f);              // nach ReLU ≥ 0: Start mit 0 passt fürs Maximum
+    std::vector<float> r(T);
+    for (int co = 0; co < cout; co++) {
+        for (int f = 0; f < F2 * pf; f++) {
+            std::fill(r.begin(), r.end(), B[co]);
+            for (int ci = 0; ci < cin; ci++) {
+                for (int df = 0; df < 3; df++) {
+                    const int ff = f + df - 1;
+                    if (ff < 0 || ff >= F) continue;
+                    const float* src = &in[((size_t)ci * F + ff) * T];
+                    const float* w = &W[(((size_t)co * cin + ci) * 3 + df) * 3];
+                    for (int t = 1; t < T; t++) r[t] += w[0] * src[t - 1];
+                    for (int t = 0; t < T; t++) r[t] += w[1] * src[t];
+                    for (int t = 0; t + 1 < T; t++) r[t] += w[2] * src[t + 1];
+                }
+            }
+            float* o = &out[((size_t)co * F2 + f / pf) * T];
+            for (int t = 0; t < T; t++) o[t] = std::max(o[t], r[t]);
+        }
+    }
+}
+
+// 1-D-Faltung mit Abstand (dilation), Rand mit Nullen: in [cin][T] → out [cout][T]
+void conv1d(const std::vector<float>& in, int cin, int T, const float* W, const float* B, int cout, int k, int dil,
+            std::vector<float>& out) {
+    out.assign((size_t)cout * T, 0.f);
+    for (int co = 0; co < cout; co++) {
+        float* o = &out[(size_t)co * T];
+        std::fill(o, o + T, B[co]);
+        for (int ci = 0; ci < cin; ci++) {
+            const float* src = &in[(size_t)ci * T];
+            for (int j = 0; j < k; j++) {
+                const int d = (j - k / 2) * dil;
+                const float w = W[((size_t)co * cin + ci) * k + j];
+                const int t0 = std::max(0, -d), t1 = std::min(T, T - d);
+                for (int t = t0; t < t1; t++) o[t] += w * src[t + d];
+            }
+        }
+    }
+}
+}  // namespace
+
+void TrackAnalyzer::beatNet(std::vector<float>& beat, std::vector<float>& down) const {
+    using namespace bn;
+    beat.clear();
+    down.clear();
+    const std::vector<float> mel = melInput();
+    const int T = (int)(mel.size() / (2 * kMel));
+    if (!kReady || T < 64) return;
+    std::vector<float> x((size_t)kF * T);
+    for (int m = 0; m < kF; m++) {
+        const float mu = kMean[m], is = 1.f / kStd[m];
+        float* o = &x[(size_t)m * T];
+        for (int t = 0; t < T; t++) o[t] = (mel[(size_t)t * 2 * kMel + m] - mu) * is;
+    }
+    std::vector<float> a, b;
+    convPoolF(x, 1, kF, T, W1, B1, kC1, 3, a);
+    convPoolF(a, kC1, kF / 3, T, W2, B2, kC2, 3, b);
+    const int fin = kC2 * (kF / 3 / 3);                   // Kanäle × verbliebene Bänder
+    std::vector<float> h, tmp;
+    conv1d(b, fin, T, Wi, Bi, kCh, 1, 1, h);
+    for (float& v : h) v = std::max(0.f, v);
+    for (int l = 0; l < kLayers; l++) {
+        conv1d(h, kCh, T, &Wt[(size_t)l * kCh * kCh * kK], &Bt[(size_t)l * kCh], kCh, kK, kDil[l], tmp);
+        for (size_t i = 0; i < h.size(); i++) h[i] += std::max(0.f, tmp[i]);
+    }
+    conv1d(h, kCh, T, Wo, Bo, 2, 1, 1, tmp);
+    beat.resize(T);
+    down.resize(T);
+    for (int t = 0; t < T; t++) {
+        beat[t] = 1.f / (1.f + std::exp(-tmp[t]));
+        down[t] = 1.f / (1.f + std::exp(-tmp[(size_t)T + t]));
+    }
+}
+
 std::vector<float> TrackAnalyzer::vocalNet(std::vector<float>* times) const {
     using namespace vn;
     const std::vector<float> mel = melInput();
@@ -469,9 +557,18 @@ Analysis TrackAnalyzer::result() const {
     }
     if (n < (size_t)(fps_ * 8)) return res;          // weniger als 8 s: zu kurz
 
-    // 1) Onset-Kurve: Fluss gesamt + Bass betont, lokalen Mittelwert abziehen, normieren
+    // 1) Onset-Kurve: mit Beat-Netz dessen Beat-Kurve (auf das feine Rahmen-Raster gelegt), sonst
+    //    Fluss gesamt + Bass betont; lokalen Mittelwert abziehen, normieren
+    std::vector<float> netBeat, netDown;
+    beatNet(netBeat, netDown);
+    const bool useNet = !netBeat.empty();
     std::vector<float> o(n);
-    for (size_t i = 0; i < n; i++) o[i] = ose_[i] + tuning().lowWeight * oseLow_[i];
+    if (useNet) {
+        // Mel-Rahmen m liegt bei Rahmen 4·m + 1,5 der Onset-Kurve
+        for (size_t i = 0; i < n; i++) o[i] = at(netBeat, std::max(0.0, ((double)i - 1.5) / kMelBlock));
+    } else {
+        for (size_t i = 0; i < n; i++) o[i] = ose_[i] + tuning().lowWeight * oseLow_[i];
+    }
     {
         const int w = (int)(fps_ * 0.5);
         std::vector<double> cum(n + 1, 0.0);
@@ -664,8 +761,24 @@ Analysis TrackAnalyzer::result() const {
     res.firstBeat = res.beats[0];
     // Vertrauen: aus Raster-Treue, Beat-Deutlichkeit und Tempo-Eindeutigkeit (an echter Musik geeicht)
     {
-        const double z = tuning().confBias + tuning().confInlier * inlierFrac + tuning().confSalience * std::min(6.0, salience) + tuning().confClarity * clarity;
+        double act = 0;                                   // Netz-Kurve an den Beats (0..1): "hier ist sicher ein Beat"
+        if (useNet) {
+            for (float b : res.beats) {
+                const double m = ((b - shift) * fps_ - 1.5) / kMelBlock;
+                double v = 0;
+                for (int k = -1; k <= 1; k++) v = std::max(v, (double)at(netBeat, std::max(0.0, m + k)));
+                act += v;
+            }
+            act /= res.beats.size();
+        }
+        const AnalyzerTuning& tu = tuning();
+        const double z = useNet ? tu.netBias + tu.netAct * act + tu.netInlier * inlierFrac + tu.netClarity * clarity
+                                : tu.confBias + tu.confInlier * inlierFrac + tu.confSalience * std::min(6.0, salience) + tu.confClarity * clarity;
         res.confidence = (float)(1.0 / (1.0 + std::exp(-z)));
+        res.inlierFrac = (float)inlierFrac;
+        res.salience = (float)salience;
+        res.clarity = (float)clarity;
+        res.netAct = (float)act;
     }
 
     // 5) Downbeat ("die 1"): Bass-Einsätze und Klangwechsel sprechen für den Taktanfang
@@ -710,6 +823,17 @@ Analysis TrackAnalyzer::result() const {
             // Bass auch auf der "3" (halber Takt)
             sc[(i + 2) % 4] += tuning().dbLow3 * lowAt[i] / mLow;
             cntp[i % 4]++;
+        }
+        if (useNet) {
+            // Beat-Netz: Downbeat-Kurve an den Beats jeder der 4 möglichen Lagen
+            for (int p = 0; p < 4; p++) { sc[p] = 0; cntp[p] = 0; }
+            for (size_t i = 0; i < res.beats.size(); i++) {
+                const double m = ((res.beats[i] - shift) * fps_ - 1.5) / kMelBlock;
+                double v = 0;
+                for (int k = -1; k <= 1; k++) v = std::max(v, (double)at(netDown, std::max(0.0, m + k)));
+                sc[i % 4] += v;
+                cntp[i % 4]++;
+            }
         }
         int best = 0;
         double b1 = -1e30, b2 = -1e30;

@@ -16,10 +16,14 @@ int main(int argc, char** argv) {
     if (argc < 2) { fprintf(stderr, "Aufruf: analyze_cli datei.pcm\n"); return 2; }
     const char* vfOut = nullptr;
     const char* melOut = nullptr;
+    const char* fluxOut = nullptr;
+    const char* netOut = nullptr;
     for (int i = 2; i < argc; i++) {
         std::string a = argv[i];
         if (a == "--vocal-features" && i + 1 < argc) { vfOut = argv[++i]; continue; }
         if (a == "--mel" && i + 1 < argc) { melOut = argv[++i]; continue; }
+        if (a == "--flux" && i + 1 < argc) { fluxOut = argv[++i]; continue; }
+        if (a == "--beatnet" && i + 1 < argc) { netOut = argv[++i]; continue; }
         size_t eq = a.find('=');
         if (eq == std::string::npos) continue;
         std::string k = a.substr(0, eq);
@@ -31,6 +35,8 @@ int main(int argc, char** argv) {
         else if (k == "confBias") t.confBias = v; else if (k == "confInlier") t.confInlier = v;
         else if (k == "confSalience") t.confSalience = v; else if (k == "confClarity") t.confClarity = v;
         else if (k == "dbLow") t.dbLow = v; else if (k == "dbNov") t.dbNov = v; else if (k == "dbLow3") t.dbLow3 = v;
+        else if (k == "netBias") t.netBias = v; else if (k == "netAct") t.netAct = v;
+        else if (k == "netInlier") t.netInlier = v; else if (k == "netClarity") t.netClarity = v;
         else { fprintf(stderr, "unbekannt: %s\n", k.c_str()); return 2; }
     }
     FILE* f = std::string(argv[1]) == "-" ? stdin : fopen(argv[1], "rb");   // "-" = von der Standardeingabe
@@ -61,7 +67,8 @@ int main(int argc, char** argv) {
     const int musicalKey = key.result(&keyConf);
     if (f != stdin) fclose(f);
     Analysis r = an.result();
-    printf("{\"bpm\":%.3f,\"confidence\":%.3f,\"steady\":%s,\"downbeat\":%d,\"downbeatConf\":%.3f,\"energy\":%.3f,"
+    printf("{\"inlier\":%.3f,\"salience\":%.3f,\"clarity\":%.3f,\"netAct\":%.3f,", r.inlierFrac, r.salience, r.clarity, r.netAct);
+    printf("\"bpm\":%.3f,\"confidence\":%.3f,\"steady\":%s,\"downbeat\":%d,\"downbeatConf\":%.3f,\"energy\":%.3f,"
            "\"duration\":%.3f,\"soundEnd\":%.3f,\"key\":%d,\"keyConf\":%.3f,\"loudness\":%.2f,\"beats\":[",
            r.bpm, r.confidence, r.steady ? "true" : "false", r.downbeat, r.downbeatConf, r.energy,
            duration, soundEnd, musicalKey, keyConf, loud.resultDb());
@@ -80,6 +87,32 @@ int main(int argc, char** argv) {
         fwrite(&hop, sizeof(double), 1, o);
         fwrite(&dim, sizeof(int), 1, o);
         fwrite(vi.data(), sizeof(float), vi.size(), o);
+        fclose(o);
+    }
+    if (netOut) {
+        // Beat-/Downbeat-Kurve des Beat-Netzes (pro Mel-Rahmen), zum Prüfen gegen das Training
+        std::vector<float> nb, nd;
+        an.beatNet(nb, nd);
+        FILE* o = fopen(netOut, "wb");
+        int len = (int)nb.size();
+        fwrite(&len, sizeof(int), 1, o);
+        fwrite(nb.data(), sizeof(float), nb.size(), o);
+        fwrite(nd.data(), sizeof(float), nd.size(), o);
+        fclose(o);
+    }
+    if (fluxOut) {
+        // Spektralfluss pro Rahmen (gesamt, Bass, 5 Gruppen) zum Abstimmen der Beat-Erkennung
+        FILE* o = fopen(fluxOut, "wb");
+        double fps = an.frameRate();
+        int dim = 1 + TrackAnalyzer::kGroups;
+        fwrite(&fps, sizeof(double), 1, o);
+        fwrite(&dim, sizeof(int), 1, o);
+        const auto& ose = an.onset();
+        const auto& g = an.groupFlux();
+        for (size_t i = 0; i < ose.size(); i++) {
+            fwrite(&ose[i], sizeof(float), 1, o);
+            fwrite(&g[i * TrackAnalyzer::kGroups], sizeof(float), TrackAnalyzer::kGroups, o);
+        }
         fclose(o);
     }
     if (melOut) {
