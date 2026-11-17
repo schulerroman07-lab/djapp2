@@ -12,6 +12,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import app.fadelux.audio.NativeEngine
 import app.fadelux.automix.AutoMix
+import app.fadelux.automix.Genres
+import app.fadelux.automix.TransitionLog
 import app.fadelux.automix.StructureAnalyzer
 import app.fadelux.automix.TrackStructure
 import app.fadelux.automix.TransitionType
@@ -84,7 +86,7 @@ class DjViewModel private constructor(private val app: Application) {
         load = { deck, t -> loadTrackNow(deck, t) },
         refresh = { t -> trackIndex[t.id] ?: t },
         cached = { t -> cachedStructure(t) },
-        transitionLog = app.fadelux.automix.TransitionLog(java.io.File(app.filesDir, "transitions.jsonl")),
+        transitionLog = TransitionLog(java.io.File(app.filesDir, "transitions.jsonl")),
     )
 
     /** Übergangs-Protokoll exportieren und die "Teilen"-Auswahl öffnen. Gibt die Anzahl Einträge zurück. */
@@ -107,7 +109,7 @@ class DjViewModel private constructor(private val app: Application) {
         if (bpm <= 0f || fresh.durationMs <= 0) return null
         val an = library.analysis(t.id) ?: return null
         return StructureAnalyzer.analyze(bpm, an.firstBeat, an.features, fresh.durationMs / 1000.0)
-            ?.copy(trackEnergy = fresh.energy ?: -1f, musicalKey = fresh.musicalKey ?: -1, family = app.fadelux.automix.Genres.family(fresh))
+            ?.copy(trackEnergy = fresh.energy ?: -1f, musicalKey = fresh.musicalKey ?: -1, family = Genres.family(fresh))
     }
 
     private var scanning = false
