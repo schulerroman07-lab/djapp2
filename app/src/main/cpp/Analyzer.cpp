@@ -743,7 +743,7 @@ Analysis TrackAnalyzer::result() const {
                 const double m = ((res.beats[i] - shift) * fps_ - 1.5) / kMelBlock;
                 double v = 0;
                 for (int k = -1; k <= 1; k++) v = std::max(v, (double)at(netDown, std::max(0.0, m + k)));
-                sc[i % 4] += v;
+                sc[i % 4] += v + tuning().netNov * novAt[i] / mNov;
                 cntp[i % 4]++;
             }
         }

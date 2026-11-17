@@ -35,6 +35,7 @@ struct AnalyzerTuning {
     // Vertrauen mit Beat-Netz: aus der Netz-Kurve an den Beats, Raster-Treue und Tempo-Eindeutigkeit
     float netBias = -6.f, netAct = 8.f, netInlier = 3.f, netClarity = 1.f;
     float netEvident = 0.5f;      // Netz-Kurve, ab der ein Beat für die Raster-Treue zählt (Breaks zählen nicht)
+    float netNov = 0.1f;          // Klangwechsel zusätzlich zur Downbeat-Kurve des Netzes (hilft bei Techno/House, wo jeder Beat gleich klingt)
 };
 AnalyzerTuning& tuning();
 

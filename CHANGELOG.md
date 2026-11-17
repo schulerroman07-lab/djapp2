@@ -72,9 +72,16 @@
 - Das gefährlichste alte Problem – Raster sicher "zwischen" den Beats (Gegentakt) – ist damit behoben.
 - Festes Tempo: nur Beats, die das Netz deutlich hört, zählen (Breaks ohne Schlagzeug widerlegen das feste
   Tempo nicht mehr).
-- **Messung an den 56 Test-Songs** (±30 ms): Beats **85,6 %** (vorher 80,1 %), Downbeats **63,1 %**
-  (vorher 54,2 %). Nur Songs mit sicherer Referenz: Beats 88,9 %, Downbeats 72,6 %. Ziel 90 % / 80 % ist
-  **nicht ganz erreicht** (siehe Bericht `tools/realmusic/BERICHT.md`).
+- **Beat-Netz v2:** beim Lernen jedes Übungsstück zusätzlich bis ±15 % schneller/langsamer (mehr
+  Tempo-Vielfalt).
+- **"Die 1" mit Klangwechsel:** Neue Instrumente setzen fast immer auf der "1" ein – dieses Zeichen zählt jetzt
+  leicht zur Downbeat-Kurve des Netzes dazu. Hilft vor allem bei Techno/House, wo jeder Beat gleich klingt
+  (an den zurückgehaltenen Übungs-Songs Downbeat 72 → 80 %, kein Song schlechter).
+- Geprüft und verworfen (an den Übungs-Songs nicht besser): zusätzliche Übungs-Songs mit unsicherer Referenz;
+  örtliche Feinkorrektur des Beat-Rasters.
+- **Messung an den 56 Test-Songs** (±30 ms): Beats **86,9 %** (Anfang 80,1 %), Downbeats **71,6 %**
+  (Anfang 54,2 %). Nur Songs mit sicherer Referenz: Beats **90,5 %**, Downbeats **80,8 %** – dort sind die
+  Ziele 90 % / 80 % erreicht, über alle Songs nicht (siehe Bericht `tools/realmusic/BERICHT.md`).
 - Die App nutzt die neue Analyse beim Laden jedes Titels (Deck) für den Auto-DJ; "Weiter"/"Zurück",
   Bibliothek und Tempo-Anzeige bleiben unverändert.
 
@@ -88,6 +95,7 @@
   dazu Früh-Übergänge als eigene Variante) und schreibt pro Übergang eine Abspiel-Datei.
 - `mixrender` spielt jeden Übergang mit der **echten Engine der App** ab (Decks, Keylock-Tempo, EQ,
   Filter, Echo, Crossfader-Kurve, Begrenzer, sample-genauer Start) – je einmal als Mix, nur A, nur B.
+- `tools/enginetest/run.sh` baut wieder (die neue Analyse-Datei fehlte beim Verlinken).
 - `eval_mix.py` misst gegen die Referenzen: Beat-Versatz (inkl. Verzögerung der Engine), hörbarer Gesang
   über Gesang, Einsatz gegen das Ende des letzten Gesangs, Pegel-Spitzen und Lautheits-Buckel.
 
@@ -95,9 +103,10 @@
 Ausführlich: `tools/realmusic/BERICHT.md`.
 - **Gesang über Gesang:** 0 von 110 (0 %). Gesang von A nach dem Einsatz von B: nie hörbar.
 - **Einsatz vor dem Ende des letzten Gesangs:** 2 von 102 (beide derselbe Song, 0,6 s, Nachhall).
-- **Beatmatching:** 4 Übergänge, mittlerer Beat-Versatz 19,5 ms (einer mit 59 ms).
-- **Pegel:** höchstens 0,79 (nie übersteuert), Lautheits-Buckel höchstens +3,8 dB.
-- **Beats/Downbeats** (Analyse): 85,6 % / 63,1 % – Ziel 90 % / 80 % nicht erreicht.
+- **Beatmatching:** 4 Übergänge, mittlerer Beat-Versatz 23,3 ms (6,5 / 9,6 / 17,0 / 60,1 ms; der Ausreisser:
+  s46 verschiebt sein Timing zwischen Intro und Hauptteil um ca. 40 ms).
+- **Pegel:** höchstens 0,79 (nie übersteuert), Lautheits-Buckel höchstens +4,0 dB.
+- **Beats/Downbeats** (Analyse): 86,9 % / 71,6 %; bei sicherer Referenz 90,5 % / 80,8 %.
 - **Früh-Übergänge:** mit echter Musik 0 Angebote (Bedingungen nie sicher genug erfüllt).
 - **Folge der strengen Gesangs-Regel:** 105 von 110 Übergängen sind kurze Fades ganz am Ende. Viele Songs
   singen bis kurz vor Schluss; dazwischen klingt der alte Song natürlich aus (Median 0,7 s). Vorschläge im

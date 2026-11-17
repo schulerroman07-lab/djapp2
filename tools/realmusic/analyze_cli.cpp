@@ -36,6 +36,7 @@ int main(int argc, char** argv) {
         else if (k == "netBias") t.netBias = v; else if (k == "netAct") t.netAct = v;
         else if (k == "netInlier") t.netInlier = v; else if (k == "netClarity") t.netClarity = v;
         else if (k == "netEvident") t.netEvident = v;
+        else if (k == "netNov") t.netNov = v;
         else { fprintf(stderr, "unbekannt: %s\n", k.c_str()); return 2; }
     }
     FILE* f = std::string(argv[1]) == "-" ? stdin : fopen(argv[1], "rb");   // "-" = von der Standardeingabe
