@@ -53,6 +53,18 @@
 - **Klang dezenter:** neue Arten FADE und BLEND (kurzer Blend im Takt); Echo, Filter und Hall deutlich
   schwächer; Effekte nur, wo nötig (elektronisch, Tempo zu weit auseinander) – nie nur zur Abwechslung.
 
+### Gesangserkennung neu (kleines neuronales Netz)
+- Statt einfacher Merkmale ein kleines **Faltungsnetz auf dem Klangspektrum** (Mel-Spektrum der Mitte relativ
+  zum Song + Stereo-Breite je Band), gerechnet direkt in der App (C++, ca. 0,3 s pro Song). Gelernt nur an
+  den 102 Übungs-Songs (Vorlage: Demucs-Gesangsspur), geprüft an den 56 Test-Songs.
+- Genauigkeit pro Zeitpunkt an den Test-Songs: **86 %** (vorher 70 %).
+- **Vorsichtige Regel fürs Ende:** Schwelle bewusst tief (lieber zu viel Gesang), und endet der erkannte Gesang
+  weniger als 30 s (Techno/House: 12 s) vor dem hörbaren Ende, gilt er bis zum Ende – der neue Song beginnt
+  dann genau dort, wo der alte aufhört. Regel an den Übungs-Songs bestimmt (jeder Song nur von einem Netz
+  beurteilt, das ihn nie gesehen hat). Ergebnis an den Test-Songs: letzter Gesang **> 0,5 s zu früh nur noch
+  bei 2 von 52 Songs** (je ca. 1 s; vorher 14). Die 0,5 s Sicherheitsabstand des Planers kommen dazu.
+- Das alte Verfahren (92 Merkmale) ist entfernt.
+
 ### Objektive Prüfung am PC (Werkzeuge)
 - `RealMixPlanTest` plant mit den echten Test-Songs ganze Partys (zwei Reihenfolgen, über 100 Übergänge,
   dazu Früh-Übergänge als eigene Variante) und schreibt pro Übergang eine Abspiel-Datei.

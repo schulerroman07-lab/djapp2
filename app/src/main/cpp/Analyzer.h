@@ -53,11 +53,6 @@ public:
     /** Spektralfluss pro Rahmen in kGroups Frequenzgruppen (Bass, Tiefmitten, Mitten, Präsenz, Höhen). */
     const std::vector<float>& groupFlux() const { return fluxG_; }
     static constexpr int kGroups = 5;
-    /** Merkmale für die Gesangserkennung pro Block (kVocalDim Werte je Block), Blocklänge vocalHop() s. */
-    std::vector<float> vocalFeatures() const;
-    /** Eingang des Gesangs-Klassifikators: alle 0,25 s je 2·kVocalDim Werte (Mittel + Streuung über ±0,75 s). */
-    std::vector<float> vocalInputs() const;
-    double vocalHop() const { return fps_ > 0 ? kBlock / fps_ : 0; }
     /** Eingang des Gesangs-Netzes: pro Mel-Rahmen (melHop() s) 2·kMel Werte in dB:
      *  Mitte relativ zum Song (kMel), dann Seite gegen Mitte (kMel). */
     std::vector<float> melInput() const;
@@ -68,7 +63,6 @@ public:
     std::vector<float> vocalNet(std::vector<float>* times) const;
     static constexpr int kBands = 20;       // Frequenzbänder (Mitte) – dieselben für die Seite
     static constexpr int kBlock = 8;        // Rahmen pro Block (ca. 46 ms)
-    static constexpr int kVocalDim = 46;    // Merkmale pro Block für den Gesangs-Klassifikator
     static constexpr int kMel = 40;         // Mel-Bänder (50 Hz – 10 kHz) für das Gesangs-Netz
     static constexpr int kMelBlock = 4;     // Rahmen pro Mel-Rahmen (ca. 23 ms)
 
@@ -92,9 +86,9 @@ private:
     std::vector<float> ose_, oseLow_;
     std::vector<float> fluxG_;              // kGroups Werte pro Rahmen
     std::vector<float> pAll_, pLow_, pMid_, pHigh_;
-    // pro Block: Bänder Mitte/Seite (log), für Gesang und Downbeats
-    std::vector<float> blkMid_, blkSide_;
-    std::vector<double> accMid_, accSide_;
+    // pro Block: Bänder der Mitte (log), für Downbeats
+    std::vector<float> blkMid_;
+    std::vector<double> accMid_;
     int accFrames_ = 0;
     // Mel-Spektrum (Mitte/Seite, dB) für das Gesangs-Netz: pro FFT-Bin zwei Filter mit Gewicht
     std::vector<int> melIdx_;               // unteres Filter je Bin (−1 = keins), das obere ist +1

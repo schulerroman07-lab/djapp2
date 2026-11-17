@@ -1,5 +1,5 @@
 // PC-Werkzeug: analysiert rohe PCM-Daten (s16le, stereo, 44100 Hz) genau wie die App und gibt das
-// Ergebnis als JSON aus. Aufruf: analyze_cli <datei.pcm> [--vocal-features out.bin] [--mel out.bin] [Stellgrösse=Wert ...]
+// Ergebnis als JSON aus. Aufruf: analyze_cli <datei.pcm> [--mel out.bin] [Stellgrösse=Wert ...]
 #include "Analyzer.h"
 #include "Dsp.h"
 #include "KeyAnalyzer.h"
@@ -14,13 +14,11 @@ using namespace dj;
 
 int main(int argc, char** argv) {
     if (argc < 2) { fprintf(stderr, "Aufruf: analyze_cli datei.pcm\n"); return 2; }
-    const char* vfOut = nullptr;
     const char* melOut = nullptr;
     const char* fluxOut = nullptr;
     const char* netOut = nullptr;
     for (int i = 2; i < argc; i++) {
         std::string a = argv[i];
-        if (a == "--vocal-features" && i + 1 < argc) { vfOut = argv[++i]; continue; }
         if (a == "--mel" && i + 1 < argc) { melOut = argv[++i]; continue; }
         if (a == "--flux" && i + 1 < argc) { fluxOut = argv[++i]; continue; }
         if (a == "--beatnet" && i + 1 < argc) { netOut = argv[++i]; continue; }
@@ -78,17 +76,6 @@ int main(int argc, char** argv) {
     printf("],\"features\":\"");
     for (uint8_t b : r.features) printf("%02x", b);
     printf("\"}\n");
-    if (vfOut) {
-        // Eingänge des Gesangs-Klassifikators (alle 0,25 s), zum Trainieren in tools/realmusic/train_vocal.py
-        std::vector<float> vi = an.vocalInputs();
-        FILE* o = fopen(vfOut, "wb");
-        double hop = 0.25;
-        int dim = 2 * TrackAnalyzer::kVocalDim;
-        fwrite(&hop, sizeof(double), 1, o);
-        fwrite(&dim, sizeof(int), 1, o);
-        fwrite(vi.data(), sizeof(float), vi.size(), o);
-        fclose(o);
-    }
     if (netOut) {
         // Beat-/Downbeat-Kurve des Beat-Netzes (pro Mel-Rahmen), zum Prüfen gegen das Training
         std::vector<float> nb, nd;

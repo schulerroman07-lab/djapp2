@@ -52,24 +52,45 @@ class PlannerV2Test {
 
     @Test
     fun vocalSegments_fromProbability() {
-        val s = song(vocal = listOf(20.0..60.0, 60.6..90.0, 150.0..170.0))
+        val s = song(vocal = listOf(20.0..60.0, 60.6..90.0, 120.0..140.0))
         assertTrue(s.vocalKnown)
         assertEquals("kurze Lücke geschlossen", 2, s.vocalSegments.size)
-        assertEquals(170.0, s.lastVocalEnd, 0.3)
-        assertTrue(s.vocalBetween(165.0, 166.0))
-        assertFalse(s.vocalBetween(100.0, 140.0))
+        assertEquals(140.0, s.lastVocalEnd, 0.3)
+        assertTrue(s.vocalBetween(135.0, 136.0))
+        assertFalse(s.vocalBetween(95.0, 115.0))
+    }
+
+    @Test
+    fun vocalNearTheEnd_countsUntilTheEnd() {
+        // Erkennung verpasst leise Reste am Schluss: Gesang < 30 s vor dem Ende gilt bis zum Ende (Pop) …
+        val pop = song(vocal = listOf(20.0..170.0))                          // Ende ca. 186 s
+        assertEquals(pop.soundEnd - TransitionPlanner.VOCAL_MARGIN, pop.lastVocalEnd, 0.01)
+        // … bei Techno/House nur < 12 s: das lange Outro bleibt für den Blend
+        val techno = song(vocal = listOf(20.0..170.0), family = GenreFamily.TECHNO)
+        assertEquals(170.0, techno.lastVocalEnd, 0.3)
+        // weit vor dem Ende bleibt der Gesang, wie er ist
+        assertEquals(140.0, song(vocal = listOf(20.0..140.0)).lastVocalEnd, 0.3)
     }
 
     @Test
     fun pop_neverBeforeLastVocal_andLate() {
-        val a = song(vocal = listOf(10.0..120.0, 130.0..170.0))            // 96 Takte à 1,94 s = 186 s
+        val a = song(vocal = listOf(10.0..120.0, 130.0..150.0))            // 96 Takte à 1,94 s = 186 s
         val b = song(bpm = 126f, vocal = listOf(20.0..100.0))
         val p = TransitionPlanner.plan(a, 30.0, 1f, b, pop)
-        assertTrue("Start ${p.mixSec} nach dem letzten Gesang", p.mixSec >= 170.0 + TransitionPlanner.VOCAL_MARGIN - 1e-6)
+        assertTrue("Start ${p.mixSec} nach dem letzten Gesang", p.mixSec >= 150.0 + TransitionPlanner.VOCAL_MARGIN - 1e-6)
         assertTrue("Pop: einfacher Typ (${p.type})", p.type in setOf(TransitionType.BLEND, TransitionType.FADE, TransitionType.CUT))
         assertTrue("fertig vor dem Ende", endOf(p, a, b) <= a.soundEnd + 0.01)
         assertTrue("so spät wie möglich: in den letzten 20 s (${p.mixSec} von ${a.soundEnd})", a.soundEnd - p.mixSec <= 20.0)
         assertFalse("A singt nach dem Start nicht mehr", a.vocalBetween(p.mixSec, a.soundEnd))
+    }
+
+    @Test
+    fun pop_vocalCloseToTheEnd_newSongStartsWhereTheOldEnds() {
+        val a = song(vocal = listOf(10.0..120.0, 130.0..170.0))            // Gesang bis 16 s vor dem Ende
+        val b = song(bpm = 126f, vocal = listOf(20.0..100.0))
+        val p = TransitionPlanner.plan(a, 30.0, 1f, b, pop)
+        assertTrue("Start ${p.mixSec} am hörbaren Ende (${a.soundEnd})", p.mixSec >= a.soundEnd - 2 * a.barSec - 1e-6)
+        assertFalse("A singt nach dem Start nicht mehr", a.vocalBetween(p.mixSec, a.soundEnd - TransitionPlanner.VOCAL_MARGIN))
     }
 
     @Test

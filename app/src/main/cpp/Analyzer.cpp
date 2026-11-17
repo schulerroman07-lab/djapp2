@@ -4,7 +4,6 @@
 #include <cmath>
 #include <numeric>
 
-#include "VocalModel.h"
 #include "VocalNet.h"
 #include "BeatNet.h"
 
@@ -125,7 +124,6 @@ void TrackAnalyzer::setup(int sampleRate) {
     prevLog_.assign(kBands, 0.f);
     prev2Log_.assign(kBands, 0.f);
     accMid_.assign(kBands, 0.0);
-    accSide_.assign(kBands, 0.0);
     accFrames_ = 0;
 }
 
@@ -160,7 +158,7 @@ void TrackAnalyzer::frame() {
     }
     fftTab.run(re.data(), im.data());
     const float norm = 1.f / (kN / 4.f);        // Sinus mit voller Amplitude → 1
-    double bm[kBands] = {0}, bs[kBands] = {0};
+    double bm[kBands] = {0};
     double all = 0, low = 0, midp = 0, high = 0;
     for (int k = 1; k <= kN / 2; k++) {
         const float ar = re[k], ai = im[k], br = re[kN - k], bi = im[kN - k];
@@ -174,7 +172,7 @@ void TrackAnalyzer::frame() {
         else if (f >= 300 && f < 3000) midp += pm;
         else if (f >= 3000) high += pm;
         const int b = bandOf_[k];
-        if (b >= 0) { bm[b] += pm; bs[b] += ps; }
+        if (b >= 0) bm[b] += pm;
         const int j = melIdx_[k];
         if (j >= -1) {
             const float w = melW_[k];
@@ -207,7 +205,6 @@ void TrackAnalyzer::frame() {
         prev2Log_[b] = prevLog_[b];
         prevLog_[b] = lg;
         accMid_[b] += bm[b];
-        accSide_[b] += bs[b];
     }
     ose_.push_back(flux);
     oseLow_.push_back(fluxLow);
@@ -219,8 +216,7 @@ void TrackAnalyzer::frame() {
     if (++accFrames_ >= kBlock) {
         for (int b = 0; b < kBands; b++) {
             blkMid_.push_back((float)(10.0 * std::log10(accMid_[b] / kBlock + 1e-10)));
-            blkSide_.push_back((float)(10.0 * std::log10(accSide_[b] / kBlock + 1e-10)));
-            accMid_[b] = accSide_[b] = 0;
+            accMid_[b] = 0;
         }
         accFrames_ = 0;
     }
@@ -229,96 +225,6 @@ void TrackAnalyzer::frame() {
 // ---------------------------------------------------------------------------------------------
 // Gesang
 // ---------------------------------------------------------------------------------------------
-
-std::vector<float> TrackAnalyzer::vocalFeatures() const {
-    const size_t nb = blkMid_.size() / kBands;
-    std::vector<float> out(nb * kVocalDim, 0.f);
-    if (nb == 0) return out;
-    // Lautstärke-Bezug: lauteste Stellen des Songs
-    std::vector<float> tot(nb);
-    for (size_t i = 0; i < nb; i++) {
-        double p = 0;
-        for (int b = 0; b < kBands; b++) p += std::pow(10.0, blkMid_[i * kBands + b] / 10.0);
-        tot[i] = (float)(10.0 * std::log10(p + 1e-10));
-    }
-    const float ref = quantile(tot, 0.95);
-    // Bänder des Sprachbereichs (ca. 300–3400 Hz)
-    int v0 = 0, v1 = kBands;
-    for (int b = 0; b < kBands; b++) {
-        const double lo = 40.0 * std::pow(400.0, (double)b / kBands), hi = 40.0 * std::pow(400.0, (double)(b + 1) / kBands);
-        if (hi <= 300.0) v0 = b + 1;
-        if (lo < 3400.0) v1 = b + 1;
-    }
-    std::vector<float> vb(nb), vs(nb);
-    for (size_t i = 0; i < nb; i++) {
-        double pm = 0, ps = 0;
-        for (int b = v0; b < v1; b++) {
-            pm += std::pow(10.0, blkMid_[i * kBands + b] / 10.0);
-            ps += std::pow(10.0, blkSide_[i * kBands + b] / 10.0);
-        }
-        vb[i] = (float)(10.0 * std::log10(pm + 1e-10));
-        vs[i] = (float)(10.0 * std::log10(ps + 1e-10));
-    }
-    const int ctx = std::max(1, (int)std::lround(0.5 * fps_ / kBlock));   // ±0,5 s
-    for (size_t i = 0; i < nb; i++) {
-        float* o = &out[i * kVocalDim];
-        double mean = 0;
-        for (int b = 0; b < kBands; b++) mean += blkMid_[i * kBands + b];
-        mean /= kBands;
-        for (int b = 0; b < kBands; b++) {
-            const float m = blkMid_[i * kBands + b], s = blkSide_[i * kBands + b];
-            o[b] = (float)(m - mean) / 10.f;                                   // Klangfarbe (Form des Spektrums)
-            o[kBands + b] = std::max(-4.f, std::min(2.f, (s - m) / 10.f));     // Stereo-Breite pro Band
-        }
-        o[40] = std::max(-6.f, (tot[i] - ref) / 10.f);                         // Lautstärke relativ zum Song
-        o[41] = (vb[i] - tot[i]) / 10.f;                                       // Anteil des Sprachbereichs
-        o[42] = std::max(-4.f, std::min(2.f, (vs[i] - vb[i]) / 10.f));         // Sprachbereich: Seite gegen Mitte
-        // zeitliche Bewegung im Sprachbereich (Gesang schwankt, Flächen/Synths stehen)
-        const size_t a = i > (size_t)ctx ? i - ctx : 0, e = std::min(nb, i + ctx + 1);
-        double m1 = 0, m2 = 0, fl = 0;
-        for (size_t k = a; k < e; k++) {
-            m1 += vb[k];
-            m2 += (double)vb[k] * vb[k];
-            if (k > a) fl += std::fabs(vb[k] - vb[k - 1]);
-        }
-        const double cnt = (double)(e - a);
-        o[43] = (float)std::sqrt(std::max(0.0, m2 / cnt - (m1 / cnt) * (m1 / cnt))) / 10.f;
-        o[44] = (float)(fl / std::max(1.0, cnt - 1)) / 10.f;
-        double lowp = 0;
-        for (int b = 0; b < lowBands_; b++) lowp += std::pow(10.0, blkMid_[i * kBands + b] / 10.0);
-        o[45] = (float)(10.0 * std::log10(lowp + 1e-10) - tot[i]) / 10.f;      // Bass-Anteil
-    }
-    return out;
-}
-
-std::vector<float> TrackAnalyzer::vocalInputs() const {
-    // Klassifikator-Eingang: Mittelwert und Streuung der Block-Merkmale über ±0,75 s, alle 0,25 s
-    const std::vector<float> f = vocalFeatures();
-    const size_t nb = f.size() / kVocalDim;
-    std::vector<float> out;
-    if (nb == 0) return out;
-    const double hopS = vocalHop();
-    const int half = std::max(1, (int)std::lround(0.75 / hopS));
-    const double step = 0.25 / hopS;
-    for (double c = 0; c < (double)nb; c += step) {
-        const size_t ci = (size_t)c;
-        const size_t a = ci > (size_t)half ? ci - half : 0, e = std::min(nb, ci + half + 1);
-        const size_t base = out.size();
-        out.resize(base + 2 * kVocalDim);
-        for (int d = 0; d < kVocalDim; d++) {
-            double m1 = 0, m2 = 0;
-            for (size_t k = a; k < e; k++) {
-                const float v = f[k * kVocalDim + d];
-                m1 += v;
-                m2 += (double)v * v;
-            }
-            const double cnt = (double)(e - a);
-            out[base + d] = (float)(m1 / cnt);
-            out[base + kVocalDim + d] = (float)std::sqrt(std::max(0.0, m2 / cnt - (m1 / cnt) * (m1 / cnt)));
-        }
-    }
-    return out;
-}
 
 std::vector<float> TrackAnalyzer::melInput() const {
     const size_t nf = melMid_.size() / kMel;
@@ -525,11 +431,7 @@ std::vector<float> TrackAnalyzer::vocalProb() const {
         }
         return out;
     }
-    const std::vector<float> in = vocalInputs();
-    const size_t n = in.size() / (2 * kVocalDim);
-    std::vector<float> out(n);
-    for (size_t i = 0; i < n; i++) out[i] = vocalModelPredict(&in[i * 2 * kVocalDim]);
-    return out;
+    return {};                                            // ohne Netz: kein Gesang bekannt
 }
 
 // ---------------------------------------------------------------------------------------------

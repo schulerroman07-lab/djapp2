@@ -106,8 +106,18 @@ class AnalysisData(
 const val RELIABLE = 0.6f
 
 object StructureAnalyzer {
-    /** Schwelle der Gesangs-Wahrscheinlichkeit (an den Übungs-Songs bestimmt, siehe train_vocal.py). */
-    var vocalThreshold = 0.4f
+    /** Schwelle der Gesangs-Wahrscheinlichkeit (an den Übungs-Songs bestimmt, siehe train_vocal_net.py):
+     *  bewusst tief – lieber Gesang zu viel erkennen als zu wenig. */
+    var vocalThreshold = 0.2f
+
+    /**
+     * Fenster am Song-Ende: Endet der erkannte Gesang weniger als so viele Sekunden vor dem hörbaren Ende, gilt
+     * er bis zum Ende – die Erkennung verpasst leise Gesangsreste am Schluss (Ad-libs, Chor im Fade-out) oft.
+     * Pop/Schlager/Rock mischen ohnehin ganz am Ende (30 s); Techno/House behalten ihr langes Outro (12 s).
+     * An den 102 Übungs-Songs bestimmt: letzter Gesang > 0,5 s zu früh erkannt bei 8 statt 32 Songs.
+     */
+    const val VOCAL_TAIL_SONG = 30.0
+    const val VOCAL_TAIL_ELECTRONIC = 12.0
     const val VOCAL_HOP = 0.25
 
     /** Gesangs-Abschnitte aus der Wahrscheinlichkeit: Median über 1,25 s, Lücken < 1 s schliessen, Stücke < 0,5 s weg. */
@@ -143,7 +153,13 @@ object StructureAnalyzer {
         val f4 = ByteArray(n * 4)
         for (i in 0 until n) for (b in 0 until 4) f4[i * 4 + b] = d.features[i * nf + b]
         val base = analyzeFixedDownbeat(d.bpm, d.firstBeat.toFloat(), f4, d.duration, soundEnd, d.downbeat) ?: return null
-        val segs = vocalSegments(d.vocal)
+        val raw = vocalSegments(d.vocal)
+        val tail = if (family == GenreFamily.HOUSE || family == GenreFamily.TECHNO) VOCAL_TAIL_ELECTRONIC else VOCAL_TAIL_SONG
+        val lastSeg = raw.lastOrNull()
+        // Gesang kurz vor dem Ende: gilt bis zum hörbaren Ende (der neue Song beginnt dann genau dort)
+        val segs = if (lastSeg != null && soundEnd - lastSeg.endInclusive < tail && soundEnd - TransitionPlanner.VOCAL_MARGIN > lastSeg.endInclusive)
+            raw.dropLast(1) + listOf(lastSeg.start..(soundEnd - TransitionPlanner.VOCAL_MARGIN))
+        else raw
         val bars = base.bars.map { bar ->
             val a = base.barTime(bar.index)
             bar.copy(vocal = segs.any { it.start < a + base.barSec && it.endInclusive > a })
