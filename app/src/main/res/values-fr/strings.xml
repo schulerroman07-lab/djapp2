@@ -308,4 +308,6 @@ Touchez « Nouvelle playlist » – ou appui long sur un titre dans la biblioth�
     <string name="log_export_count">Exporter le journal (%1$d transitions, %2$d notées)</string>
     <string name="log_export_help">Enregistre chaque transition (paire de titres, type, valeurs d\'analyse, votre pouce haut/bas) dans un fichier à partager (p. ex. par e-mail) – pour améliorer les transitions.</string>
     <string name="log_export_empty">Aucune transition enregistrée – lancez d\'abord l\'Auto-DJ.</string>
+    <string name="tr_fade">Fondu</string>
+    <string name="tr_blend">Fondu court</string>
 </resources>

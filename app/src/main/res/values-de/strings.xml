@@ -308,4 +308,6 @@ Tippe auf „Neue Playlist“ – oder halte in der Bibliothek einen Song gedrü
     <string name="log_export_count">Protokoll exportieren (%1$d Übergänge, %2$d bewertet)</string>
     <string name="log_export_help">Speichert jeden Übergang mit Song-Paar, Typ, Analysewerten und deiner Daumen-Bewertung als Datei zum Teilen (z.B. per Mail) – damit lassen sich die Übergänge verbessern.</string>
     <string name="log_export_empty">Noch keine Übergänge aufgezeichnet – zuerst den Auto-DJ starten.</string>
+    <string name="tr_fade">Ausblenden</string>
+    <string name="tr_blend">Kurzer Blend</string>
 </resources>

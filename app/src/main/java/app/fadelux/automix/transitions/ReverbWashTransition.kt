@@ -12,8 +12,8 @@ class ReverbWashTransition : Transition(TransitionType.REVERB_WASH) {
     override val centerBeforeStart = true
 
     override fun pre(ctx: TransitionContext, p: Float) {
-        ctx.a.setReverb(0.15f + 0.75f * p)
-        ctx.a.changeFilter(-0.3f * p)
+        ctx.a.setReverb(0.1f + 0.4f * p)      // dezent
+        ctx.a.changeFilter(-0.2f * p)
     }
 
     override fun step(ctx: TransitionContext, p: Float) {

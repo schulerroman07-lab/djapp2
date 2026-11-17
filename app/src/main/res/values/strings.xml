@@ -322,4 +322,6 @@ Tap “New playlist” – or long-press a song in the library.</string>
     <string name="log_export_count">Export log (%1$d transitions, %2$d rated)</string>
     <string name="log_export_help">Saves every transition with song pair, type, analysis values and your thumbs up/down as a file you can share (e.g. by e-mail) – helps to improve the transitions.</string>
     <string name="log_export_empty">No transitions recorded yet – start the Auto-DJ first.</string>
+    <string name="tr_fade">Fade</string>
+    <string name="tr_blend">Short blend</string>
 </resources>

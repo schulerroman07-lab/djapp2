@@ -46,6 +46,8 @@ public:
     const std::vector<float>& onset() const { return ose_; }
     /** Merkmale für die Gesangserkennung pro Block (kVocalDim Werte je Block), Blocklänge vocalHop() s. */
     std::vector<float> vocalFeatures() const;
+    /** Eingang des Gesangs-Klassifikators: alle 0,25 s je 2·kVocalDim Werte (Mittel + Streuung über ±0,75 s). */
+    std::vector<float> vocalInputs() const;
     double vocalHop() const { return fps_ > 0 ? kBlock / fps_ : 0; }
     static constexpr int kBands = 20;       // Frequenzbänder (Mitte) – dieselben für die Seite
     static constexpr int kBlock = 8;        // Rahmen pro Block (ca. 46 ms)

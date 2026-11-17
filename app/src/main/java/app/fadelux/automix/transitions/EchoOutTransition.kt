@@ -13,11 +13,11 @@ class EchoOutTransition : Transition(TransitionType.ECHO_OUT) {
     override val centerBeforeStart = true
 
     override fun pre(ctx: TransitionContext, p: Float) {
-        ctx.a.setEcho(true, 0.35f + 0.45f * p, feedback = 0.65f)
+        ctx.a.setEcho(true, 0.15f + 0.25f * p, feedback = 0.4f)     // dezent: leiser, kürzer
     }
 
     override fun step(ctx: TransitionContext, p: Float) {
-        if (p > 0f) ctx.a.setEcho(false, 0.8f, feedback = 0.65f)   // nichts Neues mehr ins Echo, nur ausklingen
+        if (p > 0f) ctx.a.setEcho(false, 0.4f, feedback = 0.4f)    // nichts Neues mehr ins Echo, nur ausklingen
         ctx.crossfader(0.5f + 0.5f * ctx.ease(p))
     }
 }

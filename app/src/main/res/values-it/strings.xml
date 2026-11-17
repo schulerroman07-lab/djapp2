@@ -308,4 +308,6 @@ Tocca «Nuova playlist» – oppure tieni premuto un brano nella libreria.</stri
     <string name="log_export_count">Esporta registro (%1$d transizioni, %2$d valutate)</string>
     <string name="log_export_help">Salva ogni transizione (coppia di brani, tipo, valori d\'analisi, il tuo pollice su/giù) in un file da condividere (es. via e-mail) – aiuta a migliorare le transizioni.</string>
     <string name="log_export_empty">Nessuna transizione registrata – avvia prima l\'Auto-DJ.</string>
+    <string name="tr_fade">Dissolvenza</string>
+    <string name="tr_blend">Mix breve</string>
 </resources>

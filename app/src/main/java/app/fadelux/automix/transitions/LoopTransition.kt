@@ -22,7 +22,7 @@ class LoopTransition : Transition(TransitionType.LOOP) {
             ctx.a.setLoop(end - bars * ctx.aBarSec, bars * ctx.aBarSec, true)
             looping = true
         }
-        ctx.a.changeFilter(-0.6f * ctx.ease(ctx.span(p, 0.25f, 1f)))   // Loop wird langsam dumpfer
+        ctx.a.changeFilter(-0.35f * ctx.ease(ctx.span(p, 0.25f, 1f)))  // Loop wird etwas dumpfer
         ctx.crossfader(ctx.ease(p))
     }
 

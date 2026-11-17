@@ -1,21 +1,38 @@
 package app.fadelux.automix.transitions
 
-import app.fadelux.DeckModel
-import app.fadelux.MixerModel
 import app.fadelux.automix.TrackStructure
 import app.fadelux.automix.TransitionPlan
 import app.fadelux.automix.TransitionType
 
+/**
+ * Was ein Übergang an einem Deck verstellen darf. In der App ist das das echte Deck (DeckModel),
+ * im PC-Messwerkzeug ein Aufzeichner (so prüfen beide exakt dieselbe Übergangs-Logik).
+ * EQ: i = 0 Höhen, 1 Mitten, 2 Bass; -1 = ganz weg, 0 = neutral.
+ */
+interface MixDeck {
+    fun setEq(i: Int, v: Float)
+    fun changeFilter(v: Float)
+    fun setEcho(on: Boolean, amount: Float, feedback: Float = 0.55f)
+    fun setReverb(send: Float)
+    fun setLoop(startSec: Double, lengthSec: Double, on: Boolean)
+}
+
+/** Crossfader (-1 = Deck A, +1 = Deck B). */
+interface MixBus {
+    fun moveCrossfader(x: Float)
+}
+
 /** Alles, was ein Übergang braucht: die beiden Decks, das Mischpult und der Plan. */
 class TransitionContext(
-    val a: DeckModel,              // alter Song (läuft)
-    val b: DeckModel,              // neuer Song (kommt)
-    val mixer: MixerModel,
+    val a: MixDeck,                // alter Song (läuft)
+    val b: MixDeck,                // neuer Song (kommt)
+    val mixer: MixBus,
     val plan: TransitionPlan,
     val aStruct: TrackStructure?,
     val bStruct: TrackStructure?,
+    val aIsLeft: Boolean = true,   // liegt A auf der linken Crossfader-Seite (Deck 1)?
 ) {
-    val sideA = if (a.index == 0) -1f else 1f
+    val sideA = if (aIsLeft) -1f else 1f
     val sideB = -sideA
 
     /** Crossfader: 0 = ganz beim alten Song, 0.5 = Mitte (beide voll), 1 = ganz beim neuen. */
@@ -75,5 +92,7 @@ object Transitions {
         TransitionType.REVERB_WASH -> ReverbWashTransition()
         TransitionType.CUT -> CutTransition()
         TransitionType.LONG_BLEND -> LongBlendTransition()
+        TransitionType.FADE -> FadeTransition()
+        TransitionType.BLEND -> BlendTransition()
     }
 }

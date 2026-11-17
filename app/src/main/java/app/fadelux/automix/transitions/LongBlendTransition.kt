@@ -22,8 +22,8 @@ class LongBlendTransition : Transition(TransitionType.LONG_BLEND) {
         // Höhen von B öffnen sich in der ersten Hälfte, die von A schliessen sich in der zweiten
         ctx.b.setEq(HIGH, -0.35f * (1f - ctx.ease(ctx.span(p, 0f, 0.5f))))
         ctx.a.setEq(HIGH, -0.35f * ctx.ease(ctx.span(p, 0.5f, 1f)))
-        // Bass-Tausch auf dem Takt in der Mitte (1 Beat lang)
-        val swap = ctx.span(p, 0.5f, 0.5f + ctx.beatFraction)
+        // Bass-Tausch auf dem Takt in der Mitte (2 Beats lang)
+        val swap = ctx.ease(ctx.span(p, 0.5f, 0.5f + 2 * ctx.beatFraction))
         ctx.a.setEq(LOW, -swap)
         ctx.b.setEq(LOW, swap - 1f)
     }

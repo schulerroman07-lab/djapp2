@@ -28,9 +28,30 @@ data class TrackStructure(
     val musicalKey: Int = -1,       // Tonart (0..23, siehe [Keys]), -1 = unbekannt
     val confidence: Float = -1f,    // Vertrauen ins Beat-Raster 0..1 (-1 = unbekannt)
     val steady: Boolean = true,     // festes Tempo über den ganzen Song
+    /** Hörbarer Gesang als Abschnitte [Start, Ende] in Sekunden (genauer als pro Takt); leer = keiner/unbekannt. */
+    val vocalSegments: List<ClosedFloatingPointRange<Double>> = emptyList(),
+    val vocalKnown: Boolean = false,  // true = Gesang aus der genauen Erkennung (sonst grob pro Takt)
+    val soundEnd: Double = duration,  // ab hier nur noch Stille
+    val fadeOutStart: Double = -1.0,  // Beginn des Ausblendens (-1 = kein Fade-out)
+    val family: GenreFamily? = null,  // Genre-Familie (aus dem ID3-Tag bzw. geschätzt)
 ) {
-    /** Ende des letzten Takts mit Gesang (Sekunden), 0 = kein Gesang. */
-    val lastVocalEnd: Double get() = bars.indexOfLast { it.vocal }.let { if (it < 0) 0.0 else barTime(it + 1) }
+    /** Ende des letzten Gesangs (Sekunden), 0 = kein Gesang. */
+    val lastVocalEnd: Double get() =
+        if (vocalKnown) vocalSegments.lastOrNull()?.endInclusive ?: 0.0
+        else bars.indexOfLast { it.vocal }.let { if (it < 0) 0.0 else barTime(it + 1) }
+
+    /** Ist im Zeitraum [from, to) (Sekunden) Gesang hörbar? */
+    fun vocalBetween(from: Double, to: Double): Boolean =
+        if (vocalKnown) vocalSegments.any { it.start < to && it.endInclusive > from }
+        else vocalIn(barAt(from), kotlin.math.ceil((to - firstDownbeat) / barSec).toInt())
+
+    /** Beginn des ersten Gesangs ab [from] (Sekunden), oder null. */
+    fun nextVocalStart(from: Double): Double? =
+        if (vocalKnown) vocalSegments.firstOrNull { it.endInclusive > from }?.start?.coerceAtLeast(from)
+        else (barAt(from) until barCount).firstOrNull { bars[it].vocal }?.let { barTime(it) }
+
+    /** Beat-Raster zuverlässig genug, um Tempo und Takt anzugleichen? */
+    val beatReliable: Boolean get() = confidence < 0f || (confidence >= RELIABLE && steady)
 
     val beatSec: Double get() = 60.0 / bpm
     val barSec: Double get() = 4 * beatSec
@@ -66,7 +87,82 @@ data class TrackStructure(
     val avgEnergy: Float get() = if (bars.isEmpty()) 0f else bars.map { it.energy }.average().toFloat()
 }
 
+/**
+ * Ergebnis der Song-Analyse (Engine, Version 2): Beat-Raster mit Vertrauen, Merkmale pro Beat
+ * (5 Bytes: Energie, Bass, Mitten, Höhen, Gesang) und Gesangs-Wahrscheinlichkeit alle 0,25 s.
+ */
+class AnalysisData(
+    val bpm: Float,
+    val firstBeat: Double,
+    val downbeat: Int,              // Index (0..3) des ersten Downbeats
+    val confidence: Float,
+    val steady: Boolean,
+    val features: ByteArray,        // 5 Bytes pro Beat
+    val vocal: ByteArray,           // 0..255 pro 0,25 s
+    val duration: Double,
+)
+
+/** Schwelle fürs Beatmatching (an echter Musik bestimmt, siehe tools/realmusic). */
+const val RELIABLE = 0.6f
+
 object StructureAnalyzer {
+    /** Schwelle der Gesangs-Wahrscheinlichkeit (an den Übungs-Songs bestimmt, siehe train_vocal.py). */
+    var vocalThreshold = 0.4f
+    const val VOCAL_HOP = 0.25
+
+    /** Gesangs-Abschnitte aus der Wahrscheinlichkeit: Median über 1,25 s, Lücken < 1 s schliessen, Stücke < 0,5 s weg. */
+    fun vocalSegments(vocal: ByteArray, threshold: Float = vocalThreshold): List<ClosedFloatingPointRange<Double>> {
+        val n = vocal.size
+        if (n == 0) return emptyList()
+        val p = FloatArray(n) { (vocal[it].toInt() and 0xFF) / 255f }
+        val med = FloatArray(n) { i ->
+            val w = (max(0, i - 2)..min(n - 1, i + 2)).map { p[it] }.sorted()
+            w[w.size / 2]
+        }
+        val segs = mutableListOf<DoubleArray>()
+        var start = -1
+        for (i in 0..n) {
+            val on = i < n && med[i] >= threshold
+            if (on && start < 0) start = i
+            if (!on && start >= 0) { segs += doubleArrayOf(start * VOCAL_HOP, i * VOCAL_HOP); start = -1 }
+        }
+        val merged = mutableListOf<DoubleArray>()
+        for (s in segs) {
+            val last = merged.lastOrNull()
+            if (last != null && s[0] - last[1] < 1.0) last[1] = s[1] else merged += s
+        }
+        return merged.filter { it[1] - it[0] >= 0.5 }.map { it[0]..it[1] }
+    }
+
+    /** Struktur aus der Analyse Version 2 (Beat-Raster mit Vertrauen + genaue Gesangserkennung). */
+    fun analyze(d: AnalysisData, soundEnd: Double = d.duration, family: GenreFamily? = null): TrackStructure? {
+        val nf = 5
+        val n = d.features.size / nf
+        if (d.bpm <= 0f || n < 16) return null
+        // Merkmale ohne den Gesangs-Kanal in das alte 4-Byte-Format übernehmen
+        val f4 = ByteArray(n * 4)
+        for (i in 0 until n) for (b in 0 until 4) f4[i * 4 + b] = d.features[i * nf + b]
+        val base = analyzeFixedDownbeat(d.bpm, d.firstBeat.toFloat(), f4, d.duration, soundEnd, d.downbeat) ?: return null
+        val segs = vocalSegments(d.vocal)
+        val bars = base.bars.map { bar ->
+            val a = base.barTime(bar.index)
+            bar.copy(vocal = segs.any { it.start < a + base.barSec && it.endInclusive > a })
+        }
+        // Fade-out: ab wann wird der Song bis zum Ende nur noch leiser? (Energie pro Beat)
+        val beatSec = 60.0 / d.bpm
+        val e = FloatArray(n) { (d.features[it * nf].toInt() and 0xFF) / 255f }
+        val body = quantile(e.copyOfRange(n / 5, max(n / 5 + 1, n * 4 / 5)), 0.5f)
+        val endBeat = min(n - 1, ((soundEnd - d.firstBeat) / beatSec).toInt())
+        var lastFull = endBeat
+        while (lastFull > 0 && e[lastFull] < body * 0.75f) lastFull--
+        val fadeStart = d.firstBeat + (lastFull + 1) * beatSec
+        val fadeOut = if (soundEnd - fadeStart >= 4.0 && lastFull < endBeat) fadeStart else -1.0
+        return base.copy(
+            bars = bars, confidence = d.confidence, steady = d.steady, vocalSegments = segs, vocalKnown = true,
+            soundEnd = soundEnd, fadeOutStart = fadeOut, family = family,
+        )
+    }
+
     /**
      * Baut die Struktur aus den Merkmalen pro Beat (je 4 Bytes: Energie, Bass, Mitten, Höhen).
      * Gibt null zurück, wenn kein Tempo erkannt wurde.
@@ -75,14 +171,17 @@ object StructureAnalyzer {
      * @param soundEnd Zeit (Sekunden), ab der der Titel nur noch still ist (aus der Wellenform),
      *                 oder [duration], wenn unbekannt.
      */
-    fun analyze(bpm: Float, firstBeat: Float, features: ByteArray, duration: Double, soundEnd: Double = duration): TrackStructure? {
+    fun analyze(bpm: Float, firstBeat: Float, features: ByteArray, duration: Double, soundEnd: Double = duration): TrackStructure? =
+        analyzeFixedDownbeat(bpm, firstBeat, features, duration, soundEnd, -1)
+
+    private fun analyzeFixedDownbeat(bpm: Float, firstBeat: Float, features: ByteArray, duration: Double, soundEnd: Double, fixedDownbeat: Int): TrackStructure? {
         val n = features.size / 4
         if (bpm <= 0f || n < 16) return null
         fun f(i: Int, band: Int) = (features[i * 4 + band].toInt() and 0xFF) / 255f
         val beatSec = 60.0 / bpm
 
-        // 1) Downbeat: auf welchem der 4 Beats ist der Bass am stärksten? (Bassdrum auf der "1")
-        val offset = (0..3).maxBy { off ->
+        // 1) Downbeat: von der Analyse vorgegeben, sonst: auf welchem der 4 Beats ist der Bass am stärksten?
+        val offset = if (fixedDownbeat in 0..3) fixedDownbeat else (0..3).maxBy { off ->
             var s = 0.0
             var c = 0
             var i = off
@@ -145,7 +244,7 @@ object StructureAnalyzer {
         }
 
         val bars = (0 until barCount).map { BarInfo(it, e[it], b[it], vocalSmooth[it]) }
-        return TrackStructure(bpm, downbeat, duration, bars, introEnd, outroStart, breaks, endBar)
+        return TrackStructure(bpm, downbeat, duration, bars, introEnd, outroStart, breaks, endBar, soundEnd = soundEnd)
     }
 
     /** Energie pro Beat, unter der ein Takt als "still" gilt. */

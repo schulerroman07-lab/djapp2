@@ -251,7 +251,7 @@ std::vector<float> TrackAnalyzer::vocalFeatures() const {
     return out;
 }
 
-std::vector<float> TrackAnalyzer::vocalProb() const {
+std::vector<float> TrackAnalyzer::vocalInputs() const {
     // Klassifikator-Eingang: Mittelwert und Streuung der Block-Merkmale über ±0,75 s, alle 0,25 s
     const std::vector<float> f = vocalFeatures();
     const size_t nb = f.size() / kVocalDim;
@@ -260,10 +260,11 @@ std::vector<float> TrackAnalyzer::vocalProb() const {
     const double hopS = vocalHop();
     const int half = std::max(1, (int)std::lround(0.75 / hopS));
     const double step = 0.25 / hopS;
-    std::vector<float> in(2 * kVocalDim);
     for (double c = 0; c < (double)nb; c += step) {
         const size_t ci = (size_t)c;
         const size_t a = ci > (size_t)half ? ci - half : 0, e = std::min(nb, ci + half + 1);
+        const size_t base = out.size();
+        out.resize(base + 2 * kVocalDim);
         for (int d = 0; d < kVocalDim; d++) {
             double m1 = 0, m2 = 0;
             for (size_t k = a; k < e; k++) {
@@ -272,11 +273,18 @@ std::vector<float> TrackAnalyzer::vocalProb() const {
                 m2 += (double)v * v;
             }
             const double cnt = (double)(e - a);
-            in[d] = (float)(m1 / cnt);
-            in[kVocalDim + d] = (float)std::sqrt(std::max(0.0, m2 / cnt - (m1 / cnt) * (m1 / cnt)));
+            out[base + d] = (float)(m1 / cnt);
+            out[base + kVocalDim + d] = (float)std::sqrt(std::max(0.0, m2 / cnt - (m1 / cnt) * (m1 / cnt)));
         }
-        out.push_back(vocalModelPredict(in.data()));
     }
+    return out;
+}
+
+std::vector<float> TrackAnalyzer::vocalProb() const {
+    const std::vector<float> in = vocalInputs();
+    const size_t n = in.size() / (2 * kVocalDim);
+    std::vector<float> out(n);
+    for (size_t i = 0; i < n; i++) out[i] = vocalModelPredict(&in[i * 2 * kVocalDim]);
     return out;
 }
 

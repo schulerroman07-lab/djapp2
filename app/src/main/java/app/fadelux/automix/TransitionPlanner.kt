@@ -5,23 +5,53 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Wählt für jedes Song-Paar den passenden Übergang:
- *  - Tempo-Abstand: klein → Beats angleichen (Blends möglich); gross → Echo-Out, Schnitt oder Hall
- *  - Gesang: nie zwei Gesangsteile übereinander (sonst kürzer oder ohne Überlappung)
- *  - Intro/Outro-Länge, Energie-Verlauf und Stil (ruhig / ausgewogen / Club)
- *  - Abwechslung (Rotation): derselbe Typ nie direkt hintereinander, lange nicht benutzte Typen bevorzugt
- * Alles im Takt und an Phrasengrenzen (8/16/32 Takte).
+ * Wählt für jedes Song-Paar Zeitpunkt und Art des Übergangs (Version 2, an echter Musik geprüft):
+ *  - ZEITPUNKT: frühestens nach dem letzten Gesang von A ("Freigabe"), sonst so spät wie möglich und
+ *    fertig vor dem hörbaren Ende. Nie mitten in einer Gesangsphrase. Damit liegen nie zwei
+ *    Gesangsteile übereinander: A singt nach der Freigabe nicht mehr.
+ *  - BEATMATCHING nur, wenn beide Beat-Raster zuverlässig sind (Vertrauen ≥ 0,6, festes Tempo) und das
+ *    Tempo nah beieinander liegt – sonst ein kurzer, sauberer Fade ohne Tempo-Angleichung.
+ *  - GENRE: Techno/House nutzen ihre langen Outros (langer Blend, Bass-Swap, Filter auf der Phrase);
+ *    Pop/Schlager/Rock bekommen einfache, kurze Übergänge (kurzer Blend im Takt, Fade, Schnitt auf die 1)
+ *    in den letzten Sekunden bzw. im Fade-out.
+ *  - KLANG: Effekte (Echo) nur, wenn sie nötig sind (elektronisch, Tempo zu weit auseinander) –
+ *    nie nur der Abwechslung wegen.
  */
 object TransitionPlanner {
 
     /** Typen, bei denen beide Songs gleichzeitig hörbar sind (Beats müssen passen). */
-    val blendTypes = setOf(TransitionType.BASS_SWAP, TransitionType.FILTER, TransitionType.LOOP, TransitionType.LONG_BLEND)
+    val blendTypes = setOf(TransitionType.BASS_SWAP, TransitionType.FILTER, TransitionType.LOOP, TransitionType.LONG_BLEND, TransitionType.BLEND)
+
+    /** Abstand nach dem letzten Gesang von A, bevor der Übergang beginnen darf (Sekunden). */
+    const val VOCAL_MARGIN = 0.5
+
+    /** Elektronische Musik mit langen Outros (Blends über Phrasen)? */
+    fun electronic(s: TrackStructure): Boolean = when (s.family) {
+        GenreFamily.HOUSE, GenreFamily.TECHNO -> true
+        null, GenreFamily.OTHER -> s.beatReliable && s.confidence >= 0.8f &&
+            s.bars.count { it.vocal } < s.barCount * 0.2 && s.endBar - s.outroStartBar >= 16
+        else -> false
+    }
+
+    /** Ersatz, falls ein Typ in den Einstellungen abgeschaltet ist. */
+    private fun allowedOr(t: TransitionType, enabled: Set<TransitionType>): TransitionType {
+        val chain = when (t) {
+            TransitionType.LONG_BLEND -> listOf(t, TransitionType.BASS_SWAP, TransitionType.BLEND, TransitionType.FILTER, TransitionType.FADE, TransitionType.CUT)
+            TransitionType.BASS_SWAP -> listOf(t, TransitionType.BLEND, TransitionType.FILTER, TransitionType.FADE, TransitionType.CUT)
+            TransitionType.FILTER -> listOf(t, TransitionType.BASS_SWAP, TransitionType.BLEND, TransitionType.FADE, TransitionType.CUT)
+            TransitionType.BLEND -> listOf(t, TransitionType.BASS_SWAP, TransitionType.FADE, TransitionType.CUT)
+            TransitionType.ECHO_OUT -> listOf(t, TransitionType.FADE, TransitionType.CUT)
+            TransitionType.CUT -> listOf(t, TransitionType.FADE)
+            else -> listOf(t, TransitionType.FADE, TransitionType.CUT)
+        }
+        return chain.firstOrNull { it in enabled } ?: TransitionType.FADE
+    }
 
     /**
      * @param aPos aktuelle Position in A (Sekunden)
      * @param aTempo aktuelles Tempo-Verhältnis von A
      * @param recent zuletzt benutzte Typen (neuester zuletzt)
-     * @param now true = möglichst bald (nächster passender Takt) statt am Outro
+     * @param now true = möglichst bald (vom DJ gewünscht) statt am Ende
      * @param forced vom Benutzer gewählter Typ (oder null)
      * @param quick true = "Weiter"/"Zurück": kurzer, sauberer Übergang ab dem nächsten Takt
      * @param atBar fester Einsatz-Takt in A (Früh-Übergang), sonst null
@@ -39,140 +69,159 @@ object TransitionPlanner {
         atBar: Int? = null,
     ): TransitionPlan {
         if (quick) return planQuick(a, aPos, aTempo, b, settings, recent)
-        // --- 1) Tempo ---
+        val why = mutableListOf<String>()
+
+        // --- 1) Tempo und Beat-Raster ---
         val aBpm = a.bpm * aTempo
         val ratio = TrackAnalysis.tempoRatio(aBpm, b.bpm)
         val maxStretch = when (settings.style) {
-            MixStyle.CALM -> 0.06f
-            MixStyle.BALANCED -> 0.08f
-            MixStyle.CLUB -> 0.10f
+            MixStyle.CALM -> 0.04f
+            MixStyle.BALANCED -> 0.06f
+            MixStyle.CLUB -> 0.08f
         }
-        val matchTempo = ratio != null && abs(ratio - 1f) <= maxStretch
+        val tempoClose = ratio != null && abs(ratio - 1f) <= maxStretch
+        val gridsOk = a.beatReliable && b.beatReliable
+        val beatOk = tempoClose && gridsOk
+        why += when {
+            ratio == null -> "Tempo nicht vergleichbar (${fmt(aBpm)} → ${fmt(b.bpm)} BPM)"
+            !tempoClose -> "Tempo ${fmt(aBpm)} → ${fmt(b.bpm)} BPM zu weit (${pct(ratio - 1f)})"
+            !gridsOk -> "Beat-Raster unsicher (Vertrauen ${conf(a)} / ${conf(b)}) → ohne Beatmatching"
+            else -> "Tempo ${fmt(aBpm)} → ${fmt(b.bpm)} BPM: angleichen ${pct(ratio - 1f)} (Vertrauen ${conf(a)} / ${conf(b)})"
+        }
         val keyFit = Keys.compatibility(a.musicalKey.takeIf { it >= 0 }, b.musicalKey.takeIf { it >= 0 })
-        val why = mutableListOf<String>()
-        why += if (ratio == null) "Tempo nicht vergleichbar (${fmt(aBpm)} → ${fmt(b.bpm)} BPM)"
-        else if (matchTempo) "Tempo ${fmt(aBpm)} → ${fmt(b.bpm)} BPM: angleichen ${pct(ratio - 1f)}"
-        else "Tempo ${fmt(aBpm)} → ${fmt(b.bpm)} BPM: zu weit (${pct(ratio - 1f)}) → kein Blend"
-
-        // --- 2) Länge ---
-        var length = when {
-            settings.lengthBars > 0 -> settings.lengthBars
-            settings.style == MixStyle.CALM -> 32
-            settings.style == MixStyle.BALANCED -> 16
-            else -> 8
-        }
-        if (settings.lengthBars == 0) {
-            // Länge passend zum Song-Paar: ruhige Songs länger, Club-Tracks knapp und im Takt
-            val calm = (aBpm < 105f && b.bpm < 105f) ||
-                (a.trackEnergy in 0f..0.45f && b.trackEnergy in 0f..0.45f)
-            val club = a.trackEnergy >= 0.7f && b.trackEnergy >= 0.7f && aBpm in 118f..135f
-            if (calm) { length = min(32, length * 2); why += "ruhiges Paar → länger" }
-            else if (club && settings.style != MixStyle.CALM) { length = min(length, 16); why += "Club-Paar → knapp" }
-        }
-        val bIntroBars = b.introEndBar
-        // Kurzes Intro beim neuen Song → kürzere Überblendung
-        if (settings.lengthBars == 0 && bIntroBars in 1 until length) {
-            length = max(4, roundDownPow2(bIntroBars))
-            why += "Intro von B nur $bIntroBars Takte"
-        }
-
         if (a.musicalKey >= 0 && b.musicalKey >= 0) why += "Tonart ${Keys.label(a.musicalKey)} → ${Keys.label(b.musicalKey)}" +
             (if (keyFit >= 0.85f) " passt" else if (keyFit < 0.3f) " reibt" else "")
 
-        // --- 3) Startpunkt in A (Phrasengrenze) ---
-        val currentBar = a.barAt(aPos)
-        var (mixBar, fitLength) = if (atBar != null) atBar to min(length, max(4, a.endBar - atBar))
-        else chooseMixBar(a, currentBar, length, now)
-        if (fitLength < length) why += "wenig Zeit bis zum Ende → $fitLength Takte"
-        length = fitLength
-        why += when {
-            atBar != null -> "Früh-Übergang: Songs passen perfekt (Takt $mixBar von ${a.endBar})"
-            now -> "jetzt mixen (Takt $mixBar)"
-            mixBar >= a.outroStartBar - 4 && a.outroStartBar < a.endBar -> "Start im Outro (Takt $mixBar von ${a.endBar})"
-            else -> "Start vor dem Ende, Phrase ${a.phraseLevel(mixBar).takeIf { it > 0 } ?: 4} (Takt $mixBar von ${a.endBar})"
-        }
+        // --- 2) Freigabe: frühestens nach dem letzten Gesang von A; hörbares Ende ---
+        val barSec = a.barSec / aTempo                       // A-Takt in Echtzeit
+        val aEnd = max(a.soundEnd, aPos + 2.0)
+        val lead = aPos + max(2 * a.barSec, 4.0)             // Vorbereitungszeit
+        val lastVocal = a.lastVocalEnd
+        val release = max(lead, if (lastVocal > 0) lastVocal + VOCAL_MARGIN else 0.0)
+        why += if (lastVocal > 0) "letzter Gesang bis ${mmss(lastVocal)}" else "kein Gesang in A"
+        val elec = electronic(a) && electronic(b)
+        val releaseBar = a.nextBoundary(release, 1)
+        val endBar = min(a.endBar, a.barAt(aEnd + 0.01))
 
-        // --- 4) Startpunkt in B: Intro so legen, dass der Hauptteil am Ende der Überblendung kommt ---
-        fun bStartFor(len: Int): Int {
+        // --- 3) B: Einstieg ---
+        fun bStartFor(len: Int): Double {
             val introPhrase = (b.introEndBar / 8) * 8
-            return max(0, introPhrase - len)
+            return b.barTime(max(0, introPhrase - len)).coerceAtLeast(0.0)
+        }
+        val bFirst = if (b.beatReliable) b.barTime(0).coerceAtLeast(0.0) else 0.0
+
+        fun fadePlan(start: Double, lengthSec: Double, note: String): TransitionPlan {
+            val t = allowedOr(TransitionType.FADE, settings.enabled)
+            why += note
+            return TransitionPlan(
+                type = t, mixBar = a.barAt(start), mixSec = start, bStartSec = 0.0,
+                lengthBars = max(1, kotlin.math.ceil(lengthSec / max(0.5, b.barSec)).toInt()),
+                tempoRatio = 1f, matchTempo = false, reason = why.joinToString(" · "),
+                lengthSec = if (t == TransitionType.FADE) lengthSec else -1.0,
+            )
         }
 
-        // --- 5) Gesang prüfen: überlappen sich Gesangsteile? Dann kürzer, sonst kein Blend ---
-        var vocalClash = false
-        run {
-            var len = length
-            while (len >= 4) {
-                val bs = bStartFor(len)
-                val clash = a.vocalIn(mixBar, mixBar + len) && b.vocalIn(bs, bs + len)
-                if (!clash) { length = len; return@run }
+        fun beatPlan(type: TransitionType, bar: Int, len: Int, bStart: Double, note: String): TransitionPlan {
+            val t = allowedOr(type, settings.enabled)
+            if (t == TransitionType.FADE) return fadePlan(a.barTime(bar), (len * barSec).coerceIn(1.5, 6.0), "$note · ${t.name} statt ${type.name} (Einstellung)")
+            why += note
+            return TransitionPlan(
+                type = t, mixBar = bar, mixSec = a.barTime(bar), bStartSec = if (t == TransitionType.CUT) bFirst else bStart,
+                lengthBars = if (t == TransitionType.CUT) 1 else len, tempoRatio = ratio!!, matchTempo = true,
+                reason = why.joinToString(" · "),
+            )
+        }
+        // --- 4a) Vom DJ: "jetzt mischen" / Früh-Übergang ---
+        if (now) {
+            val bar = a.nextBoundary(lead, 4)
+            return if (beatOk) beatPlan(TransitionType.BLEND, bar, 4, bFirst, "jetzt mixen (Takt $bar)")
+            else fadePlan(lead, 3.0, "jetzt mixen")
+        }
+        if (atBar != null && beatOk) {
+            val len = 16
+            val type = if (keyFit >= 0.85f && abs(ratio!! - 1f) <= 0.03f) TransitionType.LONG_BLEND else TransitionType.BASS_SWAP
+            return beatPlan(type, atBar, len, bStartFor(len), "Früh-Übergang: passt perfekt, A ohne Gesang ab hier (Takt $atBar von ${a.endBar})")
+        }
+        // vom DJ gewählter Typ (falls möglich)
+        if (forced != null && !(forced in blendTypes && !beatOk)) {
+            val len = when (forced) { TransitionType.CUT -> 1; TransitionType.ECHO_OUT, TransitionType.REVERB_WASH -> 2; TransitionType.LONG_BLEND -> 16; TransitionType.FADE, TransitionType.BLEND -> 4; else -> 8 }
+            val bar = max(releaseBar, endBar - len).let { if (beatOk) it - it % 4 else it }.coerceAtLeast(releaseBar)
+            if (forced == TransitionType.FADE || !beatOk) return fadePlan(max(release, aEnd - 3.0), min(3.0, max(1.0, aEnd - release)), "vom DJ gewählt")
+            return beatPlan(forced, bar, len, if (forced in blendTypes) bStartFor(len) else bFirst, "vom DJ gewählt")
+        }
+
+        // --- 4b) Elektronisch: langes Outro für einen Blend auf der Phrase nutzen ---
+        if (elec && beatOk) {
+            val wantLong = settings.lengthBars.takeIf { it > 0 } ?: when (settings.style) {
+                MixStyle.CALM -> 32
+                MixStyle.BALANCED -> 32
+                MixStyle.CLUB -> 16
+            }
+            var len = wantLong
+            while (len >= 8) {
+                // späteste Phrasengrenze (8 Takte), die nach der Freigabe liegt und vor dem Ende fertig ist
+                val latest = endBar - len
+                val bar = (latest downTo releaseBar).firstOrNull { it % 8 == 0 } ?: (latest downTo releaseBar).firstOrNull { it % 4 == 0 }
+                if (bar != null) {
+                    val longOk = len >= 16 && keyFit >= 0.85f && abs(ratio!! - 1f) <= 0.03f
+                    var type = when {
+                        longOk && len >= 16 -> TransitionType.LONG_BLEND
+                        keyFit < 0.3f -> TransitionType.FILTER          // Tonarten reiben: Filter überdeckt das
+                        else -> TransitionType.BASS_SWAP
+                    }
+                    // leichte Abwechslung zwischen gleich guten Blends (nie ein Effekt nur deswegen)
+                    if (type == recent.lastOrNull() && type == TransitionType.BASS_SWAP && len >= 16 && keyFit >= 0.5f) type = TransitionType.LONG_BLEND
+                    else if (type == recent.lastOrNull() && type == TransitionType.LONG_BLEND) type = TransitionType.BASS_SWAP
+                    val l = if (type == TransitionType.BASS_SWAP) min(len, 16) else len
+                    val b2 = if (l < len) (endBar - l).let { e -> (e downTo bar).firstOrNull { it % 8 == 0 } ?: bar } else bar
+                    return beatPlan(type, b2, l, bStartFor(l), "elektronisch: Blend im Outro, Phrase (Takt $b2 von ${a.endBar}, $l Takte)")
+                }
                 len /= 2
             }
-            vocalClash = true
         }
-        if (vocalClash) why += "Gesang in A und B → nicht übereinander"
-        else if (length < fitLength) why += "Gesang → kürzer ($length Takte)"
-
-        // Langer Blend: nur bei (fast) gleichem Tempo, passender Tonart und genug Platz ohne Gesangs-Überlappung
-        val longLen = if (atBar != null || now) 32 else min(32, a.endBar - mixBar)
-        val longOk = matchTempo && abs(ratio!! - 1f) <= 0.03f && keyFit >= 0.85f && longLen >= 24 &&
-            !(a.vocalIn(mixBar, mixBar + longLen) && b.vocalIn(bStartFor(longLen), bStartFor(longLen) + longLen))
-
-        // --- 6) Typ wählen ---
-        val allowed = settings.enabled.ifEmpty { setOf(TransitionType.CUT) }.filter { t ->
-            when {
-                t == TransitionType.LONG_BLEND -> longOk
-                t in blendTypes && (!matchTempo || vocalClash) -> false
-                // Song endet vor dem Ende der Überblendung (z.B. Auto-Mix kurz vor Schluss gestartet)
-                t in blendTypes && !now && mixBar + length > a.endBar -> false
-                t == TransitionType.LOOP && a.vocalIn(mixBar - 1, mixBar) -> false   // Gesang nicht loopen
-                else -> true
-            }
-        }.ifEmpty { listOf(TransitionType.ECHO_OUT, TransitionType.CUT).filter { it in settings.enabled }.ifEmpty { listOf(TransitionType.CUT) } }
-
-        val forcedOk = forced?.takeIf { it in allowed || (it !in blendTypes) }
-        val type = forcedOk ?: chooseType(a, b, mixBar, length, allowed, settings.style, recent, keyFit)
-        if (forcedOk != null) why += "vom DJ gewählt"
-        else {
-            val dE = b.energyIn(b.introEndBar, b.introEndBar + 8) - a.energyIn(mixBar - 4, mixBar)
-            if (dE > 0.2f) why += "Energie steigt"
-            if (dE < -0.2f) why += "Energie fällt"
-            if (recent.isNotEmpty()) why += "Abwechslung (zuletzt ${recent.last().name})"
-        }
-
-        // Schnitt am liebsten genau auf die "1" nach einem Break im Outro-Bereich
-        if (type == TransitionType.CUT && atBar == null && !now) {
-            val lo = max(currentBar + 2, a.endBar - 40)
-            a.breaks.map { it.last + 1 }.filter { it in lo until a.endBar }.minByOrNull { abs(it - mixBar) }?.let {
-                mixBar = it
-                why += "Schnitt auf die 1 nach dem Break (Takt $it)"
+        if (elec && !beatOk && ratio != null && a.beatReliable && !tempoClose && aEnd - release >= 2 * barSec) {
+            // Tempo zu weit auseinander: A klingt im eigenen Takt mit (dezentem) Echo aus, B setzt danach ein
+            val bar = (endBar - 2 downTo releaseBar).firstOrNull { it % 4 == 0 } ?: max(releaseBar, endBar - 2)
+            val t = allowedOr(TransitionType.ECHO_OUT, settings.enabled)
+            if (t == TransitionType.ECHO_OUT) {
+                why += "elektronisch, Tempo zu weit → Echo-Ausklang im Takt von A (Takt $bar)"
+                return TransitionPlan(t, bar, a.barTime(bar), bFirst, 2, 1f, false, why.joinToString(" · "))
             }
         }
 
-        // Blends brauchen die volle Länge; Echo/Hall/Schnitt sind kurz
-        val finalLength = when (type) {
-            TransitionType.LONG_BLEND -> longLen.coerceAtMost(32).let { if (it >= 32) 32 else 16.coerceAtLeast(roundDownPow2(it)) }
-            TransitionType.CUT -> 1
-            TransitionType.ECHO_OUT, TransitionType.REVERB_WASH -> min(length, 4)
-            else -> length
+        // --- 4c) Songs (Pop/Schlager/Rock …): einfach und kurz, in den letzten Sekunden ---
+        val tail = aEnd - release
+        val fadeOut = a.fadeOutStart.takeIf { it > 0 && it >= release - 4.0 }
+        if (beatOk) {
+            val tailBars = endBar - releaseBar
+            val wantLen = if (settings.lengthBars in 1..8) settings.lengthBars else if (settings.style == MixStyle.CALM) 8 else 4
+            var len = wantLen
+            while (len > 1 && len > tailBars) len /= 2
+            if (tailBars >= 2 && len >= 2) {
+                // im Fade-out: B kommt, wenn A leiser wird; sonst so spät wie möglich (fertig am Ende)
+                val target = if (fadeOut != null) a.nextBoundary(fadeOut + (aEnd - fadeOut) * 0.25, 1) else endBar - len
+                val bar = target.coerceIn(releaseBar, endBar - len).let { b0 -> (b0 downTo releaseBar).firstOrNull { it % 2 == 0 } ?: b0 }
+                return beatPlan(TransitionType.BLEND, bar, min(len, endBar - bar).coerceAtLeast(2), bFirst,
+                    (if (fadeOut != null) "im Fade-out" else "kurzer Blend am Ende") + " (Takt $bar von ${a.endBar}, ${min(len, endBar - bar)} Takte)")
+            }
+            // kaum Platz nach dem letzten Gesang: Schnitt auf die "1" nach dem Gesang
+            if (releaseBar < a.barCount && a.barTime(releaseBar) < aEnd + 1.0) {
+                return beatPlan(TransitionType.CUT, releaseBar, 1, bFirst, "Gesang bis kurz vor Schluss → Schnitt auf die 1 (Takt $releaseBar)")
+            }
         }
-        val bStartBar = when (type) {
-            // Bei Schnitt/Echo/Hall setzt B direkt mit Energie ein: am Ende seines Intros (Club) bzw. am Anfang
-            TransitionType.CUT, TransitionType.ECHO_OUT, TransitionType.REVERB_WASH ->
-                if (settings.style == MixStyle.CLUB && b.introEndBar >= 8) (b.introEndBar / 8) * 8 else 0
-            else -> bStartFor(finalLength)
+        // ohne Beatmatching: kurzer Fade, nach dem Gesang, so spät wie möglich
+        val fadeLen = when {
+            fadeOut != null -> (aEnd - max(release, fadeOut + (aEnd - fadeOut) * 0.3)).coerceIn(1.5, 8.0)
+            settings.style == MixStyle.CALM -> min(6.0, max(1.5, tail))
+            else -> min(4.0, max(1.5, tail))
         }
-        return TransitionPlan(
-            type = type,
-            mixBar = mixBar,
-            mixSec = a.barTime(mixBar),
-            bStartSec = b.barTime(bStartBar).coerceAtLeast(0.0),
-            lengthBars = finalLength,
-            tempoRatio = if (matchTempo) ratio!! else 1f,
-            matchTempo = matchTempo,
-            reason = why.joinToString(" · "),
-        )
+        val start = max(release, aEnd - fadeLen)
+        return fadePlan(start, max(1.0, min(fadeLen, aEnd - start + 0.5)),
+            (if (fadeOut != null) "Fade im Fade-out" else "kurzer Fade am Ende") + " ab ${mmss(start)}")
     }
+
+    private fun conf(s: TrackStructure) = if (s.confidence < 0) "?" else String.format(java.util.Locale.ROOT, "%.2f", s.confidence)
+    private fun mmss(sec: Double) = String.format(java.util.Locale.ROOT, "%d:%04.1f", (sec / 60).toInt(), sec % 60)
 
     /**
      * Kurzer, sauberer Übergang für "Weiter"/"Zurück": Einsatz auf dem nächsten Takt (mind. 1 Takt
@@ -207,133 +256,34 @@ object TransitionPlanner {
     }
 
     /**
-     * Früh-Übergang: Passen zwei Songs fast perfekt (Tempo ±2 %, Tonart harmonisch), darf schon vor
-     * dem Outro gemischt werden – auf einer 32er-Phrase (sonst 16er), frühestens ab ca. 55 % des
-     * Songs, nur ohne Gesang auf beiden Seiten. Gibt den Takt zurück oder null.
+     * Früh-Übergang: Passen zwei Songs fast perfekt (Beat-Raster sehr sicher, Tempo ±2 %, Tonart
+     * harmonisch) UND singt A ab dort nicht mehr (langes Instrumental-Outro, typisch Techno/House),
+     * darf früher gemischt werden – auf einer 32er- (sonst 16er-)Phrase. Gibt den Takt zurück oder null.
      * @param normalBar Einsatz-Takt des normalen Plans (Früh-Übergang muss deutlich davor liegen)
      */
     fun earlyBar(a: TrackStructure, aPos: Double, aTempo: Float, b: TrackStructure, normalBar: Int): Int? {
+        if (a.confidence < EARLY_CONF || b.confidence < EARLY_CONF || !a.steady || !b.steady) return null
         val ratio = TrackAnalysis.tempoRatio(a.bpm * aTempo, b.bpm) ?: return null
         if (abs(ratio - 1f) > 0.02f) return null
         if (a.musicalKey < 0 || b.musicalKey < 0) return null
         if (Keys.compatibility(a.musicalKey, b.musicalKey) < 0.85f) return null
         val len = 16
         val bStart = max(0, (b.introEndBar / 8) * 8 - len)
-        if (b.vocalIn(bStart, bStart + len)) return null
-        val first = max(a.barAt(aPos) + 12, (a.endBar * 0.55f).toInt())   // genug Zeit für die Frage (10 s)
+        if (b.vocalIn(bStart, bStart + len / 2)) return null              // B nicht gleich mit Gesang
+        val release = if (a.lastVocalEnd > 0) a.lastVocalEnd + VOCAL_MARGIN else 0.0
+        val first = maxOf(a.barAt(aPos) + 12, a.nextBoundary(release, 1), (a.endBar * 0.5f).toInt())   // genug Zeit für die Frage
         val last = normalBar - 24                                          // lohnt sich nur deutlich vor dem Ende
         if (first > last) return null
         for (step in listOf(32, 16)) {
-            for (bar in first..last) {
-                if (bar % step != 0) continue
-                if (a.vocalIn(bar, bar + len)) continue
-                return bar
-            }
+            for (bar in first..last) if (bar % step == 0) return bar
         }
         return null
     }
 
+    /** Mindest-Vertrauen beider Beat-Raster für einen Früh-Übergang. */
+    const val EARLY_CONF = 0.8f
+
     private fun fmt(v: Float) = String.format(java.util.Locale.ROOT, "%.1f", v)
     private fun pct(v: Float) = String.format(java.util.Locale.ROOT, "%+.1f %%", v * 100)
 
-    /**
-     * Takt in A, an dem der Übergang beginnt. Regeln:
-     *  - nie mitten im Song: Start frühestens in den letzten max(32, Länge) Takten vor dem hörbaren Ende
-     *  - ideal am Outro-Beginn, sonst so, dass der Übergang genau am Ende fertig ist (Fallback)
-     *  - immer auf einer Phrasengrenze (8 Takte), notfalls auf 4 Takten
-     *  - fertig, bevor A natürlich endet (Stille am Schluss zählt nicht)
-     * Gibt (Takt, Länge) zurück – die Länge wird gekürzt, wenn es sonst nicht mehr reicht.
-     */
-    internal fun chooseMixBar(a: TrackStructure, currentBar: Int, length: Int, now: Boolean): Pair<Int, Int> {
-        val earliest = currentBar + 2   // mindestens 2 Takte Vorlauf (Vorbereitung, Hall aufbauen)
-        if (now) {
-            // bald: nächste 4-Takt-Grenze
-            val r = earliest % 4
-            return (if (r == 0) earliest else earliest + (4 - r)) to length
-        }
-        val end = a.endBar
-        var len = length
-        // Reicht die Zeit bis zum Ende nicht mehr? Dann kürzer überblenden.
-        while (len > 4 && end - len < earliest) len /= 2
-        val latest = end - len
-        if (latest < earliest) {
-            // Ganz knapp vor dem Ende: so bald wie möglich (nächster Takt mit 4er-Raster, sonst sofort)
-            val r = earliest % 4
-            val b4 = if (r == 0) earliest else earliest + (4 - r)
-            return (if (b4 < end) b4 else earliest) to len
-        }
-        val lo = max(earliest, end - max(32, len))
-        val target = a.outroStartBar.coerceIn(lo, latest)
-        fun nearest(step: Int): Int? = (lo..latest).filter { it % step == 0 }
-            .minWithOrNull(compareBy<Int>({ abs(it - target) }, { -it }))
-        val bar = nearest(16)?.takeIf { abs(it - target) <= 4 } ?: nearest(8) ?: nearest(4) ?: latest
-        return bar to len
-    }
-
-    private fun chooseType(
-        a: TrackStructure,
-        b: TrackStructure,
-        mixBar: Int,
-        length: Int,
-        allowed: List<TransitionType>,
-        style: MixStyle,
-        recent: List<TransitionType>,
-        keyFit: Float = 0.5f,
-    ): TransitionType {
-        val base = when (style) {
-            MixStyle.CALM -> mapOf(
-                TransitionType.BASS_SWAP to 3.0, TransitionType.FILTER to 3.0, TransitionType.REVERB_WASH to 2.0,
-                TransitionType.LOOP to 1.2, TransitionType.ECHO_OUT to 1.0, TransitionType.CUT to 0.3,
-                TransitionType.LONG_BLEND to 4.0,
-            )
-            MixStyle.BALANCED -> mapOf(
-                TransitionType.BASS_SWAP to 3.0, TransitionType.FILTER to 2.2, TransitionType.ECHO_OUT to 2.0,
-                TransitionType.LOOP to 2.1, TransitionType.REVERB_WASH to 1.5, TransitionType.CUT to 1.0,
-                TransitionType.LONG_BLEND to 3.2,
-            )
-            MixStyle.CLUB -> mapOf(
-                TransitionType.BASS_SWAP to 2.2, TransitionType.FILTER to 2.0, TransitionType.ECHO_OUT to 2.5,
-                TransitionType.LOOP to 2.0, TransitionType.REVERB_WASH to 1.0, TransitionType.CUT to 2.5,
-                TransitionType.LONG_BLEND to 1.5,
-            )
-        }
-        val aEnergy = a.energyIn(mixBar - 4, mixBar)
-        val bEnergy = b.energyIn(b.introEndBar, b.introEndBar + 8)
-        val delta = bEnergy - aEnergy
-        val aHasBreakBefore = a.breaks.any { it.last in (mixBar - 2) until mixBar }
-        val shortIntro = b.introEndBar < 4
-
-        fun score(t: TransitionType): Double {
-            var s = base[t] ?: 1.0
-            // Energie steigt stark → Schnitt oder Filter (Spannung), fällt → Echo/Hall (ausklingen)
-            if (delta > 0.2f && (t == TransitionType.CUT || t == TransitionType.FILTER)) s *= 1.6
-            if (delta < -0.2f && (t == TransitionType.ECHO_OUT || t == TransitionType.REVERB_WASH)) s *= 1.6
-            // Nach einem Break im alten Song passt ein harter Schnitt auf die "1"
-            if (aHasBreakBefore && t == TransitionType.CUT) s *= 2.0
-            // Kurzes Intro beim neuen Song: lange Blends wirken leer
-            if (shortIntro && t in blendTypes) s *= 0.6
-            if (length >= 32 && t == TransitionType.LOOP) s *= 0.8
-            // Tonarten reiben → keine langen Überlagerungen; Echo/Filter kaschieren das besser
-            if (keyFit < 0.3f && (t == TransitionType.BASS_SWAP || t == TransitionType.LOOP)) s *= 0.6
-            if (keyFit < 0.3f && (t == TransitionType.ECHO_OUT || t == TransitionType.FILTER)) s *= 1.3
-            if (keyFit >= 0.85f && t == TransitionType.LONG_BLEND) s *= 1.3
-            // Abwechslung (Rotation): gerade benutzt → stark abwerten, lange nicht benutzt → leicht bevorzugen
-            val last = recent.lastIndexOf(t)
-            val since = if (last < 0) 8 else recent.size - 1 - last
-            s *= when (since) {
-                0 -> 0.15
-                1 -> 0.45
-                2 -> 0.75
-                else -> 1.0 + 0.07 * min(since, 8)
-            }
-            return s
-        }
-        return allowed.maxBy { score(it) }
-    }
-
-    private fun roundDownPow2(x: Int): Int {
-        var p = 1
-        while (p * 2 <= x) p *= 2
-        return p
-    }
 }

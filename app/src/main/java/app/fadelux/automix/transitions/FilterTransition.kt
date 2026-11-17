@@ -11,12 +11,12 @@ class FilterTransition : Transition(TransitionType.FILTER) {
     override val equalPower = true
 
     override fun prepare(ctx: TransitionContext) {
-        ctx.b.changeFilter(0.7f)
+        ctx.b.changeFilter(0.45f)
     }
 
     override fun step(ctx: TransitionContext, p: Float) {
-        ctx.b.changeFilter(0.7f * (1f - ctx.ease(ctx.span(p, 0f, 0.7f))))   // B öffnet sich
-        ctx.a.changeFilter(-0.8f * ctx.ease(ctx.span(p, 0.35f, 1f)))       // A schliesst sich
+        ctx.b.changeFilter(0.45f * (1f - ctx.ease(ctx.span(p, 0f, 0.6f))))  // B öffnet sich (dezent)
+        ctx.a.changeFilter(-0.5f * ctx.ease(ctx.span(p, 0.4f, 1f)))        // A wird etwas dumpfer
         ctx.crossfader(ctx.ease(p))
     }
 

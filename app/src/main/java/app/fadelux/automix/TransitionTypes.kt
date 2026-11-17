@@ -8,7 +8,9 @@ enum class TransitionType {
     LOOP,          // Outro-Takte loopen, neuer Song kommt darüber
     REVERB_WASH,   // alter Song verschwindet im Hall
     CUT,           // harter Schnitt auf dem Downbeat (am liebsten direkt nach einem Break)
-    LONG_BLEND,    // langer, ruhiger Blend (32 Takte) bei gleichem Tempo und passender Tonart
+    LONG_BLEND,    // langer, ruhiger Blend (16–32 Takte) bei gleichem Tempo und passender Tonart
+    FADE,          // kurzer, sauberer Fade ohne Effekte (Pop/Schlager/Rock, unsicheres Beat-Raster)
+    BLEND,         // kurzer Blend im Takt (2–8 Takte), dezent
 }
 
 /** Mix-Stil (Einstellungen). */
@@ -30,4 +32,5 @@ data class TransitionPlan(
     val tempoRatio: Float,          // Tempo für B (1 = Originaltempo)
     val matchTempo: Boolean,        // Beats laufen synchron?
     val reason: String = "",        // Begründung (Protokoll zum Testen)
+    val lengthSec: Double = -1.0,   // Dauer in Sekunden (B-Zeit), wenn nicht in Takten (FADE ohne Beat-Raster)
 )

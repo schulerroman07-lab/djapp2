@@ -423,7 +423,7 @@ class AutoMix(
         structureCache[t.id]?.let { return it }
         val fresh = refresh(t)
         val s = StructureAnalyzer.analyze(d.bpm, d.firstBeat, d.features(), d.duration, StructureAnalyzer.soundEnd(d.peaks, d.duration))
-            ?.copy(trackEnergy = fresh.energy ?: -1f, musicalKey = fresh.musicalKey ?: -1)
+            ?.copy(trackEnergy = fresh.energy ?: -1f, musicalKey = fresh.musicalKey ?: -1, family = Genres.family(fresh))
         if (structureCache.size > 50) structureCache.clear()
         structureCache[t.id] = s
         return s
@@ -576,7 +576,7 @@ class AutoMix(
                 partial = false                     // inzwischen ganz geladen → normaler Weg
             } else if (b.bpm > 0f) {
                 earlyStruct = StructureAnalyzer.analyze(b.bpm, b.firstBeat, b.features(), next.durationMs / 1000.0)
-                    ?.copy(trackEnergy = next.energy ?: -1f, musicalKey = next.musicalKey ?: -1)
+                    ?.copy(trackEnergy = next.energy ?: -1f, musicalKey = next.musicalKey ?: -1, family = Genres.family(next))
                 earlyStruct?.let { log("Tempo aus dem Anfang erkannt: ${"%.1f".format(it.bpm)} BPM (${next.title})") }
             }
         }
@@ -589,7 +589,7 @@ class AutoMix(
         // ---- 2) Planen (und bei Änderungswünschen neu planen) ----
         var plan: TransitionPlan = fallbackPlan(a, false)
         var transition: Transition = Transitions.create(plan.type)
-        var ctx = TransitionContext(a, b, mixer, plan, aStruct, bStruct)
+        var ctx = TransitionContext(a, b, mixer, plan, aStruct, bStruct, aIsLeft = a.index == 0)
         mixNow = false
         replan = true
         skip = false
@@ -644,7 +644,7 @@ class AutoMix(
                 b.setTempoRatio(plan.tempoRatio)
                 b.seek(plan.bStartSec)
                 transition = Transitions.create(plan.type)
-                ctx = TransitionContext(a, b, mixer, plan, aStruct, bStruct)
+                ctx = TransitionContext(a, b, mixer, plan, aStruct, bStruct, aIsLeft = a.index == 0)
                 // Kurve nur umschalten, solange der Crossfader ganz bei A steht (kein Lautstärkesprung)
                 mixer.setCurve(transition.equalPower && abs(mixer.crossfader) >= 0.98f)
                 transition.prepare(ctx)
@@ -721,7 +721,7 @@ class AutoMix(
         val aTrackForLog = a.track
         log("Übergang startet: ${plan.type.name} bei ${mmss(startedAtSec)} (geplant ${mmss(plan.mixSec)})")
         val bBarSec = bStruct?.barSec ?: 2.0
-        val lengthTrackSec = plan.lengthBars * bBarSec
+        val lengthTrackSec = if (plan.lengthSec > 0) plan.lengthSec else plan.lengthBars * bBarSec
         while (true) {
             if (!transitioning) return null      // abgebrochen
             val p = ((b.livePosition() - plan.bStartSec) / lengthTrackSec).toFloat().coerceIn(0f, 1f)

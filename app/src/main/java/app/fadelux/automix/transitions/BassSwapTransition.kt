@@ -13,18 +13,18 @@ class BassSwapTransition : Transition(TransitionType.BASS_SWAP) {
 
     override fun prepare(ctx: TransitionContext) {
         ctx.b.setEq(LOW, -1f)          // Bass des neuen Songs weg
-        ctx.b.setEq(MID, -0.25f)       // Mitten leicht zurück
+        ctx.b.setEq(MID, -0.15f)       // Mitten leicht zurück
     }
 
     override fun step(ctx: TransitionContext, p: Float) {
         // Lautstärke: B in der ersten Hälfte rein, A in der zweiten raus (Equal-Power)
         ctx.crossfader(ctx.ease(p))
-        // Bass-Tausch genau auf dem Takt in der Mitte, Dauer 1 Beat (weich, aber schnell)
-        val swap = ctx.span(p, 0.5f, 0.5f + ctx.beatFraction)
+        // Bass-Tausch genau auf dem Takt in der Mitte, Dauer 2 Beats (weich)
+        val swap = ctx.ease(ctx.span(p, 0.5f, 0.5f + 2 * ctx.beatFraction))
         ctx.a.setEq(LOW, -swap)
         ctx.b.setEq(LOW, swap - 1f)
         // Mitten von B langsam öffnen (bis 3/4 des Übergangs)
-        ctx.b.setEq(MID, -0.25f * (1f - ctx.ease(ctx.span(p, 0.25f, 0.75f))))
+        ctx.b.setEq(MID, -0.15f * (1f - ctx.ease(ctx.span(p, 0.25f, 0.75f))))
     }
 
     override fun finish(ctx: TransitionContext) {

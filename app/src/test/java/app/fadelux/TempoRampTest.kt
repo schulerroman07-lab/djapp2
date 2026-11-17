@@ -60,7 +60,7 @@ class TempoRampTest {
      */
     @Test
     fun chainOfPairs_matchesThenReturnsHome() {
-        val bpms = listOf(120f, 124f, 118f, 126f, 63f, 128f, 122f)
+        val bpms = listOf(120f, 124f, 119f, 125f, 63f, 126f, 122f)   // Nachbarn höchstens 6 % auseinander
         var aTempo = 1f
         for (i in 0 until bpms.size - 1) {
             val a = song(bpms[i])

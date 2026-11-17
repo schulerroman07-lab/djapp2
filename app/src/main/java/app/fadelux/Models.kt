@@ -11,7 +11,7 @@ import app.fadelux.data.Track
 import kotlin.math.abs
 
 /** Zustand und Steuerung eines Decks (A oder B). */
-class DeckModel(val index: Int) {
+class DeckModel(val index: Int) : app.fadelux.automix.transitions.MixDeck {
     val name = if (index == 0) "A" else "B"
 
     // Anzeige (wird laufend aus der Engine aktualisiert)
@@ -105,23 +105,23 @@ class DeckModel(val index: Int) {
         if (duration > 0) NativeEngine.seek(index, duration * f.coerceIn(0f, 1f))
     }
 
-    fun setEq(i: Int, v: Float) { eq[i] = v; NativeEngine.setEq(index, 2 - i, v) }
+    override fun setEq(i: Int, v: Float) { eq[i] = v; NativeEngine.setEq(index, 2 - i, v) }
     fun toggleKill(i: Int) { kill[i] = !kill[i]; NativeEngine.setKill(index, 2 - i, kill[i]) }
     fun changeVolume(v: Float) { volume = v.coerceIn(0f, 1f); NativeEngine.setVolume(index, volume) }
-    fun changeFilter(v: Float) { filter = v; NativeEngine.setFilter(index, v) }
+    override fun changeFilter(v: Float) { filter = v; NativeEngine.setFilter(index, v) }
     fun toggleEcho() { echoOn = !echoOn; NativeEngine.setEcho(index, echoOn, echoAmount) }
     fun changeEchoAmount(v: Float) { echoAmount = v; NativeEngine.setEcho(index, echoOn, v) }
     fun togglePfl() { pfl = !pfl; NativeEngine.setPfl(index, pfl) }
 
     // --- Für automatische Übergänge (Auto-Mix) ---
-    fun setEcho(on: Boolean, amount: Float, feedback: Float = 0.55f) {
+    override fun setEcho(on: Boolean, amount: Float, feedback: Float) {
         echoOn = on
         echoAmount = amount
         NativeEngine.setEcho(index, on, amount)
         NativeEngine.setEchoFeedback(index, feedback)
     }
-    fun setReverb(send: Float) = NativeEngine.setReverb(index, send)
-    fun setLoop(startSec: Double, lengthSec: Double, on: Boolean) = NativeEngine.setLoop(index, startSec, lengthSec, on)
+    override fun setReverb(send: Float) = NativeEngine.setReverb(index, send)
+    override fun setLoop(startSec: Double, lengthSec: Double, on: Boolean) = NativeEngine.setLoop(index, startSec, lengthSec, on)
 
     /** Alles zurücksetzen, was ein Übergang verändert hat (EQ, Filter, Echo, Hall, Loop). */
     fun resetEffects() {
@@ -178,7 +178,7 @@ class DeckModel(val index: Int) {
 }
 
 /** Zustand des Mischpults in der Mitte (Crossfader, Master, Kopfhörer). */
-class MixerModel {
+class MixerModel : app.fadelux.automix.transitions.MixBus {
     var crossfader by mutableFloatStateOf(0f)
     var masterVolume by mutableFloatStateOf(0.9f)
     var headphoneVolume by mutableFloatStateOf(0.8f)
@@ -215,7 +215,7 @@ class MixerModel {
     }
 
     /** Von der App gesteuert (Auto-Mix). */
-    fun moveCrossfader(x: Float) { crossfader = x.coerceIn(-1f, 1f); NativeEngine.setCrossfader(crossfader) }
+    override fun moveCrossfader(x: Float) { crossfader = x.coerceIn(-1f, 1f); NativeEngine.setCrossfader(crossfader) }
     fun changeMasterVolume(v: Float) { masterVolume = v.coerceIn(0f, 1f); NativeEngine.setMasterVolume(masterVolume) }
     fun changeHeadphoneVolume(v: Float) { headphoneVolume = v.coerceIn(0f, 1f); NativeEngine.setHeadphoneVolume(headphoneVolume) }
     fun changeCueMix(v: Float) { cueMix = v.coerceIn(0f, 1f); NativeEngine.setCueMix(cueMix) }

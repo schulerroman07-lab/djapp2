@@ -27,13 +27,13 @@ int main(int argc, char** argv) {
         else if (k == "dbLow") t.dbLow = v; else if (k == "dbNov") t.dbNov = v; else if (k == "dbLow3") t.dbLow3 = v;
         else { fprintf(stderr, "unbekannt: %s\n", k.c_str()); return 2; }
     }
-    FILE* f = fopen(argv[1], "rb");
+    FILE* f = std::string(argv[1]) == "-" ? stdin : fopen(argv[1], "rb");   // "-" = von der Standardeingabe
     if (!f) { perror(argv[1]); return 1; }
     TrackAnalyzer an;
     std::vector<int16_t> buf(4096 * 2);
     size_t n;
     while ((n = fread(buf.data(), 4, 4096, f)) > 0) an.feed(buf.data(), n, 44100);
-    fclose(f);
+    if (f != stdin) fclose(f);
     Analysis r = an.result();
     printf("{\"bpm\":%.3f,\"confidence\":%.3f,\"steady\":%s,\"downbeat\":%d,\"downbeatConf\":%.3f,\"energy\":%.3f,\"beats\":[",
            r.bpm, r.confidence, r.steady ? "true" : "false", r.downbeat, r.downbeatConf, r.energy);
@@ -44,13 +44,14 @@ int main(int argc, char** argv) {
     for (uint8_t b : r.features) printf("%02x", b);
     printf("\"}\n");
     if (vfOut) {
-        std::vector<float> vf = an.vocalFeatures();
+        // Eingänge des Gesangs-Klassifikators (alle 0,25 s), zum Trainieren in tools/realmusic/train_vocal.py
+        std::vector<float> vi = an.vocalInputs();
         FILE* o = fopen(vfOut, "wb");
-        double hop = an.vocalHop();
-        int dim = TrackAnalyzer::kVocalDim;
+        double hop = 0.25;
+        int dim = 2 * TrackAnalyzer::kVocalDim;
         fwrite(&hop, sizeof(double), 1, o);
         fwrite(&dim, sizeof(int), 1, o);
-        fwrite(vf.data(), sizeof(float), vf.size(), o);
+        fwrite(vi.data(), sizeof(float), vi.size(), o);
         fclose(o);
     }
     return 0;

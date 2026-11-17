@@ -107,7 +107,7 @@ class DjViewModel private constructor(private val app: Application) {
         if (bpm <= 0f || fresh.durationMs <= 0) return null
         val an = library.analysis(t.id) ?: return null
         return StructureAnalyzer.analyze(bpm, an.firstBeat, an.features, fresh.durationMs / 1000.0)
-            ?.copy(trackEnergy = fresh.energy ?: -1f, musicalKey = fresh.musicalKey ?: -1)
+            ?.copy(trackEnergy = fresh.energy ?: -1f, musicalKey = fresh.musicalKey ?: -1, family = app.fadelux.automix.Genres.family(fresh))
     }
 
     private var scanning = false

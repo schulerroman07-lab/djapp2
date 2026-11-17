@@ -94,6 +94,8 @@ fun transitionLabel(t: TransitionType): String = stringResource(
         TransitionType.REVERB_WASH -> R.string.tr_reverb
         TransitionType.CUT -> R.string.tr_cut
         TransitionType.LONG_BLEND -> R.string.tr_long_blend
+        TransitionType.FADE -> R.string.tr_fade
+        TransitionType.BLEND -> R.string.tr_blend
     },
 )
 
