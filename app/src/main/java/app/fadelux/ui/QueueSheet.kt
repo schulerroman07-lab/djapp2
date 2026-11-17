@@ -154,6 +154,7 @@ fun QueueList(
     pinned: Set<Long> = emptySet(),
     onPlayNext: (Int) -> Unit = {},
     onMoveToEnd: (Int) -> Unit = {},
+    state: androidx.compose.foundation.lazy.LazyListState? = null,
 ) {
     val accent = LocalAccent.current
     Column(modifier) {
@@ -167,7 +168,7 @@ fun QueueList(
             val density = LocalDensity.current
             val rowPx = with(density) { rowH.toPx() }
             val edgePx = with(density) { 70.dp.toPx() }
-            val listState = rememberLazyListState()
+            val listState = state ?: rememberLazyListState()
             val currentQueue by rememberUpdatedState(queue)
             val move by rememberUpdatedState(onMove)
             var dragId by remember { mutableLongStateOf(-1L) }

@@ -137,4 +137,7 @@ dependencies {
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui")
+    androidTestImplementation("androidx.activity:activity-compose:1.9.3")
+    // leere Test-Activity (nur im Debug-Build) für Tests einzelner Oberflächen-Bausteine
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
