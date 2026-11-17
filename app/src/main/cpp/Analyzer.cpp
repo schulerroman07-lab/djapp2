@@ -5,6 +5,7 @@
 #include <numeric>
 
 #include "VocalModel.h"
+#include "VocalNet.h"
 
 namespace dj {
 
@@ -101,6 +102,23 @@ void TrackAnalyzer::setup(int sampleRate) {
         double hi = f0 * std::pow(f1 / f0, (double)(b + 1) / kBands);
         if (hi <= 160.0) lowBands_ = b + 1;
     }
+    // Mel-Filter (dreieckig, kMel Stück zwischen 50 Hz und 10 kHz): jedes Bin liegt zwischen zwei Mittelpunkten
+    melIdx_.assign(kN / 2 + 1, -2);
+    melW_.assign(kN / 2 + 1, 0.f);
+    {
+        auto mel = [](double f) { return 2595.0 * std::log10(1.0 + f / 700.0); };
+        const double m0 = mel(50.0), m1 = mel(10000.0), d = (m1 - m0) / (kMel + 1);
+        for (int k = 1; k <= kN / 2; k++) {
+            const double u = (mel((double)k * sampleRate / kN) - m0) / d;
+            if (u < 0 || u >= kMel + 1) continue;
+            const int i = (int)u;
+            melIdx_[k] = i - 1;                 // Filter i−1 (fallende Flanke) und i (steigende Flanke)
+            melW_[k] = (float)(u - i);
+        }
+    }
+    melAccM_.assign(kMel, 0.0);
+    melAccS_.assign(kMel, 0.0);
+    melFrames_ = 0;
     prevLog_.assign(kBands, 0.f);
     prev2Log_.assign(kBands, 0.f);
     accMid_.assign(kBands, 0.0);
@@ -154,6 +172,20 @@ void TrackAnalyzer::frame() {
         else if (f >= 3000) high += pm;
         const int b = bandOf_[k];
         if (b >= 0) { bm[b] += pm; bs[b] += ps; }
+        const int j = melIdx_[k];
+        if (j >= -1) {
+            const float w = melW_[k];
+            if (j >= 0) { melAccM_[j] += (1 - w) * pm; melAccS_[j] += (1 - w) * ps; }
+            if (j + 1 < kMel) { melAccM_[j + 1] += w * pm; melAccS_[j + 1] += w * ps; }
+        }
+    }
+    if (++melFrames_ >= kMelBlock) {
+        for (int m = 0; m < kMel; m++) {
+            melMid_.push_back(10.f * std::log10((float)(melAccM_[m] / kMelBlock) + 1e-10f));
+            melSide_.push_back(10.f * std::log10((float)(melAccS_[m] / kMelBlock) + 1e-10f));
+            melAccM_[m] = melAccS_[m] = 0;
+        }
+        melFrames_ = 0;
     }
     sumLow_ += low;
     // Spektralfluss (nur Anstiege), in logarithmischer Lautstärke – gegen den Rahmen 2 Schritte zuvor
@@ -280,7 +312,131 @@ std::vector<float> TrackAnalyzer::vocalInputs() const {
     return out;
 }
 
+std::vector<float> TrackAnalyzer::melInput() const {
+    const size_t nf = melMid_.size() / kMel;
+    std::vector<float> out(nf * 2 * kMel);
+    if (nf == 0) return out;
+    // Lautstärke-Bezug: die lauten Stellen des Songs (95 %-Quantil des mittleren Pegels)
+    std::vector<float> lvl(nf);
+    for (size_t t = 0; t < nf; t++) {
+        double s = 0;
+        for (int m = 0; m < kMel; m++) s += melMid_[t * kMel + m];
+        lvl[t] = (float)(s / kMel);
+    }
+    const float ref = quantile(lvl, 0.95);
+    for (size_t t = 0; t < nf; t++) {
+        float* o = &out[t * 2 * kMel];
+        for (int m = 0; m < kMel; m++) {
+            const float md = melMid_[t * kMel + m], sd = melSide_[t * kMel + m];
+            o[m] = std::max(-80.f, std::min(20.f, md - ref));                   // Mitte relativ zum Song
+            o[kMel + m] = std::max(-30.f, std::min(10.f, sd - md));             // Stereo-Breite pro Band
+        }
+    }
+    return out;
+}
+
+namespace {
+// Faltung 3×3 (Rand mit Nullen) + ReLU + Max-Pooling 2×2: in [cin][F][T] → out [cout][F/2][T/2]
+void convPool(const std::vector<float>& in, int cin, int F, int T, const float* W, const float* B, int cout,
+              std::vector<float>& out) {
+    const int F2 = F / 2, T2 = T / 2;
+    out.assign((size_t)cout * F2 * T2, 0.f);
+    std::vector<float> r0(T), r1(T);
+    for (int co = 0; co < cout; co++) {
+        for (int f = 0; f < F2 * 2; f++) {
+            std::vector<float>& r = (f & 1) ? r1 : r0;
+            std::fill(r.begin(), r.end(), B[co]);
+            for (int ci = 0; ci < cin; ci++) {
+                for (int df = 0; df < 3; df++) {
+                    const int ff = f + df - 1;
+                    if (ff < 0 || ff >= F) continue;
+                    const float* src = &in[((size_t)ci * F + ff) * T];
+                    const float* w = &W[(((size_t)co * cin + ci) * 3 + df) * 3];
+                    // Zeit-Versatz −1, 0, +1
+                    for (int t = 1; t < T; t++) r[t] += w[0] * src[t - 1];
+                    for (int t = 0; t < T; t++) r[t] += w[1] * src[t];
+                    for (int t = 0; t + 1 < T; t++) r[t] += w[2] * src[t + 1];
+                }
+            }
+            if (f & 1) {
+                float* o = &out[((size_t)co * F2 + f / 2) * T2];
+                for (int t = 0; t < T2; t++)
+                    o[t] = std::max(0.f, std::max(std::max(r0[2 * t], r0[2 * t + 1]), std::max(r1[2 * t], r1[2 * t + 1])));
+            }
+        }
+    }
+}
+}  // namespace
+
+std::vector<float> TrackAnalyzer::vocalNet(std::vector<float>* times) const {
+    using namespace vn;
+    const std::vector<float> mel = melInput();
+    const int T = (int)(mel.size() / (2 * kMel));
+    if (!kReady || T < 16) return {};
+    // Eingang normieren und umordnen: [Kanal][Band][Zeit]
+    std::vector<float> x((size_t)kIn * kF * T);
+    for (int c = 0; c < kIn; c++)
+        for (int m = 0; m < kF; m++) {
+            const float mu = kMean[c * kF + m], is = 1.f / kStd[c * kF + m];
+            float* o = &x[((size_t)c * kF + m) * T];
+            for (int t = 0; t < T; t++) o[t] = (mel[(size_t)t * 2 * kMel + c * kMel + m] - mu) * is;
+        }
+    std::vector<float> a, b;
+    convPool(x, kIn, kF, T, W1, B1, kC1, a);
+    convPool(a, kC1, kF / 2, T / 2, W2, B2, kC2, b);
+    convPool(b, kC2, kF / 4, T / 4, W3, B3, kC3, a);
+    const int T3 = T / 8, F3 = kF / 8;
+    // letzte Schicht: Faltung über alle restlichen Bänder × kK4 Zeitschritte, ReLU, dann gewichtete Summe → Sigmoid
+    std::vector<float> out(T3);
+    std::vector<float> h(T3);
+    const int half = kK4 / 2;
+    std::vector<double> z(T3, B5);
+    for (int co = 0; co < kC4; co++) {
+        std::fill(h.begin(), h.end(), B4[co]);
+        for (int ci = 0; ci < kC3; ci++)
+            for (int f = 0; f < F3 && f < kF4; f++) {
+                const float* src = &a[((size_t)ci * F3 + f) * T3];
+                const float* w = &W4[(((size_t)co * kC3 + ci) * kF4 + f) * kK4];
+                for (int k = 0; k < kK4; k++) {
+                    const int d = k - half;
+                    const float wk = w[k];
+                    const int t0 = std::max(0, -d), t1 = std::min(T3, T3 - d);
+                    for (int t = t0; t < t1; t++) h[t] += wk * src[t + d];
+                }
+            }
+        for (int t = 0; t < T3; t++) z[t] += W5[co] * std::max(0.f, h[t]);
+    }
+    for (int t = 0; t < T3; t++) out[t] = (float)(1.0 / (1.0 + std::exp(-z[t])));
+    if (times) {
+        // Mitte eines Ausgabe-Schritts: 8 Mel-Rahmen à kMelBlock FFT-Rahmen, FFT-Fenster-Mitte
+        times->resize(T3);
+        for (int t = 0; t < T3; t++)
+            (*times)[t] = (float)(((8.0 * t + 3.5) * kMelBlock + 1.5) / fps_ + (kN / 2.0) / rate_);
+    }
+    return out;
+}
+
 std::vector<float> TrackAnalyzer::vocalProb() const {
+    // Gesangs-Netz (wenn trainiert): auf das 0,25-s-Raster der App umrechnen (linear interpoliert)
+    std::vector<float> tm;
+    const std::vector<float> p = vocalNet(&tm);
+    if (!p.empty()) {
+        const double dur = (double)sumCount_ / std::max(1, rate_);
+        const size_t n = (size_t)(dur / 0.25) + 1;
+        std::vector<float> out(n);
+        size_t j = 0;
+        for (size_t i = 0; i < n; i++) {
+            const double t = i * 0.25;
+            while (j + 1 < tm.size() && tm[j + 1] <= t) j++;
+            if (t <= tm[0]) out[i] = p[0];
+            else if (j + 1 >= tm.size()) out[i] = p.back();
+            else {
+                const double f = (t - tm[j]) / (tm[j + 1] - tm[j]);
+                out[i] = (float)(p[j] * (1 - f) + p[j + 1] * f);
+            }
+        }
+        return out;
+    }
     const std::vector<float> in = vocalInputs();
     const size_t n = in.size() / (2 * kVocalDim);
     std::vector<float> out(n);

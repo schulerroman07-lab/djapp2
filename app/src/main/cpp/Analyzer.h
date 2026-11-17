@@ -49,9 +49,17 @@ public:
     /** Eingang des Gesangs-Klassifikators: alle 0,25 s je 2·kVocalDim Werte (Mittel + Streuung über ±0,75 s). */
     std::vector<float> vocalInputs() const;
     double vocalHop() const { return fps_ > 0 ? kBlock / fps_ : 0; }
+    /** Eingang des Gesangs-Netzes: pro Mel-Rahmen (melHop() s) 2·kMel Werte in dB:
+     *  Mitte relativ zum Song (kMel), dann Seite gegen Mitte (kMel). */
+    std::vector<float> melInput() const;
+    double melHop() const { return fps_ > 0 ? kMelBlock / fps_ : 0; }
+    /** Gesangs-Wahrscheinlichkeit pro Ausgabe-Schritt des Netzes (8 Mel-Rahmen ≈ 0,19 s) + Zeiten (s). */
+    std::vector<float> vocalNet(std::vector<float>* times) const;
     static constexpr int kBands = 20;       // Frequenzbänder (Mitte) – dieselben für die Seite
     static constexpr int kBlock = 8;        // Rahmen pro Block (ca. 46 ms)
     static constexpr int kVocalDim = 46;    // Merkmale pro Block für den Gesangs-Klassifikator
+    static constexpr int kMel = 40;         // Mel-Bänder (50 Hz – 10 kHz) für das Gesangs-Netz
+    static constexpr int kMelBlock = 4;     // Rahmen pro Mel-Rahmen (ca. 23 ms)
 
 private:
     static constexpr int kN = 1024;         // FFT-Länge
@@ -76,6 +84,12 @@ private:
     std::vector<float> blkMid_, blkSide_;
     std::vector<double> accMid_, accSide_;
     int accFrames_ = 0;
+    // Mel-Spektrum (Mitte/Seite, dB) für das Gesangs-Netz: pro FFT-Bin zwei Filter mit Gewicht
+    std::vector<int> melIdx_;               // unteres Filter je Bin (−1 = keins), das obere ist +1
+    std::vector<float> melW_;               // Gewicht für das obere Filter (das untere bekommt 1 − w)
+    std::vector<double> melAccM_, melAccS_;
+    int melFrames_ = 0;
+    std::vector<float> melMid_, melSide_;
     double sumAll_ = 0, sumLow_ = 0;
     size_t sumCount_ = 0;
 };

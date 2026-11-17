@@ -1,6 +1,10 @@
 // PC-Werkzeug: analysiert rohe PCM-Daten (s16le, stereo, 44100 Hz) genau wie die App und gibt das
-// Ergebnis als JSON aus. Aufruf: analyze_cli <datei.pcm> [--vocal-features out.bin] [Stellgrösse=Wert ...]
+// Ergebnis als JSON aus. Aufruf: analyze_cli <datei.pcm> [--vocal-features out.bin] [--mel out.bin] [Stellgrösse=Wert ...]
 #include "Analyzer.h"
+#include "Dsp.h"
+#include "KeyAnalyzer.h"
+#include <cmath>
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -11,9 +15,11 @@ using namespace dj;
 int main(int argc, char** argv) {
     if (argc < 2) { fprintf(stderr, "Aufruf: analyze_cli datei.pcm\n"); return 2; }
     const char* vfOut = nullptr;
+    const char* melOut = nullptr;
     for (int i = 2; i < argc; i++) {
         std::string a = argv[i];
         if (a == "--vocal-features" && i + 1 < argc) { vfOut = argv[++i]; continue; }
+        if (a == "--mel" && i + 1 < argc) { melOut = argv[++i]; continue; }
         size_t eq = a.find('=');
         if (eq == std::string::npos) continue;
         std::string k = a.substr(0, eq);
@@ -30,13 +36,35 @@ int main(int argc, char** argv) {
     FILE* f = std::string(argv[1]) == "-" ? stdin : fopen(argv[1], "rb");   // "-" = von der Standardeingabe
     if (!f) { perror(argv[1]); return 1; }
     TrackAnalyzer an;
+    KeyAnalyzer key;
+    LoudnessMeter loud;
+    std::vector<float> peaks;                 // wie die App: 100 Spitzenwerte pro Sekunde
     std::vector<int16_t> buf(4096 * 2);
-    size_t n;
-    while ((n = fread(buf.data(), 4, 4096, f)) > 0) an.feed(buf.data(), n, 44100);
+    size_t n, total = 0;
+    int peak = 0, peakN = 0;
+    while ((n = fread(buf.data(), 4, 4096, f)) > 0) {
+        an.feed(buf.data(), n, 44100);
+        key.feed(buf.data(), n, 44100);
+        loud.feed(buf.data(), n, 44100);
+        for (size_t i = 0; i < n; i++) {
+            peak = std::max(peak, std::max(std::abs((int)buf[i * 2]), std::abs((int)buf[i * 2 + 1])));
+            if (++peakN == 441) { peaks.push_back(peak / 32768.f); peak = 0; peakN = 0; }
+        }
+        total += n;
+    }
+    // hörbares Ende wie StructureAnalyzer.soundEnd (Spitzenwert < 0,02 = Stille)
+    const double duration = total / 44100.0;
+    long pi = (long)peaks.size() - 1;
+    while (pi > 0 && peaks[pi] < 0.02f) pi--;
+    const double soundEnd = peaks.empty() ? duration : std::min(duration, (pi + 1) / 100.0 + 0.1);
+    float keyConf = 0;
+    const int musicalKey = key.result(&keyConf);
     if (f != stdin) fclose(f);
     Analysis r = an.result();
-    printf("{\"bpm\":%.3f,\"confidence\":%.3f,\"steady\":%s,\"downbeat\":%d,\"downbeatConf\":%.3f,\"energy\":%.3f,\"beats\":[",
-           r.bpm, r.confidence, r.steady ? "true" : "false", r.downbeat, r.downbeatConf, r.energy);
+    printf("{\"bpm\":%.3f,\"confidence\":%.3f,\"steady\":%s,\"downbeat\":%d,\"downbeatConf\":%.3f,\"energy\":%.3f,"
+           "\"duration\":%.3f,\"soundEnd\":%.3f,\"key\":%d,\"keyConf\":%.3f,\"loudness\":%.2f,\"beats\":[",
+           r.bpm, r.confidence, r.steady ? "true" : "false", r.downbeat, r.downbeatConf, r.energy,
+           duration, soundEnd, musicalKey, keyConf, loud.resultDb());
     for (size_t i = 0; i < r.beats.size(); i++) printf(i ? ",%.4f" : "%.4f", r.beats[i]);
     printf("],\"vocal\":[");
     for (size_t i = 0; i < r.vocal.size(); i++) printf(i ? ",%d" : "%d", r.vocal[i]);
@@ -52,6 +80,17 @@ int main(int argc, char** argv) {
         fwrite(&hop, sizeof(double), 1, o);
         fwrite(&dim, sizeof(int), 1, o);
         fwrite(vi.data(), sizeof(float), vi.size(), o);
+        fclose(o);
+    }
+    if (melOut) {
+        // Eingang des Gesangs-Netzes (Mel-Spektrum Mitte/Seite), zum Trainieren in train_vocal_net.py
+        std::vector<float> m = an.melInput();
+        FILE* o = fopen(melOut, "wb");
+        double hop = an.melHop();
+        int dim = 2 * TrackAnalyzer::kMel;
+        fwrite(&hop, sizeof(double), 1, o);
+        fwrite(&dim, sizeof(int), 1, o);
+        fwrite(m.data(), sizeof(float), m.size(), o);
         fclose(o);
     }
     return 0;
