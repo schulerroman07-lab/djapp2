@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.1 – Übergänge mit echter Musik, Drag-Fehler (in Arbeit)
+
+### Drag-Fehler in "Als Nächstes" behoben
+- **Fehler:** Beim Ziehen eines Songs nach OBEN blieb er stecken, sobald die Liste mitscrollen musste.
+  Ursache: Tauschte die oberste sichtbare Zeile ihren Platz, "folgte" die Liste dieser Zeile – der
+  gezogene Song rutschte aus dem Bild und wurde nicht mehr bewegt.
+- **Lösung:** Die Scroll-Position wird vor jedem Platztausch festgehalten; der Ziel-Platz richtet sich nach
+  der Zeile unter dem Finger; Auto-Scroll läuft in beide Richtungen gleich (bis ca. 15 Zeilen/s).
+- **Test (echte Berührungen im Emulator, 40 Songs):** letzter Song ganz nach oben, erster ganz nach unten.
+  Mit dem alten Code schlägt der Test fehl ("Song 40 von Platz 40 → Platz 31", steckt fest) – der Fehler
+  ist damit nachgestellt. Dazu Unit-Tests der Rechen-Regeln (beide Richtungen, ganze Liste simuliert).
+
 ## 2.0 – Umbau zum Auto-DJ
 
 Die App ist jetzt ein einfacher, eleganter Auto-DJ: **Playlist wählen, Play drücken** – die App kennt

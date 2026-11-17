@@ -168,47 +168,50 @@ fun QueueList(
             val density = LocalDensity.current
             val rowPx = with(density) { rowH.toPx() }
             val edgePx = with(density) { 70.dp.toPx() }
+            val maxSpeedPx = with(density) { 900.dp.toPx() }     // höchstens ca. 15 Zeilen pro Sekunde
             val listState = state ?: rememberLazyListState()
             val currentQueue by rememberUpdatedState(queue)
             val move by rememberUpdatedState(onMove)
             var dragId by remember { mutableLongStateOf(-1L) }
-            var dragOffset by remember { mutableFloatStateOf(0f) }
+            // Oberkante der gezogenen Zeile im sichtbaren Bereich (folgt dem Finger)
+            var dragTop by remember { mutableFloatStateOf(0f) }
 
-            /** Gezogenen Song um so viele Plätze verschieben, wie er sich bewegt hat. */
+            /**
+             * Gezogenen Song auf den Platz der Zeile setzen, über der seine Mitte gerade liegt.
+             * Wichtig: Vor dem Verschieben die Scroll-Position festhalten. Sonst "folgt" die Liste der
+             * obersten sichtbaren Zeile, sobald diese ihren Platz tauscht – die gezogene Zeile rutscht
+             * dann aus dem Bild und bleibt stecken (Fehler beim Ziehen nach oben).
+             */
             fun applyDrag() {
                 val q = currentQueue
                 val from = q.indexOfFirst { it.id == dragId }
-                val steps = (dragOffset / rowPx).roundToInt()
-                if (from >= 0 && steps != 0) {
-                    val to = (from + steps).coerceIn(0, q.size - 1)
-                    if (to != from) {
-                        move(from, to)
-                        dragOffset -= (to - from) * rowPx
-                    }
+                if (from < 0) return
+                val visible = listState.layoutInfo.visibleItemsInfo
+                if (visible.isEmpty()) return
+                val to = DragLogic.targetIndex(dragTop + rowPx / 2f, visible.map { Triple(it.index, it.offset, it.size) }, from)
+                    .coerceIn(0, q.size - 1)
+                if (to != from) {
+                    listState.requestScrollToItem(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+                    move(from, to)
                 }
             }
 
-            // Auto-Scroll: gezogener Song nahe am Rand → Liste läuft mit (schneller, je näher am Rand)
+            // Auto-Scroll: gezogener Song nahe am oberen/unteren Rand → Liste läuft mit
+            // (schneller, je näher am Rand); der Song bleibt dabei unter dem Finger.
             LaunchedEffect(dragId) {
                 if (dragId < 0) return@LaunchedEffect
+                var last = System.nanoTime()
                 while (true) {
+                    val now = System.nanoTime()
+                    val dt = ((now - last) / 1e9f).coerceIn(0.004f, 0.05f)
+                    last = now
                     val info = listState.layoutInfo
-                    val item = info.visibleItemsInfo.firstOrNull { it.key == dragId }
-                    var speed = 0f
-                    if (item != null) {
-                        val top = item.offset + dragOffset
-                        val bottom = top + item.size
-                        val start = info.viewportStartOffset.toFloat()
-                        val end = info.viewportEndOffset.toFloat()
-                        if (top < start + edgePx) speed = -((start + edgePx - top) / edgePx).coerceIn(0f, 1f) * 28f
-                        else if (bottom > end - edgePx) speed = ((bottom - (end - edgePx)) / edgePx).coerceIn(0f, 1f) * 28f
-                    }
-                    if (speed != 0f) {
-                        val used = listState.scrollBy(speed)
-                        dragOffset += used          // Song bleibt unter dem Finger
-                        applyDrag()
-                    }
-                    delay(16)
+                    val speed = DragLogic.scrollSpeed(
+                        dragTop, dragTop + rowPx, info.viewportStartOffset.toFloat(), info.viewportEndOffset.toFloat(), edgePx, maxSpeedPx,
+                    )
+                    if (speed != 0f) listState.scrollBy(speed * dt)
+                    applyDrag()
+                    delay(8)
                 }
             }
 
@@ -224,7 +227,11 @@ fun QueueList(
                             .height(rowH)
                             .zIndex(if (dragging) 1f else 0f)
                             .graphicsLayer {
-                                translationY = if (dragging) dragOffset else 0f
+                                // gezogene Zeile: vom eigenen Listenplatz zur Finger-Position verschieben
+                                translationY = if (dragging) {
+                                    val slot = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == t.id }
+                                    if (slot != null) dragTop - slot.offset else 0f
+                                } else 0f
                                 scaleX = if (dragging) 1.02f else 1f
                                 scaleY = if (dragging) 1.02f else 1f
                             }
@@ -238,12 +245,19 @@ fun QueueList(
                         Box(
                             Modifier.size(if (narrow) 32.dp else 40.dp).testTag("touch:Griff").pointerInput(t.id) {
                                 detectDragGestures(
-                                    onDragStart = { dragId = t.id; dragOffset = 0f },
-                                    onDragEnd = { dragId = -1L; dragOffset = 0f },
-                                    onDragCancel = { dragId = -1L; dragOffset = 0f },
+                                    onDragStart = {
+                                        val slot = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == t.id }
+                                        dragTop = (slot?.offset ?: 0).toFloat()
+                                        dragId = t.id
+                                    },
+                                    onDragEnd = { dragId = -1L },
+                                    onDragCancel = { dragId = -1L },
                                 ) { change, amount ->
                                     change.consume()
-                                    dragOffset += amount.y
+                                    val info = listState.layoutInfo
+                                    dragTop = (dragTop + amount.y).coerceIn(
+                                        info.viewportStartOffset - rowPx / 2f, info.viewportEndOffset - rowPx / 2f,
+                                    )
                                     applyDrag()
                                 }
                             },
