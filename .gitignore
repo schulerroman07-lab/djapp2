@@ -9,3 +9,6 @@ captures/
 web/.firebase/
 web/node_modules/
 upload.keystore
+
+# Python
+__pycache__/

@@ -176,6 +176,12 @@ class RealMixPlanTest {
                 recent += plan.type
                 n++
                 File(out, "%03d.mix".format(n)).writeText(script(n, name, aId, bId, a, b, plan, early, pcmDir!!))
+                if (early != null) {
+                    // Früh-Übergang (wenn angeboten und angenommen) als eigene Variante messen: Nummer 500 + n
+                    val ep = TransitionPlanner.plan(a.s, aPos, 1f, b.s, PlannerSettings(style = MixStyle.BALANCED), recent.dropLast(1), atBar = early)
+                    File(out, "%03d.mix".format(500 + n)).writeText(script(500 + n, "$name-früh", aId, bId, a, b, ep, early, pcmDir))
+                    summary.append(String.format(Locale.ROOT, "%03d %-12s %s→%s %-10s FRÜH start %.1f von %.1f%n", 500 + n, name, aId, bId, ep.type, ep.mixSec, a.s.soundEnd))
+                }
                 summary.append(String.format(Locale.ROOT, "%03d %-12s %s→%s %-10s start %.1f von %.1f (letzter Gesang %.1f) Vertrauen %.2f/%.2f früh=%s%n",
                     n, name, aId, bId, plan.type, plan.mixSec, a.s.soundEnd, a.s.lastVocalEnd, a.s.confidence, b.s.confidence, early?.toString() ?: "-"))
             }

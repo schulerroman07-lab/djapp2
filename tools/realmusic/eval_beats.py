@@ -5,7 +5,7 @@ Misst die Beat-Erkennung der App an den Referenzen.
       Treffer = Referenz-Beat, zu dem ein erkannter Beat höchstens 30 ms entfernt liegt (jeder nur einmal),
       F = 2·Treffer / (Referenz-Beats + erkannte Beats)  → bestraft auch doppeltes/halbes Tempo.
   - Downbeat-Trefferquote: genauso für "die 1" jedes Takts.
-Aufruf: python3 eval_beats.py <pcm-ordner> <analyze_cli> [--list dev] [Stellgrösse=Wert ...]
+Aufruf: python3 eval_beats.py <pcm- oder mp3-Ordner> <analyze_cli> [--list dev] [Stellgrösse=Wert ...]
 """
 import json, os, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
@@ -45,7 +45,14 @@ def fmeasure(ref, est, tol=TOL):
 
 
 def analyze(cli, pcm, extra):
-    out = subprocess.run([cli, pcm] + extra, capture_output=True, text=True, check=True).stdout
+    """Analyse wie in der App; liegt nur die MP3 vor (gleicher Name), wird sie mit ffmpeg dekodiert."""
+    if not os.path.exists(pcm) and os.path.exists(pcm[:-4] + ".mp3"):
+        dec = subprocess.Popen(["ffmpeg", "-v", "error", "-i", pcm[:-4] + ".mp3", "-f", "s16le", "-ar", "44100", "-ac", "2", "-"],
+                               stdout=subprocess.PIPE)
+        out = subprocess.run([cli, "-"] + extra, stdin=dec.stdout, capture_output=True, text=True, check=True).stdout
+        dec.wait()
+    else:
+        out = subprocess.run([cli, pcm] + extra, capture_output=True, text=True, check=True).stdout
     return json.loads(out)
 
 

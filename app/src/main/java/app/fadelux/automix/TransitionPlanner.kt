@@ -14,6 +14,8 @@ import kotlin.math.min
  *  - GENRE: Techno/House nutzen ihre langen Outros (langer Blend, Bass-Swap, Filter auf der Phrase);
  *    Pop/Schlager/Rock bekommen einfache, kurze Übergänge (kurzer Blend im Takt, Fade, Schnitt auf die 1)
  *    in den letzten Sekunden bzw. im Fade-out.
+ *  - GESANG: nie zwei Gesänge gleichzeitig – A singt nach der Freigabe nicht mehr, und B setzt in einem
+ *    gesangsfreien Teil ein (die Überblendung ist fertig, bevor B singt; sonst kürzer bzw. Schnitt).
  *  - KLANG: Effekte (Echo) nur, wenn sie nötig sind (elektronisch, Tempo zu weit auseinander) –
  *    nie nur der Abwechslung wegen.
  */
@@ -131,6 +133,47 @@ object TransitionPlanner {
                 reason = why.joinToString(" · "),
             )
         }
+        // --- 5) Harte Regel: nie zwei Gesänge gleichzeitig ---
+        // A singt nach der Freigabe nicht mehr (oben). Weil die Erkennung am Song-Ende nie ganz sicher ist, muss
+        // zusätzlich B in einem gesangsfreien Teil einsetzen: Die Überblendung ist fertig (A ganz weg), bevor B
+        // zu singen beginnt. Sonst wird sie gekürzt (gleiches Ende, späterer Einsatz) – notfalls bis zum Schnitt.
+        fun guard(p: TransitionPlan): TransitionPlan {
+            if (p.type == TransitionType.CUT) return p                    // A stoppt beim Einsatz: keine Überlappung
+            fun room(bS: Double) = b.nextVocalStart(bS)?.let { it - VOCAL_MARGIN - bS } ?: Double.MAX_VALUE
+            val lenB = if (p.lengthSec > 0) p.lengthSec else p.lengthBars * b.barSec
+            if (room(p.bStartSec) >= lenB) return p
+            val note = "B singt ab ${mmss(b.nextVocalStart(p.bStartSec) ?: 0.0)}"
+            if (p.matchTempo && p.lengthSec <= 0 && p.type != TransitionType.ECHO_OUT && p.type != TransitionType.REVERB_WASH) {
+                val keepB = abs(p.bStartSec - bFirst) < 1e-3
+                var l = p.lengthBars
+                while (l > 2) {
+                    l /= 2
+                    val bS = if (keepB) p.bStartSec else bStartFor(l)
+                    if (room(bS) >= l * b.barSec) {
+                        val bar = p.mixBar + (p.lengthBars - l)
+                        val t = if (l < 8 && p.type == TransitionType.LONG_BLEND) allowedOr(TransitionType.BLEND, settings.enabled) else p.type
+                        return p.copy(type = t, mixBar = bar, mixSec = a.barTime(bar), lengthBars = l, bStartSec = bS,
+                            reason = "${p.reason} · $note → nur $l Takte (Takt $bar)")
+                    }
+                }
+                val cutBar = max(releaseBar, endBar - 1)
+                if (TransitionType.CUT in settings.enabled && a.barTime(cutBar) < aEnd + 1.0) {
+                    return TransitionPlan(TransitionType.CUT, cutBar, a.barTime(cutBar), bFirst, 1, p.tempoRatio, true,
+                        "${p.reason} · $note → Schnitt auf die 1 (Takt $cutBar)")
+                }
+            }
+            // ohne Beatmatching: kurzer Fade ganz am Ende, fertig bevor B singt
+            val l = room(0.0).coerceIn(0.3, 4.0)
+            val start = max(p.mixSec, aEnd - l)
+            val t = allowedOr(TransitionType.FADE, settings.enabled)
+            return TransitionPlan(
+                type = t, mixBar = a.barAt(start), mixSec = start, bStartSec = 0.0,
+                lengthBars = max(1, kotlin.math.ceil(l / max(0.5, b.barSec)).toInt()), tempoRatio = 1f, matchTempo = false,
+                reason = "${p.reason} · $note → kurzer Fade ${String.format(java.util.Locale.ROOT, "%.1f", l)} s am Ende",
+                lengthSec = if (t == TransitionType.FADE) l else -1.0,
+            )
+        }
+
         // --- 4a) Vom DJ: "jetzt mischen" / Früh-Übergang ---
         if (now) {
             val bar = a.nextBoundary(lead, 4)
@@ -140,7 +183,7 @@ object TransitionPlanner {
         if (atBar != null && beatOk) {
             val len = 16
             val type = if (keyFit >= 0.85f && abs(ratio!! - 1f) <= 0.03f) TransitionType.LONG_BLEND else TransitionType.BASS_SWAP
-            return beatPlan(type, atBar, len, bStartFor(len), "Früh-Übergang: passt perfekt, A ohne Gesang ab hier (Takt $atBar von ${a.endBar})")
+            return guard(beatPlan(type, atBar, len, bStartFor(len), "Früh-Übergang: passt perfekt, A ohne Gesang ab hier (Takt $atBar von ${a.endBar})"))
         }
         // vom DJ gewählter Typ (falls möglich)
         if (forced != null && !(forced in blendTypes && !beatOk)) {
@@ -174,7 +217,7 @@ object TransitionPlanner {
                     else if (type == recent.lastOrNull() && type == TransitionType.LONG_BLEND) type = TransitionType.BASS_SWAP
                     val l = if (type == TransitionType.BASS_SWAP) min(len, 16) else len
                     val b2 = if (l < len) (endBar - l).let { e -> (e downTo bar).firstOrNull { it % 8 == 0 } ?: bar } else bar
-                    return beatPlan(type, b2, l, bStartFor(l), "elektronisch: Blend im Outro, Phrase (Takt $b2 von ${a.endBar}, $l Takte)")
+                    return guard(beatPlan(type, b2, l, bStartFor(l), "elektronisch: Blend im Outro, Phrase (Takt $b2 von ${a.endBar}, $l Takte)"))
                 }
                 len /= 2
             }
@@ -185,7 +228,7 @@ object TransitionPlanner {
             val t = allowedOr(TransitionType.ECHO_OUT, settings.enabled)
             if (t == TransitionType.ECHO_OUT) {
                 why += "elektronisch, Tempo zu weit → Echo-Ausklang im Takt von A (Takt $bar)"
-                return TransitionPlan(t, bar, a.barTime(bar), bFirst, 2, 1f, false, why.joinToString(" · "))
+                return guard(TransitionPlan(t, bar, a.barTime(bar), bFirst, 2, 1f, false, why.joinToString(" · ")))
             }
         }
 
@@ -201,8 +244,8 @@ object TransitionPlanner {
                 // im Fade-out: B kommt, wenn A leiser wird; sonst so spät wie möglich (fertig am Ende)
                 val target = if (fadeOut != null) a.nextBoundary(fadeOut + (aEnd - fadeOut) * 0.25, 1) else endBar - len
                 val bar = target.coerceIn(releaseBar, endBar - len).let { b0 -> (b0 downTo releaseBar).firstOrNull { it % 2 == 0 } ?: b0 }
-                return beatPlan(TransitionType.BLEND, bar, min(len, endBar - bar).coerceAtLeast(2), bFirst,
-                    (if (fadeOut != null) "im Fade-out" else "kurzer Blend am Ende") + " (Takt $bar von ${a.endBar}, ${min(len, endBar - bar)} Takte)")
+                return guard(beatPlan(TransitionType.BLEND, bar, min(len, endBar - bar).coerceAtLeast(2), bFirst,
+                    (if (fadeOut != null) "im Fade-out" else "kurzer Blend am Ende") + " (Takt $bar von ${a.endBar}, ${min(len, endBar - bar)} Takte)"))
             }
             // kaum Platz nach dem letzten Gesang: Schnitt auf die "1" nach dem Gesang
             if (releaseBar < a.barCount && a.barTime(releaseBar) < aEnd + 1.0) {
@@ -216,8 +259,8 @@ object TransitionPlanner {
             else -> min(4.0, max(1.5, tail))
         }
         val start = max(release, aEnd - fadeLen)
-        return fadePlan(start, max(1.0, min(fadeLen, aEnd - start + 0.5)),
-            (if (fadeOut != null) "Fade im Fade-out" else "kurzer Fade am Ende") + " ab ${mmss(start)}")
+        return guard(fadePlan(start, max(1.0, min(fadeLen, aEnd - start + 0.5)),
+            (if (fadeOut != null) "Fade im Fade-out" else "kurzer Fade am Ende") + " ab ${mmss(start)}"))
     }
 
     private fun conf(s: TrackStructure) = if (s.confidence < 0) "?" else String.format(java.util.Locale.ROOT, "%.2f", s.confidence)

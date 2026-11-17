@@ -40,6 +40,27 @@
   bei 37 auch bei den Downbeats. Wo sie sich widersprechen, ist schon die Referenz unsicher – das wird
   im Bericht getrennt ausgewiesen.
 
+### Planer Version 2 (Zeitpunkt, Gesang, Genre, Klang)
+- **Zeitpunkt:** frühestens 0,5 s nach dem letzten Gesang von A, sonst so spät wie möglich – fertig vor
+  dem hörbaren Ende. Pop/Schlager/Rock: in den letzten Sekunden bzw. im Fade-out; Techno/House: Blend
+  über eine Phrase im langen Outro.
+- **Harte Regel "nie zwei Gesänge gleichzeitig":** A singt nach dem Einsatz nicht mehr; zusätzlich muss
+  B gesangsfrei einsetzen – die Überblendung ist fertig, bevor B zu singen beginnt. Sonst wird sie
+  gekürzt (gleiches Ende, späterer Einsatz), notfalls Schnitt auf die "1" bzw. ganz kurzer Fade am Ende.
+  Gilt auch für Früh-Übergänge. Zufallstest mit 3000 Song-Paaren prüft die Regel.
+- **Beatmatching nur bei sicherem Beat-Raster** (Vertrauen ≥ 0,6, festes Tempo) und kleinem
+  Tempo-Unterschied – sonst ein kurzer, sauberer Fade ohne Tempo-Angleichung.
+- **Klang dezenter:** neue Arten FADE und BLEND (kurzer Blend im Takt); Echo, Filter und Hall deutlich
+  schwächer; Effekte nur, wo nötig (elektronisch, Tempo zu weit auseinander) – nie nur zur Abwechslung.
+
+### Objektive Prüfung am PC (Werkzeuge)
+- `RealMixPlanTest` plant mit den echten Test-Songs ganze Partys (zwei Reihenfolgen, über 100 Übergänge,
+  dazu Früh-Übergänge als eigene Variante) und schreibt pro Übergang eine Abspiel-Datei.
+- `mixrender` spielt jeden Übergang mit der **echten Engine der App** ab (Decks, Keylock-Tempo, EQ,
+  Filter, Echo, Crossfader-Kurve, Begrenzer, sample-genauer Start) – je einmal als Mix, nur A, nur B.
+- `eval_mix.py` misst gegen die Referenzen: Beat-Versatz (inkl. Verzögerung der Engine), hörbarer Gesang
+  über Gesang, Einsatz gegen das Ende des letzten Gesangs, Pegel-Spitzen und Lautheits-Buckel.
+
 ## 2.0 – Umbau zum Auto-DJ
 
 Die App ist jetzt ein einfacher, eleganter Auto-DJ: **Playlist wählen, Play drücken** – die App kennt

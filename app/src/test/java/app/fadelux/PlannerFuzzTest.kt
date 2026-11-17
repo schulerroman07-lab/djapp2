@@ -56,6 +56,10 @@ class PlannerFuzzTest {
         val elec = TransitionPlanner.electronic(a) && TransitionPlanner.electronic(b)
         if (!elec && p.type in setOf(TransitionType.ECHO_OUT, TransitionType.REVERB_WASH, TransitionType.LOOP, TransitionType.FILTER))
             fail("$tag: Effekt bei Pop/Schlager/Rock: $p")
+        // harte Regel: B setzt gesangsfrei ein – die Überblendung ist fertig, bevor B singt (Schnitt: keine Überlappung)
+        val lenB = if (p.lengthSec > 0) p.lengthSec else p.lengthBars * b.barSec
+        if (p.type != TransitionType.CUT && lenB > 0.3 && b.vocalBetween(p.bStartSec, p.bStartSec + lenB))
+            fail("$tag: B singt schon während der Überblendung (B-Gesang ab ${b.nextVocalStart(p.bStartSec)}): $p")
         if (p.reason.isBlank()) fail("$tag: ohne Begründung")
         return p.type
     }
