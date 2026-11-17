@@ -660,6 +660,24 @@ Analysis TrackAnalyzer::result() const {
         first -= Ts * std::floor(first / Ts);            // erster Beat ≥ 0
         for (double t = first; t < durS; t += Ts) res.beats.push_back((float)t);
         res.bpm = (float)(60.0 / Ts);
+        // Örtliche Raster-Treue: Manche Songs verschieben ihr Timing zwischen Teilen (z. B. Intro gegen Hauptteil
+        // um 30–40 ms). Das feste Raster passt dort nicht – Beatmatching an dieser Stelle klänge holprig.
+        {
+            const size_t nb = res.beats.size();
+            const int W = 8;                               // ±2 Takte
+            const double g0 = (first - shift) / hopS;      // erster Raster-Beat in Rahmen
+            std::vector<std::vector<float>> near(nb);
+            for (double b : bt) {
+                if (useNet && at(netBeat, std::max(0.0, (b - 1.5) / kMelBlock)) < tuning().netEvident) continue;
+                const long k = std::lround((b - g0) / T);
+                if (k < 0 || k >= (long)nb) continue;
+                const float r = (float)std::fabs((b - (g0 + T * k)) * hopS * 1000.0);
+                for (long j = std::max(0L, k - W); j <= std::min((long)nb - 1, k + W); j++) near[j].push_back(r);
+            }
+            res.gridDev.assign(nb, 255);
+            for (size_t k = 0; k < nb; k++)
+                if ((int)near[k].size() >= W) res.gridDev[k] = (uint8_t)std::min(254.0, std::round((double)quantile(near[k], 0.5)));
+        }
     } else {
         for (double b : bt) {
             const double t = b * hopS + shift;

@@ -18,6 +18,8 @@ struct Analysis {
     float energy = 0;           // 0..1 Lautheit/Intensität
     std::vector<uint8_t> features;   // pro Beat kFeat Bytes (siehe kFeat)
     std::vector<uint8_t> vocal;      // Gesangs-Wahrscheinlichkeit 0..255 pro 0,25 s
+    std::vector<uint8_t> gridDev;    // pro Beat: wie weit die gehörten Beats in der Umgebung (±2 Takte) vom festen
+                                     // Raster abweichen (Median, ms; 255 = unbekannt, z. B. Break ohne Schlagzeug)
     // Zwischenwerte des Vertrauens (zum Eichen an echter Musik, tools/realmusic)
     float inlierFrac = 0, salience = 0, clarity = 0, netAct = 0;
 };

@@ -85,6 +85,16 @@
 - Die App nutzt die neue Analyse beim Laden jedes Titels (Deck) für den Auto-DJ; "Weiter"/"Zurück",
   Bibliothek und Tempo-Anzeige bleiben unverändert.
 
+### Örtliches Beat-Vertrauen beim Beatmatching
+- Manche Songs verschieben ihr Timing zwischen Teilen (z. B. Intro gegen Hauptteil um 30–40 ms). Die Analyse
+  misst jetzt pro Beat, wie gut das feste Beat-Raster in der Umgebung (±2 Takte) passt.
+- Der Planer gleicht Tempo und Takt nur noch an, wenn das Raster **genau an der Mix-Stelle** passt (A ab dem
+  Einsatz, B ab seinem Startpunkt, höchstens 20 ms daneben; Stellen ohne deutliches Schlagzeug zählen als
+  unsicher). Sonst: kurzer, sauberer Fade – wie bei unsicherem Raster. Gilt auch für den Früh-Übergang;
+  "Weiter"/"Zurück" bleibt unverändert.
+- Geprüft an den zurückgehaltenen Übungs-Songs: 4 % aller Stellen gesperrt, Fehler an den erlaubten Stellen
+  9,1 → 7,6 ms. Neue Unit-Tests für die Regel.
+
 ### Planer: Feinschliff mit echter Musik
 - Ist A schon zu Ende (Gesang bis zum Schluss), kommt B **sofort** (0,4 s eingeblendet) statt nach einem
   Takt Wartezeit – kein Loch. Schnitt auf die "1" nur, solange A noch klingt.
@@ -102,13 +112,15 @@
 ### Ergebnis der objektiven Prüfung (110 Übergänge, echte Engine, 56 Test-Songs)
 Ausführlich: `tools/realmusic/BERICHT.md`.
 - **Gesang über Gesang:** 0 von 110 (0 %). Gesang von A nach dem Einsatz von B: nie hörbar.
-- **Einsatz vor dem Ende des letzten Gesangs:** 2 von 102 (beide derselbe Song, 0,6 s, Nachhall).
-- **Beatmatching:** 4 Übergänge, mittlerer Beat-Versatz 23,3 ms (6,5 / 9,6 / 17,0 / 60,1 ms; der Ausreisser:
-  s46 verschiebt sein Timing zwischen Intro und Hauptteil um ca. 40 ms).
-- **Pegel:** höchstens 0,79 (nie übersteuert), Lautheits-Buckel höchstens +4,0 dB.
+- **Einsatz vor dem Ende des letzten Gesangs:** 0 von 102. Vorher 2 (s51) – das war ein Fehler der Referenz:
+  Rauschen der Stimm-Trennung, lauter als der ganze, schon verklungene Song. Regel korrigiert (Stimme zählt
+  nur, wenn sie nicht lauter ist als der Song); ändert nur Song-Schlüsse, die App macht dort nichts anders.
+- **Beatmatching:** 2 Übergänge, mittlerer Beat-Versatz **13,3 ms** (17,0 / 9,6 ms). Ohne das örtliche
+  Beat-Vertrauen waren es 4 mit 23,3 ms (Ausreisser 60 ms: s46 verschiebt sein Timing im Intro).
+- **Pegel:** höchstens 0,79 (nie übersteuert), Lautheits-Buckel höchstens +3,8 dB.
 - **Beats/Downbeats** (Analyse): 86,9 % / 71,6 %; bei sicherer Referenz 90,5 % / 80,8 %.
 - **Früh-Übergänge:** mit echter Musik 0 Angebote (Bedingungen nie sicher genug erfüllt).
-- **Folge der strengen Gesangs-Regel:** 105 von 110 Übergängen sind kurze Fades ganz am Ende. Viele Songs
+- **Folge der strengen Gesangs-Regel:** 107 von 110 Übergängen sind kurze Fades ganz am Ende. Viele Songs
   singen bis kurz vor Schluss; dazwischen klingt der alte Song natürlich aus (Median 0,7 s). Vorschläge im
   Bericht (Vocal-Samples bei Techno/House erlauben, im Ausklang mischen).
 

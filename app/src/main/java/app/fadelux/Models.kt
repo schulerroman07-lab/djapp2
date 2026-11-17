@@ -182,6 +182,11 @@ class DeckModel(val index: Int) : app.fadelux.automix.transitions.MixDeck {
             features = ByteArray(nf) { r[9 + it].toInt().toByte() },
             vocal = ByteArray(nv) { r[9 + nf + it].toInt().toByte() },
             duration = duration,
+            gridDev = run {
+                val o = 9 + nf + nv
+                val ng = if (r.size > o) r[o].toInt() else 0
+                if (ng > 0 && r.size >= o + 1 + ng) ByteArray(ng) { r[o + 1 + it].toInt().toByte() } else ByteArray(0)
+            },
         )
     }
     fun toggleKeylock() { keylock = !keylock; NativeEngine.setKeylock(index, keylock) }

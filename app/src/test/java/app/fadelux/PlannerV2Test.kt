@@ -25,7 +25,7 @@ class PlannerV2Test {
     fun song(
         bpm: Float = 124f, bars: Int = 96, intro: Int = 8, outro: Int = 8, conf: Float = 0.95f,
         vocal: List<ClosedFloatingPointRange<Double>> = emptyList(), family: GenreFamily? = GenreFamily.POP,
-        fadeBars: Int = 0, key: Int = 21,
+        fadeBars: Int = 0, key: Int = 21, gridDev: ((Int) -> Int)? = null,
     ): TrackStructure {
         val beatSec = 60.0 / bpm
         val beats = bars * 4
@@ -41,7 +41,8 @@ class PlannerV2Test {
         }
         val dur = beats * beatSec + 0.6
         val v = ByteArray((dur / 0.25).toInt()) { k -> if (vocal.any { (k * 0.25 + 0.125) in it }) 230.toByte() else 10 }
-        val d = AnalysisData(bpm, 0.3, 0, conf, conf >= 0.6f, f, v, dur)
+        val g = gridDev?.let { fn -> ByteArray(beats) { fn(it).toByte() } } ?: ByteArray(0)
+        val d = AnalysisData(bpm, 0.3, 0, conf, conf >= 0.6f, f, v, dur, g)
         return StructureAnalyzer.analyze(d, beats * beatSec + 0.3, family)!!.copy(musicalKey = key)
     }
 
@@ -113,6 +114,29 @@ class PlannerV2Test {
         assertTrue(p.lengthSec in 1.0..8.0)
         assertTrue(p.mixSec >= 150.5)
         assertTrue(endOf(p, a, b) <= a.soundEnd + 0.6)
+    }
+
+    @Test
+    fun gridSteady_localDeviation() {
+        val s = song(bars = 32, gridDev = { i -> if (i < 32) 30 else if (i in 64..71) 255 else 6 })
+        assertFalse("Intro verschoben", s.gridSteady(s.gridFirstBeat, s.gridFirstBeat + 10.0))
+        assertTrue("Hauptteil fest", s.gridSteady(s.gridFirstBeat + 40 * s.beatSec, s.gridFirstBeat + 60 * s.beatSec))
+        assertFalse("unbekannt (Break) zählt als unsicher", s.gridSteady(s.gridFirstBeat + 60 * s.beatSec, s.gridFirstBeat + 66 * s.beatSec))
+        assertTrue("ohne Angabe wie bisher", song(bars = 32).gridSteady(0.0, 30.0))
+    }
+
+    @Test
+    fun electronic_gridShiftWhereBStarts_noBeatmatching() {
+        val a = song(bars = 160, outro = 48, family = GenreFamily.TECHNO, key = 21, gridDev = { 5 })
+        // B verschiebt sein Timing im Intro (die ersten 32 Takte um 30 ms): dort würde B einsetzen
+        val b = song(bars = 160, intro = 32, family = GenreFamily.TECHNO, key = 16, gridDev = { i -> if (i < 128) 30 else 5 })
+        val p = TransitionPlanner.plan(a, 30.0, 1f, b, pop)
+        assertFalse("ohne Beatmatching: ${p.reason}", p.matchTempo)
+        assertTrue(p.reason, p.reason.contains("Mix-Stelle"))
+        assertTrue("nach dem letzten Gesang, fertig am Ende", p.mixSec + p.lengthSec <= a.soundEnd + 1.0)
+        // gleiches Paar mit festem Raster: Blend im Takt wie bisher
+        val b2 = song(bars = 160, intro = 32, family = GenreFamily.TECHNO, key = 16, gridDev = { 5 })
+        assertTrue(TransitionPlanner.plan(a, 30.0, 1f, b2, pop).matchTempo)
     }
 
     @Test

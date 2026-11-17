@@ -9,8 +9,9 @@ import kotlin.math.min
  *  - ZEITPUNKT: frühestens nach dem letzten Gesang von A ("Freigabe"), sonst so spät wie möglich und
  *    fertig vor dem hörbaren Ende. Nie mitten in einer Gesangsphrase. Damit liegen nie zwei
  *    Gesangsteile übereinander: A singt nach der Freigabe nicht mehr.
- *  - BEATMATCHING nur, wenn beide Beat-Raster zuverlässig sind (Vertrauen ≥ 0,6, festes Tempo) und das
- *    Tempo nah beieinander liegt – sonst ein kurzer, sauberer Fade ohne Tempo-Angleichung.
+ *  - BEATMATCHING nur, wenn beide Beat-Raster zuverlässig sind (Vertrauen ≥ 0,6, festes Tempo), auch genau
+ *    an der Mix-Stelle passen und das Tempo nah beieinander liegt – sonst ein kurzer, sauberer Fade ohne
+ *    Tempo-Angleichung.
  *  - GENRE: Techno/House nutzen ihre langen Outros (langer Blend, Bass-Swap, Filter auf der Phrase);
  *    Pop/Schlager/Rock bekommen einfache, kurze Übergänge (kurzer Blend im Takt, Fade, Schnitt auf die 1)
  *    in den letzten Sekunden bzw. im Fade-out.
@@ -74,6 +75,22 @@ object TransitionPlanner {
         atBar: Int? = null,
     ): TransitionPlan {
         if (quick) return planQuick(a, aPos, aTempo, b, settings, recent)
+        val p = planFull(a, aPos, aTempo, b, settings, recent, now, forced, atBar, allowBeat = true)
+        // Örtliches Beat-Vertrauen: Beide Raster müssen genau dort passen, wo gemischt wird (A ab dem Einsatz,
+        // B ab seinem Startpunkt). Sonst ohne Beatmatching – kurzer, sauberer Fade (wie bei unsicherem Raster).
+        if (p.matchTempo && p.type != TransitionType.CUT && p.lengthSec <= 0) {
+            val lenA = p.lengthBars * a.barSec
+            val lenB = p.lengthBars * b.barSec
+            if (!a.gridSteady(p.mixSec, p.mixSec + lenA) || !b.gridSteady(p.bStartSec, p.bStartSec + lenB))
+                return planFull(a, aPos, aTempo, b, settings, recent, now, forced, atBar, allowBeat = false)
+        }
+        return p
+    }
+
+    private fun planFull(
+        a: TrackStructure, aPos: Double, aTempo: Float, b: TrackStructure, settings: PlannerSettings,
+        recent: List<TransitionType>, now: Boolean, forced: TransitionType?, atBar: Int?, allowBeat: Boolean,
+    ): TransitionPlan {
         val why = mutableListOf<String>()
 
         // --- 1) Tempo und Beat-Raster ---
@@ -86,11 +103,12 @@ object TransitionPlanner {
         }
         val tempoClose = ratio != null && abs(ratio - 1f) <= maxStretch
         val gridsOk = a.beatReliable && b.beatReliable
-        val beatOk = tempoClose && gridsOk
+        val beatOk = tempoClose && gridsOk && allowBeat
         why += when {
             ratio == null -> "Tempo nicht vergleichbar (${fmt(aBpm)} → ${fmt(b.bpm)} BPM)"
             !tempoClose -> "Tempo ${fmt(aBpm)} → ${fmt(b.bpm)} BPM zu weit (${pct(ratio - 1f)})"
             !gridsOk -> "Beat-Raster unsicher (Vertrauen ${conf(a)} / ${conf(b)}) → ohne Beatmatching"
+            !allowBeat -> "Beat-Raster an der Mix-Stelle nicht fest (Timing verschiebt sich) → ohne Beatmatching"
             else -> "Tempo ${fmt(aBpm)} → ${fmt(b.bpm)} BPM: angleichen ${pct(ratio - 1f)} (Vertrauen ${conf(a)} / ${conf(b)})"
         }
         val keyFit = Keys.compatibility(a.musicalKey.takeIf { it >= 0 }, b.musicalKey.takeIf { it >= 0 })
@@ -324,7 +342,8 @@ object TransitionPlanner {
         val last = normalBar - 24                                          // lohnt sich nur deutlich vor dem Ende
         if (first > last) return null
         for (step in listOf(32, 16)) {
-            for (bar in first..last) if (bar % step == 0) return bar
+            for (bar in first..last) if (bar % step == 0 &&
+                a.gridSteady(a.barTime(bar), a.barTime(bar + len)) && b.gridSteady(b.barTime(bStart), b.barTime(bStart + len))) return bar
         }
         return null
     }

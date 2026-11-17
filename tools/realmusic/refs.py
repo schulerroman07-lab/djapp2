@@ -16,6 +16,8 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 VOCAL_ABS_DB = -45.0      # Gesangsspur muss mindestens so laut sein (dBFS)
 VOCAL_REL_DB = 15.0       # und höchstens so viel leiser als der ganze Song an derselben Stelle (dB)
+VOCAL_MAX_OVER_MIX_DB = 3.0   # lauter als der ganze Song kann die Stimme nicht sein: dort ist es Rauschen der
+                              # Stimm-Trennung (z. B. im verklingenden Schluss, wenn der Song schon fast still ist)
 GAP_FILL = 0.5
 MIN_SEG = 0.4
 
@@ -78,7 +80,7 @@ def derive(ref):
     k = np.ones(3) / 3
     vs = 10 * np.log10(np.convolve(10 ** (v / 10), k, mode="same") + 1e-12)
     ms = 10 * np.log10(np.convolve(10 ** (mix / 10), k, mode="same") + 1e-12)
-    mask = (vs > VOCAL_ABS_DB) & (vs > ms - VOCAL_REL_DB)
+    mask = (vs > VOCAL_ABS_DB) & (vs > ms - VOCAL_REL_DB) & (vs <= ms + VOCAL_MAX_OVER_MIX_DB)
     segs = segments(mask, hop)
     merged = []
     for s in segs:

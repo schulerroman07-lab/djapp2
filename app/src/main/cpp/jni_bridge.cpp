@@ -168,9 +168,12 @@ JNIEXPORT jfloatArray JNICALL FN(getDeckAnalysis)(JNIEnv* env, jobject, jint d) 
     if (a.bpm <= 0) return env->NewFloatArray(0);
     std::vector<jfloat> v = {2.f, a.bpm, a.firstBeat, a.confidence, a.steady ? 1.f : 0.f, (jfloat)a.downbeat,
                              a.downbeatConf, (jfloat)a.features.size(), (jfloat)a.vocal.size()};
-    v.reserve(v.size() + a.features.size() + a.vocal.size());
+    v.reserve(v.size() + a.features.size() + a.vocal.size() + 1 + a.gridDev.size());
     for (uint8_t b : a.features) v.push_back((jfloat)b);
     for (uint8_t b : a.vocal) v.push_back((jfloat)b);
+    // danach: örtliche Raster-Abweichung pro Beat (Anzahl, Werte in ms; 255 = unbekannt)
+    v.push_back((jfloat)a.gridDev.size());
+    for (uint8_t b : a.gridDev) v.push_back((jfloat)b);
     jfloatArray arr = env->NewFloatArray((jsize)v.size());
     env->SetFloatArrayRegion(arr, 0, (jsize)v.size(), v.data());
     return arr;

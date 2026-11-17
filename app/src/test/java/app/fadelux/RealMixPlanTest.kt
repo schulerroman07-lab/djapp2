@@ -153,7 +153,8 @@ class RealMixPlanTest {
                 bpm, (j["energy"] as Double).toFloat(), genre = genre, musicalKey = key, loudness = (j["loudness"] as Double).toFloat())
             val fam = if (genre == "Schlager") GenreFamily.PARTY else Genres.family(track)
             val d = AnalysisData(bpm, beats.firstOrNull() ?: 0.0, (j["downbeat"] as Double).toInt(), (j["confidence"] as Double).toFloat(),
-                j["steady"] as Boolean, hex(j["features"] as String), vocal, j["duration"] as Double)
+                j["steady"] as Boolean, hex(j["features"] as String), vocal, j["duration"] as Double,
+                gridDev = ((j["gridDev"] as? List<*>) ?: emptyList<Any>()).map { (it as Double).toInt().toByte() }.toByteArray())
             val s = StructureAnalyzer.analyze(d, j["soundEnd"] as Double, fam) ?: continue
             songs[id] = Song(track, s.copy(musicalKey = key, trackEnergy = track.energy ?: -1f,
                 soundStart = (j["soundStart"] as? Double) ?: 0.0), j["loudness"] as Double)

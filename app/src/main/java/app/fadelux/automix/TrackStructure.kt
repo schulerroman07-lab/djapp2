@@ -35,7 +35,23 @@ data class TrackStructure(
     val soundStart: Double = 0.0,     // erster hörbarer Ton (Stille am Dateianfang überspringen)
     val fadeOutStart: Double = -1.0,  // Beginn des Ausblendens (-1 = kein Fade-out)
     val family: GenreFamily? = null,  // Genre-Familie (aus dem ID3-Tag bzw. geschätzt)
+    /** Pro Beat: wie weit die gehörten Beats in der Umgebung vom festen Raster abweichen (ms, 255 = unbekannt);
+     *  leer = keine Angabe (ältere Analyse). */
+    val gridDev: ByteArray = ByteArray(0),
+    val gridFirstBeat: Double = 0.0,  // Zeit des ersten Beats (Index 0 in [gridDev])
 ) {
+    /**
+     * Passt das feste Beat-Raster im Zeitraum [from, to] (Sekunden)? Manche Songs verschieben ihr Timing
+     * zwischen Teilen (z. B. Intro gegen Hauptteil um 30–40 ms); dort klänge Beatmatching holprig.
+     * Unbekannt (Break ohne deutliche Beats) zählt als "passt nicht" – im Zweifel ohne Beatmatching.
+     */
+    fun gridSteady(from: Double, to: Double): Boolean {
+        if (gridDev.isEmpty()) return true
+        val i0 = kotlin.math.floor((from - gridFirstBeat) / beatSec).toInt().coerceAtLeast(0)
+        val i1 = kotlin.math.ceil((to - gridFirstBeat) / beatSec).toInt().coerceAtMost(gridDev.size - 1)
+        return (i0..i1).all { (gridDev[it].toInt() and 0xFF) <= GRID_DEV_MAX_MS }
+    }
+
     /** Ende des letzten Gesangs (Sekunden), 0 = kein Gesang. */
     val lastVocalEnd: Double get() =
         if (vocalKnown) vocalSegments.lastOrNull()?.endInclusive ?: 0.0
@@ -101,10 +117,15 @@ class AnalysisData(
     val features: ByteArray,        // 5 Bytes pro Beat
     val vocal: ByteArray,           // 0..255 pro 0,25 s
     val duration: Double,
+    val gridDev: ByteArray = ByteArray(0),   // pro Beat: örtliche Abweichung vom festen Raster (ms, 255 = unbekannt)
 )
 
 /** Schwelle fürs Beatmatching (an echter Musik bestimmt, siehe tools/realmusic). */
 const val RELIABLE = 0.6f
+
+/** Grösste örtliche Abweichung vom Raster (ms), bei der an dieser Stelle noch beatgematcht wird
+ *  (an den Übungs-Songs bestimmt: 15–25 ms gleich gut, siehe tools/realmusic/BERICHT.md). */
+const val GRID_DEV_MAX_MS = 20
 
 object StructureAnalyzer {
     /** Schwelle der Gesangs-Wahrscheinlichkeit (an den Übungs-Songs bestimmt, siehe train_vocal_net.py):
@@ -177,6 +198,7 @@ object StructureAnalyzer {
         return base.copy(
             bars = bars, confidence = d.confidence, steady = d.steady, vocalSegments = segs, vocalKnown = true,
             soundEnd = soundEnd, fadeOutStart = fadeOut, family = family,
+            gridDev = d.gridDev, gridFirstBeat = d.firstBeat,
         )
     }
 

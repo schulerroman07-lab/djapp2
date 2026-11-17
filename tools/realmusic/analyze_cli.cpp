@@ -77,6 +77,8 @@ int main(int argc, char** argv) {
            r.bpm, r.confidence, r.steady ? "true" : "false", r.downbeat, r.downbeatConf, r.energy,
            duration, soundEnd, soundStart, musicalKey, keyConf, loud.resultDb());
     for (size_t i = 0; i < r.beats.size(); i++) printf(i ? ",%.4f" : "%.4f", r.beats[i]);
+    printf("],\"gridDev\":[");
+    for (size_t i = 0; i < r.gridDev.size(); i++) printf(i ? ",%d" : "%d", r.gridDev[i]);
     printf("],\"vocal\":[");
     for (size_t i = 0; i < r.vocal.size(); i++) printf(i ? ",%d" : "%d", r.vocal[i]);
     printf("],\"features\":\"");

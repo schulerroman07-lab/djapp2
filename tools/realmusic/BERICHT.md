@@ -26,23 +26,22 @@ Stand: 17.11.2026. Alle Zahlen sind gemessen, nicht geschätzt. Kurzfassung am E
 | Beat-Treffer ≥ 90 % (±30 ms) | **86,9 %** (Anfang 80,1 %); bei sicherer Referenz (49 Songs) **90,5 %** | nur bei sicherer Referenz |
 | Downbeat ≥ 80 % | **71,6 %** (Anfang 54,2 %); bei sicherer Referenz (37 Songs) **80,8 %** | nur bei sicherer Referenz |
 | 0 % hörbarer Gesang über Gesang | **0 von 110 (0 %)** | ja |
-| Kein Übergang vor dem Ende des letzten Gesangs | **2 von 102** zu früh, beide derselbe Song (s51), je 0,6 s | fast |
-| Mittlerer Beat-Versatz bei Beatmatching < 20 ms | **23,3 ms** (nur 4 Übergänge: 6,5 / 9,6 / 17,0 / 60,1 ms) | nein (ein Ausreisser, siehe Ursachen) |
+| Kein Übergang vor dem Ende des letzten Gesangs | **0 von 102** (mit korrigierter Referenz; vorher 2 – Referenz-Fehler bei s51, siehe unten) | ja |
+| Mittlerer Beat-Versatz bei Beatmatching < 20 ms | **13,3 ms** (17,0 / 9,6 ms) – aber nur 2 Übergänge | ja, statistisch schwach |
 | Drag-Test hoch und runter | grün (40 Songs: nach oben 10,1 s, nach unten 4,6 s) | ja |
 | Daumen + Export (UI-Test) | grün (Speichern, Ausblenden nach 15 s, Export lesbar) | ja |
-| Build sauber, alle Tests grün | 55 Unit-Tests grün; Engine-Tests am PC grün; CI: App-Build grün, Gerätetest grün (Dauerbetrieb 0 Aussetzer, Rand-Prüfung, Drag, Bewertung/Export) | ja |
+| Build sauber, alle Tests grün | 57 Unit-Tests grün (davon RealMixPlanTest mit den echten Songs); Engine-Tests am PC grün; CI: App-Build grün, Gerätetest grün (Dauerbetrieb 0 Aussetzer, Rand-Prüfung, Drag, Bewertung/Export) | ja |
 
 Weitere Messwerte der 110 Übergänge:
 - **Pegel:** Spitzenwert höchstens 0,79; der Begrenzer greift bei 0,90, also nie übersteuert. Höchster
-  Lautheits-Buckel +4,0 dB (6 Übergänge über 3 dB).
+  Lautheits-Buckel +3,8 dB (5 Übergänge über 3 dB).
 - **Gesang von A nach dem Einsatz von B:** in keinem Übergang hörbar.
 - **Einsatz nach dem letzten Gesang von A:** im Median 4,3 s danach.
 - **"Loch" zwischen den Songs** (Mix mehr als 20 dB leiser): Median 0,7 s, höchstens 2,9 s.
   - Gemessen ist das ganz das natürliche Ausklingen von A (Schlussakkord, Fade-out). Sobald B startet,
     gibt es kein Loch mehr.
-- **Gemessene Verzögerung der Engine** zwischen den Decks: +0,1 ms, also keine.
-- Mit dem neuen Beat-Netz neu gemessen: Gesang, Einsatz, Pegel und Loch unverändert; Übergangsarten gleich
-  (FADE 105, BLEND 2, FILTER 2, ECHO_OUT 1).
+- **Gemessene Verzögerung der Engine** zwischen den Decks: +0,2 ms, also keine.
+- Übergangsarten: FADE 107, BLEND 2, ECHO_OUT 1.
 - **Früh-Übergänge:** 0 Angebote in 110 Übergängen. Mit diesen echten Songs war kein Fall sicher genug
   (Beat-Raster, Tonart, Gesang).
 
@@ -59,6 +58,27 @@ Weitere Messwerte der 110 Übergänge:
   an den Übungs-Songs leicht schlechter (91,5 → 90,9 %), daher verworfen.
 - Ergebnis an den Test-Songs (nie zum Abstimmen benutzt): Beats 85,6 → **86,9 %**, Downbeat
   63,1 → **71,6 %**. Nur Songs mit sicherer Referenz: Beats **90,5 %**, Downbeat **80,8 %**.
+
+### Letzte Runde: örtliches Beat-Vertrauen und Referenz-Korrektur
+
+- **Örtliches Beat-Vertrauen:** Die Analyse misst jetzt pro Beat, wie weit die deutlich gehörten Beats in der
+  Umgebung (±2 Takte) vom festen Raster abweichen. Der Planer matcht nur noch, wenn das Raster **genau an der
+  Mix-Stelle** passt (A ab dem Einsatz, B ab seinem Startpunkt: höchstens 20 ms; unbekannt, z. B. ohne
+  Schlagzeug, zählt als unsicher). Sonst gibt es wie bei unsicherem Raster einen kurzen, sauberen Fade.
+  - Geprüft an den 20 zurückgehaltenen Übungs-Songs: 4 % aller Stellen werden gesperrt, ein Drittel der
+    wirklich schlechten Stellen wird erkannt, der Fehler an den erlaubten Stellen sinkt von 9,1 auf 7,6 ms.
+    Grenze 15–25 ms gleich gut, gewählt 20 ms.
+  - Bei den Test-Songs: s19 → s46 (vorher 60 ms daneben, s46 verschiebt sein Timing im Intro) wird ein Fade.
+    Auch s15 → s43 (vorher gut, 6,5 ms) wird ein Fade, weil s43 ohne deutliches Schlagzeug beginnt – das ist
+    der in Kauf genommene Fehlalarm der Regel ("im Zweifel ohne Beatmatching").
+- **Referenz-Korrektur (Gesang):** Bei s51 hat die Gesangsspur von Demucs am Schluss ein gleichbleibendes
+  Rauschen (−44,4 dB, knapp über der Schwelle von −45 dB). Ab 215 s ist dieses "Gesang" sogar **lauter als der
+  ganze Song** (der Song ist dort schon bei −60 bis −98 dB) – physikalisch unmöglich, also ein Trenn-Fehler.
+  - Neue Regel: Die Stimme zählt nur, wenn sie nicht mehr als 3 dB lauter ist als der ganze Song.
+  - Das ändert nur Song-Schlüsse: 4 Test-Songs (um 0,6–2,2 s) und 5 Übungs-Songs (um 0,5–4,3 s). Zusammen sind
+    es 5 von 7399 s bzw. 12 von 10728 s Gesang.
+  - Die App macht bei s51 nichts anders als vorher: B setzt bei 216,4 s ein, das Lied ist bei 215,9 s hörbar
+    zu Ende. Mit der alten Regel hätte das als 0,6 s "zu früh" gegolten.
 
 ### Gesangserkennung (neu: kleines neuronales Netz)
 
@@ -77,12 +97,10 @@ Weitere Messwerte der 110 Übergänge:
      Bei 6 ist nur "die 1" verschoben (meist House: jeder Takt klingt gleich).
    - Das Beat-Netz der App ist absichtlich klein: ca. 1 s Rechenzeit pro Song auf dem Handy. Es ist mit nur
      71 Übungs-Songs trainiert. Grosse Forschungs-Netze lernen an Hunderten Stunden Musik.
-   - **Beat-Versatz 23,3 ms:** Nur 4 Übergänge mit Beatmatching. Drei liegen bei 6,5 / 9,6 / 17,0 ms. Einer
-     (s19 → s46) bei 60 ms: s46 verschiebt sein Timing zwischen Intro und Hauptteil um ca. 40 ms, das feste
-     Raster der App passt im Intro nicht. Eine örtliche Korrektur machte die Übungs-Songs schlechter (siehe
-     oben). Mit dem vorigen Netz waren es 19,5 ms (dieselben 4 Übergänge, 59 ms beim selben Paar) – der
-     Unterschied liegt im Bereich des Zufalls.
-2. **Kaum lange Blends.** 105 von 110 Übergängen sind kurze Fades ganz am Ende. Das ist die Folge der harten
+   - **Beat-Versatz:** Mit dem örtlichen Beat-Vertrauen bleiben nur 2 beatgematchte Übergänge (17,0 / 9,6 ms,
+     Mittel 13,3 ms). Ohne diese Regel waren es 4 mit 23,3 ms (einer 60 ms bei s46). Das Ziel ist erreicht, mit
+     so wenigen Übergängen aber statistisch schwach.
+2. **Kaum lange Blends.** 107 von 110 Übergängen sind kurze Fades ganz am Ende. Das ist die Folge der harten
    Gesangs-Regel:
    - Viele Songs singen bis kurz vor Schluss. Laut Referenz endet der Gesang bei 20 von 52 Songs mit
      Gesang weniger als 3 s vor dem Ende.
@@ -94,10 +112,10 @@ Weitere Messwerte der 110 Übergänge:
      - 12 × Tempo zu verschieden (die Test-Songs reichen von 100 bis 150 BPM);
      - 4 × Beat-Raster nicht fest;
      - 3 × B singt gleich am Anfang.
-3. **Beatmatching nur 4-mal.** Die Gründe sind dieselben. Deshalb ist der Mittelwert von 23,3 ms
-   statistisch schwach.
-4. **s51 (Schlager):** Die Referenz hört noch 1,2 s Gesang, nachdem der Song schon unhörbar leise ist
-   (Hall). Die App wartet bis zum hörbaren Ende plus 0,5 s.
+3. **Beatmatching nur 2-mal.** Die Gründe sind dieselben, dazu das örtliche Beat-Vertrauen. Deshalb ist der
+   Mittelwert von 13,3 ms statistisch schwach.
+4. **s51 (Schlager):** behoben durch die Referenz-Korrektur (siehe oben). Die App wartet bis zum hörbaren
+   Ende plus 0,5 s.
 
 ## Vorschläge (zum Entscheiden)
 
