@@ -26,7 +26,12 @@ data class TrackStructure(
     val endBar: Int = bars.size,    // erster Takt NACH dem hörbaren Ende (Stille am Schluss zählt nicht)
     val trackEnergy: Float = -1f,   // Energie des ganzen Titels (0..1, aus der Bibliothek), -1 = unbekannt
     val musicalKey: Int = -1,       // Tonart (0..23, siehe [Keys]), -1 = unbekannt
+    val confidence: Float = -1f,    // Vertrauen ins Beat-Raster 0..1 (-1 = unbekannt)
+    val steady: Boolean = true,     // festes Tempo über den ganzen Song
 ) {
+    /** Ende des letzten Takts mit Gesang (Sekunden), 0 = kein Gesang. */
+    val lastVocalEnd: Double get() = bars.indexOfLast { it.vocal }.let { if (it < 0) 0.0 else barTime(it + 1) }
+
     val beatSec: Double get() = 60.0 / bpm
     val barSec: Double get() = 4 * beatSec
     val barCount: Int get() = bars.size

@@ -29,6 +29,9 @@ import kotlin.math.pow
 /** Frage "Passt perfekt – jetzt mischen?" (Früh-Übergang) mit Ablaufzeit. */
 data class EarlyOffer(val nextTitle: String, val deadlineMs: Long, val bar: Int)
 
+/** Kleine Frage nach einem Übergang: Daumen hoch/runter (verschwindet nach 15 s). */
+data class RatingPrompt(val logId: Long, val from: String, val to: String, val deadlineMs: Long)
+
 /**
  * Der Auto-DJ: spielt die Warteschlange selbstständig ab und mischt wie ein DJ.
  * Für jedes Song-Paar: Struktur analysieren → passenden Übergang planen → neuen Song
@@ -48,6 +51,8 @@ class AutoMix(
     private val refresh: (Track) -> Track = { it },
     /** Gespeicherte Struktur eines schon analysierten Titels (aus der Datenbank) oder null. */
     private val cached: suspend (Track) -> TrackStructure? = { null },
+    /** Protokoll aller Übergänge (mit Bewertung) – null = kein Protokoll. */
+    val transitionLog: TransitionLog? = null,
 ) {
     val queue = mutableStateListOf<Track>()
     var running by mutableStateOf(false)
@@ -73,6 +78,8 @@ class AutoMix(
         private set
     /** Offene Frage "Jetzt mischen?" (Früh-Übergang) oder null. */
     var earlyOffer by mutableStateOf<EarlyOffer?>(null)
+    /** Bewertung des letzten Übergangs (Daumen), null = keine Frage offen. */
+    var rating by mutableStateOf<RatingPrompt?>(null)
         private set
 
     /** Zähler für Diagnose/Gerätetest: fertige Übergänge und gestellte Früh-Übergang-Fragen. */
@@ -263,6 +270,49 @@ class AutoMix(
         d.seek(seconds.coerceIn(0.0, (d.duration - 1.0).coerceAtLeast(0.0)))
         earlyOffer = null
         replan = true
+    }
+
+    /** Daumen hoch (true) / runter (false) für den letzten Übergang. */
+    fun rate(up: Boolean) {
+        val r = rating ?: return
+        transitionLog?.rate(r.logId, if (up) 1 else -1)
+        rating = null
+        log("Bewertung: ${if (up) "👍" else "👎"} ${r.from} → ${r.to}")
+    }
+
+    /** Übergang ins Protokoll schreiben (Song-Paar, Typ, Analysewerte) und die Bewertung anbieten. */
+    internal fun recordTransition(
+        a: Track?, b: Track, aS: TrackStructure?, bS: TrackStructure?, plan: TransitionPlan,
+        startedAtSec: Double, quick: Boolean, early: Boolean,
+    ) {
+        val tl = transitionLog ?: return
+        fun info(t: Track?, st: TrackStructure?): Map<String, Any?> = mapOf(
+            "title" to t?.title, "artist" to t?.artist, "genre" to t?.genre,
+            "durationSec" to (t?.durationMs ?: 0L) / 1000.0,
+            "bpm" to st?.bpm, "beatConfidence" to st?.confidence, "steadyTempo" to st?.steady,
+            "firstDownbeat" to st?.firstDownbeat, "bars" to st?.barCount,
+            "introEndBar" to st?.introEndBar, "outroStartBar" to st?.outroStartBar, "endBar" to st?.endBar,
+            "vocalShare" to st?.let { s -> if (s.barCount == 0) 0.0 else s.bars.count { it.vocal } / s.barCount.toDouble() },
+            "lastVocalEndSec" to st?.lastVocalEnd, "energy" to t?.energy, "loudnessDb" to t?.loudness,
+            "key" to t?.musicalKey?.takeIf { it >= 0 }?.let { Keys.label(it) },
+        )
+        try {
+            val id = tl.add(mapOf(
+                "time" to java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.ROOT).format(java.util.Date()),
+                "type" to plan.type.name, "lengthBars" to plan.lengthBars, "mixAtSec" to plan.mixSec,
+                "startedAtSec" to startedAtSec, "bStartSec" to plan.bStartSec,
+                "tempoRatio" to plan.tempoRatio, "matchTempo" to plan.matchTempo,
+                "quick" to quick, "early" to early, "style" to plannerSettings().style.name,
+                "reason" to plan.reason, "a" to info(a, aS), "b" to info(b, bS),
+            ))
+            rating = RatingPrompt(id, a?.title ?: "", b.title, System.currentTimeMillis() + 15_000)
+            scope.launch {
+                delay(15_000)
+                if (rating?.logId == id) rating = null
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("AutoMix", "Protokoll nicht geschrieben", e)
+        }
     }
 
     /** Antwort auf "Jetzt mischen?". */
@@ -667,7 +717,9 @@ class AutoMix(
         // ---- 3) Überblenden ----
         transitioning = true
         status = UiText(R.string.automix_mixing, next.title)
-        log("Übergang startet: ${plan.type.name} bei ${mmss(a.livePosition())} (geplant ${mmss(plan.mixSec)})")
+        val startedAtSec = a.livePosition()
+        val aTrackForLog = a.track
+        log("Übergang startet: ${plan.type.name} bei ${mmss(startedAtSec)} (geplant ${mmss(plan.mixSec)})")
         val bBarSec = bStruct?.barSec ?: 2.0
         val lengthTrackSec = plan.lengthBars * bBarSec
         while (true) {
@@ -696,6 +748,7 @@ class AutoMix(
         current = next
         currentDeck = nxt
         transitionsDone++
+        recordTransition(aTrackForLog, next, aStruct, bStruct, plan, startedAtSec, quick, earlyAccepted != null)
         log("Übergang fertig: ${next.title} läuft (Tempo ${"%+.1f".format((b.tempo - 1f) * 100)} %)")
         // Tempo des neuen Songs fliessend (über 8–16 Takte) zurück zum Original
         if (TempoRamp.needed(b.tempo)) {

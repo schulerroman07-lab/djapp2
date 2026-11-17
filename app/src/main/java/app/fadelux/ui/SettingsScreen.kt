@@ -1,5 +1,6 @@
 package app.fadelux.ui
 
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -180,6 +181,23 @@ private fun ColumnScope.TransitionSection(vm: DjViewModel) {
     }
     Spacer(Modifier.height(10.dp))
     LogSection(vm.autoMix.logLines)
+    // Protokoll aller Übergänge (mit Daumen-Bewertungen) als Datei teilen
+    SectionTitle(stringResource(R.string.log_export))
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val log = vm.autoMix.transitionLog
+    val counts = remember(vm.autoMix.transitionsDone, vm.autoMix.rating) { log?.let { it.count() to it.ratedCount() } ?: (0 to 0) }
+    ExportLogButton(counts.first, counts.second) { vm.exportTransitionLog(context) }
+    Text(stringResource(R.string.log_export_help), style = AppType.small)
+}
+
+/** Knopf "Protokoll exportieren (n Übergänge, m bewertet)". */
+@Composable
+fun ExportLogButton(count: Int, rated: Int, onExport: () -> Unit) {
+    NeonButton(
+        Modifier.fillMaxWidth().height(48.dp).testTag("log_export"),
+        text = stringResource(R.string.log_export_count, count, rated),
+        icon = AppIcons.Share, color = AppColors.Cyan, fontSize = 13, iconSize = 18.dp,
+    ) { onExport() }
 }
 
 @Composable

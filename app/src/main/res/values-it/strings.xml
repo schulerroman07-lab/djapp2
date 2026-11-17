@@ -301,4 +301,11 @@ Tocca «Nuova playlist» – oppure tieni premuto un brano nella libreria.</stri
     <string name="faq2_a5">Con i normali tasti del volume del telefono – anche con lo schermo bloccato.</string>
     <string name="faq2_q6">Perché appare «analisi»?</string>
     <string name="faq2_a6">Ogni brano viene analizzato una volta (tempo, battiti, tonalità, energia, volume) e salvato. I brani della playlist in corso hanno la precedenza. Puoi già riprodurre durante l\'analisi.</string>
+    <string name="rate_question">Com\'era la transizione?</string>
+    <string name="rate_up_desc">Transizione buona</string>
+    <string name="rate_down_desc">Transizione cattiva</string>
+    <string name="log_export">Esporta registro</string>
+    <string name="log_export_count">Esporta registro (%1$d transizioni, %2$d valutate)</string>
+    <string name="log_export_help">Salva ogni transizione (coppia di brani, tipo, valori d\'analisi, il tuo pollice su/giù) in un file da condividere (es. via e-mail) – aiuta a migliorare le transizioni.</string>
+    <string name="log_export_empty">Nessuna transizione registrata – avvia prima l\'Auto-DJ.</string>
 </resources>

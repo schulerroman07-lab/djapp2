@@ -84,7 +84,18 @@ class DjViewModel private constructor(private val app: Application) {
         load = { deck, t -> loadTrackNow(deck, t) },
         refresh = { t -> trackIndex[t.id] ?: t },
         cached = { t -> cachedStructure(t) },
+        transitionLog = app.fadelux.automix.TransitionLog(java.io.File(app.filesDir, "transitions.jsonl")),
     )
+
+    /** Übergangs-Protokoll exportieren und die "Teilen"-Auswahl öffnen. Gibt die Anzahl Einträge zurück. */
+    fun exportTransitionLog(context: android.content.Context): Int {
+        val log = autoMix.transitionLog ?: return 0
+        val n = log.count()
+        if (n == 0) { message = UiText(R.string.log_export_empty); return 0 }
+        val file = LogExport.write(context, log)
+        context.startActivity(LogExport.shareIntent(context, file))
+        return n
+    }
 
     /**
      * Struktur eines schon analysierten Titels aus der Datenbank (BPM, Beat-Raster, Merkmale) –

@@ -13,6 +13,18 @@
   ist damit nachgestellt. Dazu Unit-Tests der Rechen-Regeln (beide Richtungen, ganze Liste simuliert).
   **Ergebnis mit dem neuen Code: grün** – Song 40 → Platz 1 in 6,3 s, danach Platz 1 → Platz 40 in 4,3 s.
 
+### Bewertung nach jedem Übergang + Protokoll-Export
+- Nach jedem Übergang erscheint unten klein **"Wie war der Übergang?" mit 👍 / 👎**. Ohne Antwort
+  verschwindet die Frage nach 15 s von selbst.
+- Jeder Übergang wird gespeichert: Song-Paar (Titel, Interpret, Genre), Typ, Länge, Einsatzstelle,
+  Tempo-Angleichung, Begründung des Planers und die Analysewerte beider Songs (BPM, Vertrauen ins
+  Beat-Raster, Intro/Outro, Gesangsanteil, Ende des letzten Gesangs, Tonart, Lautheit) – plus die
+  Bewertung.
+- **Einstellungen → Übergänge → "Protokoll exportieren"** erzeugt eine Datei (JSON) und öffnet "Teilen"
+  (Mail, Messenger, Drive …). Der Knopf zeigt, wie viele Übergänge aufgezeichnet und bewertet sind.
+- UI-Test im Emulator (echte Berührungen): Daumen hoch antippen → gespeichert; nicht antippen → nach
+  ca. 15 s weg; Export antippen → Datei mit beiden Übergängen, über den FileProvider lesbar.
+
 ### Testmaterial mit echter Musik
 - **56 Test-Songs** (frei lizenziert, Creative Commons; Free Music Archive, ccMixter, Jamendo):
   Pop 14, Schlager 10, Rock 10, House 10, Techno 11, Hip-Hop 1 – rund 40 mit Gesang, keine DJ-Edits.

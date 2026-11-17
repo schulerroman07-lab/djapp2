@@ -1,6 +1,7 @@
 package app.fadelux.ui.components
 
 import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -62,6 +63,7 @@ fun NeonButton(
     fontSize: Int = 15,
     iconSize: Dp = 22.dp,
     corner: Dp = Dimens.radiusSmall,
+    description: String? = null,      // Beschreibung für reine Symbol-Knöpfe (Bedienungshilfen, Tests)
     onClick: () -> Unit,
 ) {
     val view = LocalView.current
@@ -91,7 +93,11 @@ fun NeonButton(
                 )
             }
             // als Knopf melden (Bedienungshilfen/TalkBack, Tests)
-            .semantics { role = Role.Button; onClick(label = text) { click(); true } },
+            .semantics {
+                role = Role.Button
+                onClick(label = text ?: description) { click(); true }
+                if (text == null && description != null) contentDescription = description
+            },
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {

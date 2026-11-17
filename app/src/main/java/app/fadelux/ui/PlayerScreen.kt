@@ -101,6 +101,7 @@ data class PlayerUi(
     val newWishes: Int = 0,
     val earlyOffer: EarlyOffer? = null,
     val pulse: () -> Float = { 0f },
+    val rating: app.fadelux.automix.RatingPrompt? = null,
 )
 
 /** Alle Aktionen des Players. */
@@ -112,6 +113,7 @@ data class PlayerActions(
     val onNext: () -> Unit = {},
     val onSeek: (Double) -> Unit = {},
     val onEarlyAnswer: (Boolean) -> Unit = {},
+    val onRate: (Boolean) -> Unit = {},
 )
 
 /** Verbindet den Player mit der App-Logik. */
@@ -127,12 +129,12 @@ fun PlayerScreen(vm: DjViewModel, onMenu: (MenuTarget) -> Unit, onPicker: () -> 
             duration = if (deck.loadState == 4) (am.current?.durationMs ?: 0L) / 1000.0 else deck.duration,
             nextTrack = am.nextTrack ?: am.queue.firstOrNull(), nextPlan = am.nextPlan, queueSize = am.queue.size,
             countdown = { am.secondsUntilNext() }, newWishes = vm.newWishes, earlyOffer = am.earlyOffer,
-            pulse = { vm.beatPulse() },
+            pulse = { vm.beatPulse() }, rating = am.rating,
         ),
         PlayerActions(
             onMenu = onMenu, onPicker = onPicker,
             onPrevious = { vm.remotePrevious() }, onPlayPause = { vm.togglePlay() }, onNext = { vm.remoteNext() },
-            onSeek = { vm.seekTo(it) }, onEarlyAnswer = { am.answerEarly(it) },
+            onSeek = { vm.seekTo(it) }, onEarlyAnswer = { am.answerEarly(it) }, onRate = { am.rate(it) },
         ),
     )
 }
@@ -174,9 +176,10 @@ fun PlayerContent(ui: PlayerUi, act: PlayerActions) {
                 }
             }
         }
-        // Früh-Übergang: "Passt perfekt – jetzt mischen?"
+        // Früh-Übergang: "Passt perfekt – jetzt mischen?" bzw. nach dem Übergang: Daumen hoch/runter
         Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomCenter) {
             EarlyOfferCard(ui.earlyOffer, onAnswer = act.onEarlyAnswer)
+            if (ui.earlyOffer == null) RatingCard(ui.rating, onRate = act.onRate)
         }
     }
 }

@@ -301,4 +301,11 @@ Touchez « Nouvelle playlist » – ou appui long sur un titre dans la biblioth�
     <string name="faq2_a5">Avec les boutons de volume habituels du téléphone – aussi sur l\'écran verrouillé.</string>
     <string name="faq2_q6">Pourquoi « analyse » s\'affiche ?</string>
     <string name="faq2_a6">Chaque titre est analysé une seule fois (tempo, temps, tonalité, énergie, volume) puis enregistré. Les titres de la playlist en cours passent en premier. Vous pouvez déjà jouer pendant l\'analyse.</string>
+    <string name="rate_question">Cette transition était comment ?</string>
+    <string name="rate_up_desc">Bonne transition</string>
+    <string name="rate_down_desc">Mauvaise transition</string>
+    <string name="log_export">Exporter le journal</string>
+    <string name="log_export_count">Exporter le journal (%1$d transitions, %2$d notées)</string>
+    <string name="log_export_help">Enregistre chaque transition (paire de titres, type, valeurs d\'analyse, votre pouce haut/bas) dans un fichier à partager (p. ex. par e-mail) – pour améliorer les transitions.</string>
+    <string name="log_export_empty">Aucune transition enregistrée – lancez d\'abord l\'Auto-DJ.</string>
 </resources>

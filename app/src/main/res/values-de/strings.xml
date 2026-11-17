@@ -301,4 +301,11 @@ Tippe auf „Neue Playlist“ – oder halte in der Bibliothek einen Song gedrü
     <string name="faq2_a5">Mit den normalen Lautstärke-Tasten am Handy – auch auf dem Sperrbildschirm.</string>
     <string name="faq2_q6">Warum steht „analysiert“?</string>
     <string name="faq2_a6">Jeder Song wird einmal analysiert (Tempo, Beats, Tonart, Energie, Lautheit) und gespeichert. Songs der aktuellen Playlist kommen zuerst dran. Du kannst schon während der Analyse abspielen.</string>
+    <string name="rate_question">Wie war der Übergang?</string>
+    <string name="rate_up_desc">Guter Übergang</string>
+    <string name="rate_down_desc">Schlechter Übergang</string>
+    <string name="log_export">Protokoll exportieren</string>
+    <string name="log_export_count">Protokoll exportieren (%1$d Übergänge, %2$d bewertet)</string>
+    <string name="log_export_help">Speichert jeden Übergang mit Song-Paar, Typ, Analysewerten und deiner Daumen-Bewertung als Datei zum Teilen (z.B. per Mail) – damit lassen sich die Übergänge verbessern.</string>
+    <string name="log_export_empty">Noch keine Übergänge aufgezeichnet – zuerst den Auto-DJ starten.</string>
 </resources>
