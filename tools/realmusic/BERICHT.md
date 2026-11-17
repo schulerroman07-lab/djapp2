@@ -30,7 +30,7 @@ Stand: 17.11.2026. Alle Zahlen sind gemessen, nicht geschätzt. Kurzfassung am E
 | Mittlerer Beat-Versatz bei Beatmatching < 20 ms | **19,5 ms** (nur 4 Übergänge, einer mit 59 ms) | ja, aber kleine Zahl |
 | Drag-Test hoch und runter | grün (40 Songs: nach oben 10,1 s, nach unten 4,6 s) | ja |
 | Daumen + Export (UI-Test) | grün (Speichern, Ausblenden nach 15 s, Export lesbar) | ja |
-| Build sauber, alle Tests grün | 55 Unit-Tests grün; Build und Gerätetest im CI | siehe CI |
+| Build sauber, alle Tests grün | 55 Unit-Tests grün; CI: App-Build grün, Gerätetest grün (Dauerbetrieb 0 Aussetzer, Rand-Prüfung, Drag, Bewertung/Export) | ja |
 
 Weitere Messwerte der 110 Übergänge:
 - **Pegel:** Spitzenwert höchstens 0,79; der Begrenzer greift bei 0,90, also nie übersteuert. Höchster
@@ -103,7 +103,8 @@ Weitere Messwerte der 110 Übergänge:
 - [ ] Techno/House-Playlist mit ähnlichem Tempo: Kommen lange, saubere Blends? Laufen die Beats synchron?
 - [ ] Nach einigen Übergängen 👍/👎 antippen, dann **Einstellungen → Übergänge → Protokoll exportieren** und
       die Datei schicken.
-- [ ] Laden eines Songs: Die Analyse dauert jetzt etwas länger (ca. 2–10 s im Hintergrund). Läuft die Musik
+- [ ] Laden eines Songs: Die Analyse dauert jetzt etwas länger, im Hintergrund. Im Emulator (langsam,
+      ARM-Übersetzung) waren es ca. 9 s; auf dem Samsung sollten es nur wenige Sekunden sein. Läuft die Musik
       trotzdem ohne Aussetzer weiter?
 - [ ] "Weiter"/"Zurück", Benachrichtigung, Hintergrund-Wiedergabe: unverändert?
 - [ ] "Als Nächstes": einen Song von ganz unten nach ganz oben ziehen und umgekehrt.
