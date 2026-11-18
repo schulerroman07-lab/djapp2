@@ -35,6 +35,25 @@
 - Gesangsregel mit dem neuen Netz neu bestimmt (202 Songs, jeder von einem Netz beurteilt, das ihn nie gelernt hat):
   Schwelle 0,10, Gesang < 8 s vor dem Ende gilt bis zum Ende, Übergang frühestens 3 s nach dem letzten Gesang.
 
+### Song-Enden: Echo, Filter-Out oder Hall – im Takt
+- Singt A bis zum Schluss, klingt das letzte Wort abwechselnd mit **Echo**, **Filter-Out** (Hochpass im letzten Takt)
+  oder dezentem **Hall** aus; B setzt auf seinem Downbeat ein. Der Einsatz liegt auf dem Raster von A (nächste "1",
+  sonst nächster Beat), B läuft nur im Takt von A, wenn beide Raster genau dort sicher sind.
+
+### Hörproben
+- **`hoerproben/`**: 20 Übergänge à 40 s (MP3) aus der Messung mit der echten Engine, gemischt nach Genre und Art,
+  mit Quellen und Lizenzen (`hoerproben/QUELLEN.md`). Nur Songs unter CC0/CC-BY/CC-BY-NC, darum keine
+  Schlager-Hörprobe (alle Schlager-Test-Songs sind ND oder SA).
+
+### Ergebnis (110 Übergänge, echte Engine, 56 Test-Songs) – Bericht: `tools/realmusic/BERICHT.md`
+- **Fades: 0 %** (vorher 97 %) – Echo-Out 35 %, Filter-Out 33 %, Hall 32 %, Schnitt 1 %.
+- Gesang voll über Gesang: **0**; hörbares Ausklingen über neuem Gesang: 0; Einsatz vor dem Ende der letzten vollen
+  Phrase: **0 von 100**; B mitten in einer Gesangsphrase: **0**; Pegel höchstens 0,79.
+- Beat-Versatz bei Einsätzen im Takt: **22,3 ms** (5 Übergänge) – Ziel < 20 ms knapp verfehlt (Beat-Raster am
+  Song-Ende ±15–18 ms).
+- **Keine Blends:** Die Gesangserkennung meldet am Ende fast immer noch Gesang; mit der Vorgabe "nie vor dem Ende der
+  letzten Phrase" bleibt dann nur der Ausklang am Schluss. Vorschläge im Bericht.
+
 ### Messung erweitert
 - Anteil der Übergangsarten und Fades; Gesang über Gesang getrennt in "voll" (A weniger als 6 dB leiser) und
   "ausklingend" (Dauer in Takten); der Echo-/Hall-Schweif von A zählt dabei mit. Einsatz gegen das Ende der letzten

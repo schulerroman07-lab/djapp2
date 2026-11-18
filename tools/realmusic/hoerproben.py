@@ -7,7 +7,9 @@ Lizenz: Ein Übergang ist eine Bearbeitung beider Songs. Darum nur Paare, bei de
 erlauben und sich die Bedingungen vertragen: CC0, CC-BY oder CC-BY-NC (nicht "ND" = keine Bearbeitung, nicht
 "SA" = Weitergabe unter gleicher Lizenz, nicht "Sampling+"). Quellen und Lizenzen stehen in QUELLEN.md.
 
-Aufruf: python3 hoerproben.py <mix-Ordner> <render-Ordner> <Ausgabe-Ordner> [--n 20]
+Aufruf: python3 hoerproben.py <mix-Ordner> <render-Ordner> <Ausgabe-Ordner> [--n 20] [--long <Ordner>]
+  --long: Ordner mit länger abgespielten Übergängen (mixrender mit MIXRENDER_PRE=20 MIXRENDER_AFTER=20) – dort
+          werden die ausgewählten Übergänge geschnitten (der Einsatz wird aus deren Protokoll gelesen).
 """
 import json, os, subprocess, sys
 import numpy as np
@@ -74,8 +76,12 @@ def main():
     srcs = {}
     for k, r in enumerate(pick, 1):
         kv = read_mix(os.path.join(mixdir, f"{r['n']:03d}.mix"))
-        mix = np.fromfile(os.path.join(rdir, f"{r['n']:03d}.mix.f32"), dtype=np.float32).reshape(-1, 2)
+        src = sys.argv[sys.argv.index("--long") + 1] if "--long" in sys.argv else rdir
+        mix = np.fromfile(os.path.join(src, f"{r['n']:03d}.mix.f32"), dtype=np.float32).reshape(-1, 2)
         t0 = r["t_start"]
+        if src != rdir:                                   # Einsatz im länger abgespielten Übergang
+            log = np.loadtxt(os.path.join(src, f"{r['n']:03d}.log"))
+            t0 = float(log[np.where(log[:, 4] > 0.5)[0][0], 0])
         s0 = max(0, int((t0 - 20.0) * RATE)); s1 = min(len(mix), int((t0 + 20.0) * RATE))
         seg = mix[s0:s1].copy()
         # 0,5 s ein- und ausblenden (nur am Rand der Hörprobe, nicht am Übergang)
@@ -102,6 +108,7 @@ def main():
     for s in sorted(srcs.values(), key=lambda s: s["id"]):
         lines.append(f"| {s['title']} | {s['artist']} | {s['license']} | {s['page']} |")
     open(os.path.join(out, "QUELLEN.md"), "w", encoding="utf-8").write("\n".join(lines) + "\n")
+    json.dump([p["n"] for p in pick], open(os.path.join(out, ".auswahl.json"), "w"))
     print(f"{len(pick)} Hörproben in {out}")
 
 

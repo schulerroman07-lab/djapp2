@@ -140,11 +140,12 @@ object StructureAnalyzer {
     /**
      * Fenster am Song-Ende: Endet der erkannte Gesang weniger als so viele Sekunden vor dem hörbaren Ende, gilt
      * er bis zum Ende – die Erkennung verpasst leise Gesangsreste am Schluss (Ad-libs, Chor im Fade-out) oft.
-     * Bestimmt zusammen mit [vocalThreshold] und TransitionPlanner.RELEASE_MARGIN an 202 Übungs- und Lern-Songs
+     * Bestimmt zusammen mit [vocalThreshold] und TransitionPlanner.RELEASE_MARGIN an 239 Übungs- und Lern-Songs
      * (jeder Song nur von einem Netz beurteilt, das ihn nie gelernt hat): Übergang vor dem Ende der letzten vollen
-     * Phrase bei 7 von 173 Songs mit Gesang (4 %); der instrumentale Schluss bleibt bei 18 % nutzbar (A spielt nach
-     * dem Einsatz noch ≥ 4 s – für Blend, Schnitt, Filter). Vorsichtiger (15 s) wären es 2,9 % / 9 %, mutiger
-     * (4 s) 6–8 % / 25–29 % – "nie vor dem Ende der letzten Phrase" hat Vorrang.
+     * Phrase bei 8 von 189 Songs mit Gesang (4 %); der instrumentale Schluss bleibt bei 19 % nutzbar (A spielt nach
+     * dem Einsatz noch ≥ 4 s – für Blend, Schnitt, Filter). Vorsichtiger (15 s) wären es 2,6 % / 10 %, mutiger
+     * (Schwelle 0,15, 4 s) 5,8 % / 26 % – "nie vor dem Ende der letzten Phrase" hat Vorrang. Eigene Regeln für
+     * Techno/House brachten nichts (langes Outro ≥ 30 s so oder so nur bei 4 % sicher nutzbar).
      */
     const val VOCAL_TAIL_SONG = 8.0
     const val VOCAL_TAIL_ELECTRONIC = 8.0

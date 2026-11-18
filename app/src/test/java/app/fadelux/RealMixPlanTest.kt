@@ -195,7 +195,7 @@ class RealMixPlanTest {
 
     /** Abspiel-Datei für mixrender: Plan + Regler-Tabellen (vor dem Einsatz über q, im Übergang über p). */
     private fun script(n: Int, order: String, aId: String, bId: String, a: Song, b: Song, plan: TransitionPlan, early: Int?, pcm: String): String {
-        val t = Transitions.create(plan.type)
+        val t = Transitions.create(plan.type, plan)
         val da = RecDeck(); val db = RecDeck(); val bus = RecBus()
         val ctx = TransitionContext(da, db, bus, plan, a.s, b.s, aIsLeft = true)
         val sb = StringBuilder()

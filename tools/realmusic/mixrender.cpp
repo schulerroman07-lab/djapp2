@@ -159,7 +159,10 @@ static int render(const Script& s, int mode, const std::string& outPath, FILE* l
     const double lenSec = std::max(0.05, s.num("lenSec", 4)), preSec = s.num("preSec"), centerSec = s.num("centerSec", -1);
     const bool stopsA = s.num("stopsA") > 0.5, ep = s.num("equalPower") > 0.5;
     const double lead = std::max(preSec, centerSec >= 0 ? mixSec - centerSec : 0.0);
-    const double a0 = std::max(0.0, mixSec - lead - 12.0);
+    // Vorlauf/Nachlauf (Sekunden): Messung 12/6, Hörproben z. B. 20/20 (Umgebungsvariablen MIXRENDER_PRE/_AFTER)
+    const double preRoll = getenv("MIXRENDER_PRE") ? atof(getenv("MIXRENDER_PRE")) : 12.0;
+    const long afterBlocks = (long)((getenv("MIXRENDER_AFTER") ? atof(getenv("MIXRENDER_AFTER")) : 6.0) * 100);
+    const double a0 = std::max(0.0, mixSec - lead - preRoll);
 
     // Ausgangslage wie im Auto-Mix: A läuft allein (Crossfader bei A), B vorbereitet und stumm
     e.setCrossfader(-1.f);
@@ -180,7 +183,7 @@ static int render(const Script& s, int mode, const std::string& outPath, FILE* l
     FILE* out = fopen(outPath.c_str(), "wb");
     bool centered = false, finished = false;
     long blocks = 0, afterEnd = 0;
-    const long maxBlocks = (long)((mixSec - a0 + lenSec / std::max(0.5, ratio) + 30.0) * 100);
+    const long maxBlocks = (long)((mixSec - a0 + lenSec / std::max(0.5, ratio) + 30.0) * 100) + afterBlocks;
     while (blocks < maxBlocks) {
         const double aPos = e.deck[0].positionSeconds(), bPos = e.deck[1].positionSeconds();
         const bool bPlay = e.deck[1].playing();
@@ -207,7 +210,7 @@ static int render(const Script& s, int mode, const std::string& outPath, FILE* l
         e.onAudioReady(&stream, buf.data(), block);
         fwrite(buf.data(), sizeof(float), buf.size(), out);
         blocks++;
-        if (finished && ++afterEnd >= 600) break;      // 6 s nach dem Übergang
+        if (finished && ++afterEnd >= afterBlocks) break;      // Nachlauf nach dem Übergang
     }
     fclose(out);
     e.stop();

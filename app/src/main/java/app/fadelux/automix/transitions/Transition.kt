@@ -84,9 +84,10 @@ abstract class Transition(val type: TransitionType) {
 }
 
 object Transitions {
-    fun create(type: TransitionType): Transition = when (type) {
+    /** @param plan der Plan (bestimmt bei FILTER die Spielart: Filter-Out, Sweep oder Blend), sonst Standard */
+    fun create(type: TransitionType, plan: TransitionPlan? = null): Transition = when (type) {
         TransitionType.BASS_SWAP -> BassSwapTransition()
-        TransitionType.FILTER -> FilterTransition()
+        TransitionType.FILTER -> FilterTransition(FilterTransition.modeFor(plan))
         TransitionType.ECHO_OUT -> EchoOutTransition()
         TransitionType.LOOP -> LoopTransition()
         TransitionType.REVERB_WASH -> ReverbWashTransition()

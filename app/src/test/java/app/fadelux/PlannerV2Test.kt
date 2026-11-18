@@ -198,6 +198,22 @@ class PlannerV2Test {
     }
 
     @Test
+    fun songEnd_rotatesEchoFilterReverb() {
+        // A singt bis zum Schluss: das letzte Wort klingt abwechselnd mit Echo, Filter-Out oder Hall aus – nie ein Fade
+        val a = song(vocal = listOf(10.0..185.5))
+        val b = song(bpm = 124f)
+        val recent = mutableListOf<TransitionType>()
+        val seen = mutableSetOf<TransitionType>()
+        repeat(6) {
+            val p = TransitionPlanner.plan(a, 30.0, 1f, b, pop, recent)
+            seen += p.type; recent += p.type
+            assertTrue("Start ${p.mixSec} nach dem Gesang", p.mixSec >= 185.5 - 1e-6)
+            if (p.type == TransitionType.FILTER) assertEquals("Filter-Out: 1 Takt", 1, p.lengthBars)
+        }
+        assertEquals(setOf(TransitionType.ECHO_OUT, TransitionType.FILTER, TransitionType.REVERB_WASH), seen)
+    }
+
+    @Test
     fun bEntry_skipsNearSilentStart() {
         // B blendet die ersten 2 Takte fast lautlos ein: nach einem Echo-Out wäre das ein Loch – B startet beim 3. Takt
         val b = song(bars = 96, intro = 0, silentBars = 2)

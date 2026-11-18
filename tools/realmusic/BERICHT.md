@@ -1,6 +1,81 @@
 # Bericht: Übergänge mit echter Musik – objektive Messung
 
-Stand: 17.11.2026. Alle Zahlen sind gemessen, nicht geschätzt. Kurzfassung am Ende.
+Stand: 18.11.2026. Alle Zahlen sind gemessen, nicht geschätzt. Oben die aktuelle Runde ("Mehr echte DJ-Übergänge"),
+darunter die frühere Runde (Beat- und Gesangserkennung).
+
+## Runde 3: Mehr echte DJ-Übergänge statt kurzer Fades
+
+Gemessen wie bisher: 56 Test-Songs, zwei ganze Partys mit dem echten Planer (**110 Übergänge**), jeder Übergang mit
+der echten Audio-Engine abgespielt (Mix, nur A, nur B) und gegen die Referenzen gemessen. Die Netze der App sind
+jetzt **nur mit CC0/CC-BY/PD-Songs** gelernt (siehe `LIZENZEN_TRAINING.md`).
+
+| Ziel | Gemessen | Erreicht? |
+|---|---|---|
+| Fades ≤ 20 % (≥ 80 % andere Arten) | **0 %** Fades (vorher 97 %) | ja |
+| Keine volle Gesang-über-Gesang-Überlappung | **0 von 110** | ja |
+| Ausklingen max. 2 Takte, mind. 6 dB leiser | **0** Fälle mit hörbarem Ausklingen über dem neuen Gesang | ja |
+| Kein Start vor Ende der letzten vollen Gesangsphrase | **0 von 100** | ja |
+| Beat-Versatz bei beatgematchten Übergängen < 20 ms | **22,3 ms** (5 Übergänge; 22,0 ms bei sicherer Referenz) | knapp nein |
+| Lizenzliste, App-Netze nur CC0/CC-BY/PD | `LIZENZEN_TRAINING.md`, 155 erlaubte Lern-Songs | ja |
+| 20 Hörbeispiele | `hoerproben/` (je 40 s, mit Quellen und Lizenzen) | ja |
+| Build fehlerfrei, alle Tests grün | 60 Unit-Tests, Engine-Tests, CI (siehe CHANGELOG) | ja |
+
+Weitere Messwerte (110 Übergänge):
+- **Arten:** Echo-Out 38 (35 %), Filter-Out 36 (33 %), Hall 35 (32 %),
+  Schnitt auf die 1: 1. Pop/Schlager/Rock: Echo 25, Filter 22, Hall 21. Techno/House: Echo 13, Filter 14, Hall 14, Schnitt 1.
+- **B setzt mitten in einer Gesangsphrase ein:** 0 von 110.
+- **Pegel:** höchstens 0,79 (Begrenzer bei 0,90); Buckel durch Überlagerung höchstens +3,0 dB.
+- **Loch zwischen den Songs:** Median 0,4 s (vorher 0,7 s), höchstens 2,2 s (vorher 2,9 s).
+- **Im Takt von A** (B tempo-angeglichen, Einsatz auf dem Raster von A): 5 Übergänge; die übrigen setzen im eigenen
+  Tempo ein (Tempo zu verschieden oder Raster an der Stelle nicht sicher).
+
+### Was der neue Planer macht
+- **Prüfreihenfolge:** (a) Blend/Bass-Swap im Takt (Techno/House 16–32 Takte, Pop 4–8 Takte), (d) Loop als Brücke,
+  (b) Echo-Out bzw. Filter-Sweep, (c) Schnitt auf die 1, (e) Fade – gleich gute Arten wechseln sich ab.
+- **Singt A bis zum Schluss** (das ist bei den Test-Songs der Normalfall), klingt das letzte Wort mit Echo, Filter-Out
+  oder dezentem Hall aus, und B setzt auf seinem Downbeat ein – bei passendem Tempo im Takt von A.
+- **Einstieg von B:** auf einem Downbeat; fast stille Anfangstakte und lange ruhige Intros werden übersprungen; nie
+  mitten in einer Gesangsphrase und nicht direkt vor einem Gesangsbeginn (Auftakt).
+- **Ende des Gesangs von A:** Schwelle 0,10, Gesang < 8 s vor dem Ende gilt bis zum Ende, Übergang frühestens 3 s nach
+  dem letzten erkannten Gesang – an 239 Übungs- und Lern-Songs bestimmt (jeder von einem Netz beurteilt, das ihn nie
+  gelernt hat): zu früh bei 4 %, instrumentaler Schluss bei 19 % nutzbar.
+
+### Ursachen, wo es hakt
+1. **Keine Blends in den 110 Übergängen.** Ein Blend braucht nach dem letzten Gesang von A einige sichere
+   instrumentale Takte – und passendes Tempo.
+   - Die Gesangserkennung meldet am Song-Ende oft noch Gesang (auch Synth-Flächen und Vocal-Chops in
+     Techno/House). Weil "nie vor dem Ende der letzten Phrase" Vorrang hat, wartet der Planer dann bis zum Schluss.
+     Laut Referenz hätten 57 von 109 Techno/House-Songs ein instrumentales Outro von mindestens 30 s, die Erkennung
+     kann aber nur bei etwa 4 % sicher sagen, dass dort kein Gesang mehr kommt.
+   - Ein lockererer Ansatz für Techno/House ("kurze Vocal-Samples dürfen mitlaufen") wurde geprüft: Er macht das
+     Outro bei 24–39 % nutzbar, startet aber bei 16–34 % vor dem Ende eines Abschnitts, den die Referenz als
+     Gesangsphrase zählt – verletzt also das Ziel "kein Start vor Ende der letzten Phrase".
+   - In den Party-Reihenfolgen liegt das Tempo oft weiter auseinander als 6 %.
+2. **Beat-Versatz 22,3 ms.** Alle 5 Einsätze im Takt liegen 15–26 ms neben dem Raster von A. Ursache ist das
+   Beat-Raster der Analyse: am Song-Ende von A weicht es örtlich um 15–18 ms ab, am Start von B um bis zu 11 ms.
+3. **Lizenzsaubere Netze:** Beat-Erkennung praktisch gleich gut (88,1 % statt 86,9 %), Gesangserkennung rund
+   3–4 Punkte ungenauer (82,4 % statt 86,1 %) – die erlaubten Lern-Songs sind weniger vielfältig.
+
+### Vorschläge (zum Entscheiden)
+1. **"Vocal-Samples bei Techno/House erlauben"** (Regel 5 wörtlich): Im Outro elektronischer Songs dürfen kurze
+   Vocal-Samples beim Blend mitlaufen. Ergibt lange Blends bei einem Viertel bis einem Drittel der Techno/House-Songs –
+   aber die Messung "kein Start vor Ende der letzten Phrase" würde dort Verstösse zählen (sie unterscheidet nicht
+   zwischen Sample und Phrase). Wenn gewünscht: eine Einstellung "Vocal-Samples im Outro erlauben".
+2. **Mehr CC0/CC-BY-Songs** (v. a. Techno/House, mit und ohne Vocal-Samples) für die Gesangserkennung sammeln und neu
+   lernen – das Werkzeug ist fertig.
+3. **Tempo-freundlichere Reihenfolge** im Auto-DJ (Nachbar-Songs näher im Tempo), damit öfter im Takt gemischt wird.
+
+### Was am Handy zu prüfen ist
+- [ ] Pop/Schlager-Playlist im Auto-DJ: Klingen die Song-Enden mit Echo / Filter / Hall gut? Kommt der neue Song im Takt?
+- [ ] Sind die Effekte dezent genug, und ist die Abwechslung (Echo, Filter, Hall) angenehm?
+- [ ] Startet der neue Song an einer guten Stelle (nicht im stillen Intro, nicht mitten im Gesang)?
+- [ ] Techno/House-Playlist mit ähnlichem Tempo: Wie klingen die Übergänge?
+- [ ] Die Hörproben in `hoerproben/` anhören und 👍/👎 in der App weiter nutzen (Protokoll exportieren).
+- [ ] Unverändert: Drag in "Als Nächstes", Daumen/Export, Hintergrund, Weiter/Zurück, Benachrichtigung, Playlists.
+
+---
+
+# Frühere Runde: Beat- und Gesangserkennung (17.11.2026)
 
 ## Wie gemessen wurde
 

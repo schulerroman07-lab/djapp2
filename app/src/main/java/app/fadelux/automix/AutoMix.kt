@@ -648,7 +648,7 @@ class AutoMix(
                 if (TempoRamp.needed(plan.tempoRatio)) b.ensureKeylock()
                 b.setTempoRatio(plan.tempoRatio)
                 b.seek(plan.bStartSec)
-                transition = Transitions.create(plan.type)
+                transition = Transitions.create(plan.type, plan)
                 ctx = TransitionContext(a, b, mixer, plan, aStruct, bStruct, aIsLeft = a.index == 0)
                 // Kurve nur umschalten, solange der Crossfader ganz bei A steht (kein Lautstärkesprung)
                 mixer.setCurve(transition.equalPower && abs(mixer.crossfader) >= 0.98f)

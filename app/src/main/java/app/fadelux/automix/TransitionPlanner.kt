@@ -389,18 +389,22 @@ object TransitionPlanner {
         val opts = mutableListOf(TransitionType.ECHO_OUT)
         if (aFull && exitSec + a.barSec <= aEnd) opts += TransitionType.FILTER
         if (aFull && a.gridSteady(exitSec - a.barSec, exitSec + 0.1)) opts += TransitionType.CUT
-        // Singt A bis zum Schluss, bleibt nur das letzte Wort: Echo oder (dezenter) Hall – abwechselnd
-        if (!aFull) opts += TransitionType.REVERB_WASH
+        // Singt A bis zum Schluss, bleibt nur das letzte Wort: Echo, Filter-Out oder (dezenter) Hall – abwechselnd
+        if (!aFull) { opts += TransitionType.FILTER; opts += TransitionType.REVERB_WASH }
         val usable = opts.filter { it in settings.enabled }
         if (usable.isEmpty()) return null
         val last2 = recent.takeLast(2)
         val type = usable.firstOrNull { it !in last2 } ?: usable.firstOrNull { it != recent.lastOrNull() } ?: usable.first()
         val bStart = bStartHit
-        val len = when (type) { TransitionType.CUT -> 1; else -> 2 }
+        val len = when {
+            type == TransitionType.CUT -> 1
+            type == TransitionType.FILTER && !aFull -> 1          // Filter-Out im letzten Takt von A
+            else -> 2
+        }
         why += when (type) {
             TransitionType.ECHO_OUT -> if (aFull) "Echo-Out nach dem Gesang (Takt ${exitBar ?: a.barAt(exitSec)})" else "Echo-Out auf dem Schluss von A"
             TransitionType.REVERB_WASH -> "Hall auf dem Schluss von A"
-            TransitionType.FILTER -> "Filter-Sweep nach dem Gesang (Takt ${exitBar ?: a.barAt(exitSec)})"
+            TransitionType.FILTER -> if (aFull) "Filter-Sweep nach dem Gesang (Takt ${exitBar ?: a.barAt(exitSec)})" else "Filter-Out auf dem Schluss von A"
             else -> "Schnitt auf die 1 nach dem Gesang (Takt $exitBar)"
         } + (if (match) " · B im Takt von A" else if (!tempoClose) " · Tempo zu verschieden: B im eigenen Tempo" else " · Raster unsicher: B im eigenen Tempo") +
             " · B ab ${mmss(bStart)}"
