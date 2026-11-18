@@ -10,7 +10,12 @@ Pro Übergang:
   - Gesang über Gesang: Gesangsspur (Referenz) jedes Decks × tatsächliche Verstärkung des Decks im
     Sprachbereich (Solo-Aufnahme gegen Original) – hörbar, wenn wie in der Referenz-Regel ≥ −45 dBFS und
     höchstens 15 dB unter dem Mix. Überschneidung beider = Gesang über Gesang.
-  - Einsatz: Position in A, an der B startet, gegen das Ende des letzten Gesangs von A (Referenz).
+    Nach dem Stopp von A zählt auch der Effekt-Schweif (Echo/Hall) von A: Er trägt den Gesangsanteil der
+    letzten Sekunde vor dem Stopp und klingt so ab wie das, was A tatsächlich noch ausgibt.
+    "Voll" = A höchstens 6 dB leiser als B; "Ausklingen" = A mindestens 6 dB leiser (erlaubt bis 2 Takte).
+  - Einsatz: Position in A, an der B startet, gegen das Ende der letzten VOLLEN Gesangsphrase von A
+    (Referenz, Abschnitt ≥ 2 s) und gegen das Ende des letzten Gesangs überhaupt.
+  - B-Einstieg: startet B mitten in einer Gesangsphrase (Referenz)?
   - Pegel: Spitzenwert, Lautheits-Buckel/-Loch im Übergang gegen vorher/nachher.
 
 Aufruf: python3 eval_mix.py <mix-Ordner> <render-Ordner> <pcm-Ordner> [--report bericht.md]
@@ -117,6 +122,11 @@ def evaluate(n, mixdir, rdir, pcmdir, cache):
                bStart=float(kv["bStart"]), overlap=float(t1 - t0))
     # ---- Einsatz gegen letzten Gesang von A ----
     res["start_vs_vocal"] = res["a_start"] - res["ref_last_vocal"] if res["ref_last_vocal"] > 0 else None
+    lf = float(ref_a.get("last_full_phrase_end", 0.0))
+    res["start_vs_phrase"] = res["a_start"] - lf if lf > 0 else None
+    # B-Einstieg mitten in einer Gesangsphrase? (mehr als 0,3 s nach Phrasenbeginn und vor ihrem Ende)
+    bs = float(kv["bStart"])
+    res["b_mid_phrase"] = bool(any(a + 0.3 < bs < b - 0.3 for a, b in ref_b["vocals"]))
 
     # ---- Pegel und Gesang pro 0,1-s-Rahmen der Mix-Zeit ----
     nfr = len(mix) // int(OUT_RATE * FR)
@@ -149,12 +159,39 @@ def evaluate(n, mixdir, rdir, pcmdir, cache):
         v = np.asarray(ref["vocal_db"])
         return np.interp(pos / ref["hop"], np.arange(len(v)), v)
 
-    va = smooth_db(vocal_db(ref_a, pa) + ga); vb = smooth_db(vocal_db(ref_b, pb) + gb)
+    va_raw = vocal_db(ref_a, pa) + ga
+    # Effekt-Schweif von A nach dem Stopp (Echo/Hall): Gesangsanteil der letzten Sekunde vor dem Stopp,
+    # abklingend wie die tatsächliche Ausgabe von A (Sprachbereich der Solo-Aufnahme)
+    solo_a_db = np.full(nfr, -120.0)
+    for k in range(k0, k1):
+        solo_a_db[k] = 10 * np.log10(band_power(solo_a[k * N:(k + 1) * N], OUT_RATE))
+    tail = np.zeros(nfr, bool)
+    stop = np.where(playa[:-1] & ~playa[1:])[0]
+    for k_stop in stop:
+        if not (k0 <= k_stop < k1):
+            continue
+        w = slice(max(k0, k_stop - 9), k_stop + 1)
+        p_lin = lambda v: 10 * np.log10(np.mean(10 ** (np.asarray(v) / 10)) + 1e-12)
+        v_ref, s_ref = p_lin(va_raw[w]), p_lin(solo_a_db[w])
+        for k in range(k_stop + 1, k1):
+            if playa[k] or solo_a_db[k] < -90:
+                break
+            va_raw[k] = v_ref + (solo_a_db[k] - s_ref)
+            tail[k] = True
+    va = smooth_db(va_raw); vb = smooth_db(vocal_db(ref_b, pb) + gb)
     ms = smooth_db(mix_db)
-    aud_a = (va > R.VOCAL_ABS_DB) & (va > ms - R.VOCAL_REL_DB) & playa
+    aud_a = (va > R.VOCAL_ABS_DB) & (va > ms - R.VOCAL_REL_DB) & (playa | tail)
     aud_b = (vb > R.VOCAL_ABS_DB) & (vb > ms - R.VOCAL_REL_DB) & playb
     clash = aud_a & aud_b
+    full = clash & (va > vb - 6.0)
+    soft = clash & (va <= vb - 6.0)
     res["clash_sec"] = float(clash.sum() * FR)
+    res["clash_full_sec"] = float(full.sum() * FR)
+    res["clash_soft_sec"] = float(soft.sum() * FR)
+    rb = np.asarray(ref_b["beats"])
+    b_bar = 4 * float(np.median(np.diff(rb))) / ratio if len(rb) > 4 else 2.0      # Taktlänge von B in Mix-Zeit
+    res["clash_soft_bars"] = res["clash_soft_sec"] / b_bar
+    res["clash_soft_min_db"] = float(np.min((vb - va)[soft])) if soft.any() else None
     res["a_vocal_after_start"] = float((aud_a & (tf >= t0)).sum() * FR)
     # ---- Pegel ----
     res["peak"] = float(np.max(np.abs(mix)))
@@ -248,8 +285,11 @@ def main():
         rows.append(r)
         bm = f"{r['beat_mean_ms']:5.1f} ms" if "beat_mean_ms" in r else "   -    "
         sv = f"{r['start_vs_vocal']:+6.1f}" if r.get("start_vs_vocal") is not None else "     -"
-        print(f"{n:03d} {r['a']}→{r['b']} {r['type']:10s} Beat {bm}  Gesang-über-Gesang {r.get('clash_sec', 0):4.1f} s  "
-              f"Einsatz−letzterGesang {sv} s  Buckel {r.get('bump_db', 0):+4.1f} dB  Loch {r.get('gap_sec', 0):.1f} s  Spitze {r.get('peak', 0):.2f}"
+        sp = f"{r['start_vs_phrase']:+6.1f}" if r.get("start_vs_phrase") is not None else "     -"
+        print(f"{n:03d} {r['a']}→{r['b']} {r['type']:10s} Beat {bm}  Gesang voll {r.get('clash_full_sec', 0):4.1f} s, "
+              f"ausklingend {r.get('clash_soft_bars', 0):3.1f} Takte  Einsatz−Phrase {sp} s (−Gesang {sv} s)  "
+              f"Buckel {r.get('bump_db', 0):+4.1f} dB  Loch {r.get('gap_sec', 0):.1f} s  Spitze {r.get('peak', 0):.2f}"
+              + ("  B-MITTEN-IN-PHRASE" if r.get("b_mid_phrase") else "")
               + (f"  FEHLER {r['error']}" if "error" in r else ""), flush=True)
     json.dump(rows, open(os.path.join(rdir, "eval.json"), "w"), indent=1)
     summary(rows, report)
@@ -271,13 +311,30 @@ def block(rows, title):
     ok = [r for r in rows if "error" not in r]
     L = [f"== {title} =="]
     L.append(f"Übergänge gemessen: {len(ok)} von {len(rows)}")
-    clash = [r for r in ok if r["clash_sec"] >= 0.3]
-    L.append(f"Gesang über Gesang (≥ 0,3 s hörbar): {len(clash)} von {len(ok)} = {100 * len(clash) / max(1, len(ok)):.1f} %"
-             + (f"  → {[(r['n'], r['a'], r['b'], round(r['clash_sec'], 1)) for r in clash]}" if clash else ""))
+    types = {}
+    for r in ok:
+        types[r["type"]] = types.get(r["type"], 0) + 1
+    fades = types.get("FADE", 0)
+    L.append(f"Fades: {fades} von {len(ok)} = {100 * fades / max(1, len(ok)):.1f} %  (andere Arten: {100 * (len(ok) - fades) / max(1, len(ok)):.1f} %)")
+    L.append("Arten: " + ", ".join(f"{k} {v} ({100 * v / max(1, len(ok)):.0f} %)" for k, v in sorted(types.items(), key=lambda x: -x[1])))
+    full = [r for r in ok if r["clash_full_sec"] >= 0.3]
+    L.append(f"Gesang über Gesang VOLL (A weniger als 6 dB leiser, ≥ 0,3 s): {len(full)} von {len(ok)}"
+             + (f"  → {[(r['n'], r['a'], r['b'], r['type'], round(r['clash_full_sec'], 1)) for r in full]}" if full else ""))
+    soft = [r for r in ok if r["clash_soft_sec"] >= 0.1]
+    long_soft = [r for r in soft if r["clash_soft_bars"] > 2.0]
+    L.append(f"Gesang ausklingend (A ≥ 6 dB leiser): in {len(soft)} Übergängen, längstens "
+             f"{max([r['clash_soft_bars'] for r in soft], default=0):.1f} Takte; über 2 Takte: {len(long_soft)}"
+             + (f"  → {[(r['n'], r['a'], r['b'], round(r['clash_soft_bars'], 1)) for r in long_soft]}" if long_soft else ""))
+    ph = [r for r in ok if r.get("start_vs_phrase") is not None]
+    early_p = [r for r in ph if r["start_vs_phrase"] < -0.3]
+    L.append(f"Einsatz vor dem Ende der letzten vollen Gesangsphrase von A (> 0,3 s): {len(early_p)} von {len(ph)}"
+             + (f"  → {[(r['n'], r['a'], r['type'], round(r['start_vs_phrase'], 1)) for r in early_p]}" if early_p else ""))
     voc = [r for r in ok if r.get("start_vs_vocal") is not None]
     early = [r for r in voc if r["start_vs_vocal"] < -0.3]
-    L.append(f"Einsatz vor dem Ende des letzten Gesangs von A (> 0,3 s): {len(early)} von {len(voc)}"
-             + (f"  → {[(r['n'], r['a'], round(r['start_vs_vocal'], 1)) for r in early]}" if early else ""))
+    L.append(f"  (zum Vergleich: vor dem Ende des letzten Gesangs überhaupt, inkl. Einwürfe: {len(early)} von {len(voc)})")
+    mid = [r for r in ok if r.get("b_mid_phrase")]
+    L.append(f"B startet mitten in einer Gesangsphrase: {len(mid)} von {len(ok)}"
+             + (f"  → {[(r['n'], r['b'], r['type']) for r in mid]}" if mid else ""))
     m = [r for r in ok if "beat_mean_ms" in r]
     if m:
         allm = np.mean([r["beat_mean_ms"] for r in m])
@@ -299,10 +356,6 @@ def block(rows, title):
     bumps = [r for r in ok if r["bump_db"] > 3.0]
     L.append(f"Lautheits-Buckel > 3 dB: {len(bumps)}" + (f" → {[(r['n'], round(r['bump_db'], 1)) for r in bumps]}" if bumps else ""))
     L.append(f"Höchster Spitzenwert: {max(r['peak'] for r in ok):.2f} (Begrenzer bei 0,90)")
-    types = {}
-    for r in ok:
-        types[r["type"]] = types.get(r["type"], 0) + 1
-    L.append("Arten: " + ", ".join(f"{k} {v}" for k, v in sorted(types.items(), key=lambda x: -x[1])))
     return L
 
 

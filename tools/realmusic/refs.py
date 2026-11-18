@@ -20,6 +20,8 @@ VOCAL_MAX_OVER_MIX_DB = 3.0   # lauter als der ganze Song kann die Stimme nicht 
                               # Stimm-Trennung (z. B. im verklingenden Schluss, wenn der Song schon fast still ist)
 GAP_FILL = 0.5
 MIN_SEG = 0.4
+FULL_PHRASE_SEC = 2.0     # "volle Gesangsphrase": zusammenhängender Gesang von mindestens dieser Länge (kürzer: Einwurf,
+                          # einzelnes Wort, Ad-lib, Vocal-Sample)
 
 # Song-Listen: Name → (Liste, Referenz-Ordner)
 #   test  = 56 Test-Songs (nur zum Messen, nie zum Lernen oder Abstimmen)
@@ -128,6 +130,8 @@ def derive(ref):
     ref["vocals"] = [[round(a, 2), round(b, 2)] for a, b in merged]
     ref["vocal_ratio"] = round(sum(b - a for a, b in merged) / max(1e-9, ref["duration"]), 3)
     ref["last_vocal_end"] = merged[-1][1] if merged else 0.0
+    full = [s for s in merged if s[1] - s[0] >= FULL_PHRASE_SEC]
+    ref["last_full_phrase_end"] = full[-1][1] if full else 0.0
     ref["first_vocal_start"] = merged[0][0] if merged else None
     # hörbares Ende und Fade-out aus der Lautstärke des ganzen Songs
     body = float(np.percentile(mix, 80))                     # typische Lautstärke im Hauptteil
