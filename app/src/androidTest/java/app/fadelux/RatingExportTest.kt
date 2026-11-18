@@ -94,6 +94,19 @@ class RatingExportTest {
         ev(MotionEvent.ACTION_UP)
     }
 
+    /** Knopf finden und warten, bis er still steht (die Karte gleitet beim Erscheinen von unten herein). */
+    private fun findSettled(act: ComponentActivity, tag: String, ms: Long = 5000): Rect? {
+        val end = SystemClock.uptimeMillis() + ms
+        var last: Rect? = null
+        while (SystemClock.uptimeMillis() < end) {
+            val r = find(act, tag)
+            if (r != null && r == last) return r
+            last = r
+            Thread.sleep(250)
+        }
+        return last
+    }
+
     private fun waitFor(ms: Long, cond: () -> Boolean): Boolean {
         val end = SystemClock.uptimeMillis() + ms
         while (SystemClock.uptimeMillis() < end) { if (cond()) return true; Thread.sleep(100) }
@@ -137,7 +150,7 @@ class RatingExportTest {
         main { am.recordTransition(a, b, null, null, plan, 158.5, quick = false, early = false) }
         assertNotNull("Bewertung wird angeboten", main { am.rating })
         assertTrue("Daumen-hoch-Knopf sichtbar", waitFor(5000) { find(act, "rate_up") != null })
-        tap(find(act, "rate_up")!!)
+        tap(findSettled(act, "rate_up")!!)
         assertTrue("Karte verschwindet nach dem Antippen", waitFor(3000) { main { am.rating } == null })
         val e1 = tlog.entries()
         assertEquals(1, e1.size)
