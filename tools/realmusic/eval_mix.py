@@ -228,6 +228,7 @@ def evaluate(n, mixdir, rdir, pcmdir, cache):
             def audible(tt, g):
                 return g[np.clip((tt / FR).astype(int), 0, nfr - 1)] > -20
             ta = ta[audible(ta, ga) & audible(ta, gb)]
+            tb = octave_fill(ta, tb)
             if len(ta) >= 2 and len(tb) >= 2:
                 d = np.array([tb[np.argmin(np.abs(tb - x))] - x for x in ta])
                 res["beat_offsets"] = d.tolist()
@@ -239,9 +240,49 @@ def evaluate(n, mixdir, rdir, pcmdir, cache):
                 da = da[audible(da, ga) & audible(da, gb)]
                 if len(da) and len(db):
                     res["downbeat_hit"] = float(np.mean([np.min(np.abs(db - x)) <= 0.07 for x in da]))
+        # Einsatz im Takt (A endet beim Einsatz: Echo, Hall, Schnitt, Sweep): Liegen die ersten Beats von B auf dem
+        # fortgesetzten Beat-Raster von A? (A-Beats der letzten 4 s vor dem Einsatz, Periode, weitergezählt)
+        if "beat_mean_ms" not in res:
+            ma0 = (t >= t0 - 4.0) & (t < t0) & (aPlay > 0.5)
+            mb0 = (t >= t0) & (t <= t0 + 4.0) & (bPlay > 0.5)
+            if ma0.sum() > 10 and mb0.sum() > 10:
+                ba = np.asarray(ref_a["beats"]); bb = np.asarray(ref_b["beats"])
+                ba = ba[(ba >= aPos[ma0][0]) & (ba <= aPos[ma0][-1])]
+                bb = bb[(bb >= bPos[mb0][0]) & (bb <= bPos[mb0][-1])]
+                ta = np.interp(ba, aPos[ma0], t[ma0]) + lat_a
+                tb = np.interp(bb, bPos[mb0], t[mb0]) + lat_b
+                if len(ta) >= 3 and len(tb) >= 2:
+                    pa = float(np.median(np.diff(ta)))
+                    grid = ta[-1] + pa * np.arange(1, int(6.0 / pa) + 2)
+                    tb = octave_fill(grid, tb)
+                    d = np.array([grid[np.argmin(np.abs(grid - x))] - x for x in tb])
+                    d = (d + pa / 2) % pa - pa / 2                     # nächster Beat des Rasters
+                    res["beat_offsets"] = d.tolist()
+                    res["beat_mean_ms"] = float(np.mean(np.abs(d)) * 1000)
+                    res["beat_hit30"] = float(np.mean(np.abs(d) <= 0.03))
+                    res["entry_only"] = True
+                    # die "1": erster Downbeat von B gegen den nächsten Taktanfang im fortgesetzten Raster von A
+                    da = np.asarray(ref_a["downbeats"]); db = np.asarray(ref_b["downbeats"])
+                    da = np.interp(da[(da >= aPos[ma0][0]) & (da <= aPos[ma0][-1])], aPos[ma0], t[ma0]) + lat_a
+                    db = np.interp(db[(db >= bPos[mb0][0]) & (db <= bPos[mb0][-1])], bPos[mb0], t[mb0]) + lat_b
+                    if len(da) >= 1 and len(db) >= 1:
+                        bar = 4 * pa
+                        nxt = da[-1] + bar * np.arange(1, 4)
+                        res["downbeat_hit"] = float(np.min(np.abs(nxt - db[0])) <= 0.07)
         res["refs_reliable"] = bool(R.reliable(ref_a) and R.reliable(ref_b))
         res["downbeats_reliable"] = bool(R.reliable_downbeats(ref_a) and R.reliable_downbeats(ref_b))
     return res
+
+
+def octave_fill(ta, tb):
+    """Referenz von B im halben Tempo (z. B. 66 statt 132 BPM): die Zwischen-Beats ergänzen, sonst läge jeder zweite
+    Beat von A scheinbar einen halben Beat daneben."""
+    if len(ta) < 3 or len(tb) < 3:
+        return tb
+    pa, pb = float(np.median(np.diff(ta))), float(np.median(np.diff(tb)))
+    if 1.8 < pb / pa < 2.2:
+        tb = np.sort(np.concatenate([tb, (tb[:-1] + tb[1:]) / 2]))
+    return tb
 
 
 def latency(solo, src, t, pos, play, t0, t1, tempo):
@@ -345,6 +386,11 @@ def block(rows, title):
         rel = [r for r in m if r.get("refs_reliable")]
         L.append(f"Beatmatching-Übergänge: {len(m)} – mittlerer Beat-Versatz {allm:.1f} ms (alle), "
                  + (f"{np.mean([r['beat_mean_ms'] for r in rel]):.1f} ms (Referenz sicher, {len(rel)})" if rel else "–"))
+        ov = [r for r in m if not r.get("entry_only")]; en = [r for r in m if r.get("entry_only")]
+        L.append(f"  davon gemeinsam im Takt (Blend, Loop, Filter-Sweep): {len(ov)}"
+                 + (f", Versatz {np.mean([r['beat_mean_ms'] for r in ov]):.1f} ms" if ov else "")
+                 + f"; Einsatz im Takt von A (Echo, Hall, Schnitt): {len(en)}"
+                 + (f", Versatz {np.mean([r['beat_mean_ms'] for r in en]):.1f} ms" if en else ""))
         L.append(f"  Anteil Beats innerhalb ±30 ms: {100 * np.mean(np.concatenate([np.abs(r['beat_offsets']) <= 0.03 for r in m])):.1f} %")
         dh = [r["downbeat_hit"] for r in m if "downbeat_hit" in r and r.get("downbeats_reliable")]
         if dh:

@@ -371,10 +371,21 @@ object TransitionPlanner {
             val range = (last downTo releaseBar).filter { a.barTime(it) >= max(release, lead) - 1e-6 && a.barTime(it) <= bodyEnd }
             exitBar = range.firstOrNull { it % 4 == 0 } ?: range.firstOrNull()
         }
-        val exitSec = exitBar?.let { a.barTime(it) } ?: min(max(release, lead), aEnd)
+        val target = min(max(release, lead), aEnd)
+        // Ausstieg auf dem Raster von A: auf der Phrase (oben), sonst – am Schluss von A – auf der nächsten "1", wenn
+        // sie höchstens einen Beat später kommt, sonst auf dem nächsten Beat. So bleibt das Echo im Takt von A und B
+        // setzt im Takt ein. Ohne sicheres Raster: zeitlich nach dem Gesang (B dann im eigenen Tempo).
+        val exitSec = exitBar?.let { a.barTime(it) } ?: if (aGrid) {
+            val tBar = a.barTime(a.nextBoundary(target, 1))
+            val tBeat = a.firstDownbeat + kotlin.math.ceil((target - a.firstDownbeat) / a.beatSec - 1e-6) * a.beatSec
+            if (tBar - target <= a.beatSec + 1e-6) tBar else tBeat
+        } else target
         // A spielt am Ausstieg noch voll (nicht im Ausklang)? Nur dann ist ein Schnitt / Sweep musikalisch
         val aFull = exitBar != null && exitSec <= bodyEnd - 0.05
-        val match = beatOk && ratio != null
+        val bStartHit = bEntryHit(b)
+        // im Takt von A nur, wenn beide Raster genau dort sicher sind (A vor dem Ausstieg, B ab seinem Einsatz)
+        val match = beatOk && ratio != null && aGrid &&
+            a.gridSteady(exitSec - a.barSec, exitSec + 0.1) && b.gridSteady(bStartHit, bStartHit + b.barSec)
         val opts = mutableListOf(TransitionType.ECHO_OUT)
         if (aFull && exitSec + a.barSec <= aEnd) opts += TransitionType.FILTER
         if (aFull && a.gridSteady(exitSec - a.barSec, exitSec + 0.1)) opts += TransitionType.CUT
@@ -384,14 +395,14 @@ object TransitionPlanner {
         if (usable.isEmpty()) return null
         val last2 = recent.takeLast(2)
         val type = usable.firstOrNull { it !in last2 } ?: usable.firstOrNull { it != recent.lastOrNull() } ?: usable.first()
-        val bStart = bEntryHit(b)
+        val bStart = bStartHit
         val len = when (type) { TransitionType.CUT -> 1; else -> 2 }
         why += when (type) {
             TransitionType.ECHO_OUT -> if (aFull) "Echo-Out nach dem Gesang (Takt ${exitBar ?: a.barAt(exitSec)})" else "Echo-Out auf dem Schluss von A"
             TransitionType.REVERB_WASH -> "Hall auf dem Schluss von A"
             TransitionType.FILTER -> "Filter-Sweep nach dem Gesang (Takt ${exitBar ?: a.barAt(exitSec)})"
             else -> "Schnitt auf die 1 nach dem Gesang (Takt $exitBar)"
-        } + (if (match) " · B im Tempo von A" else if (!tempoClose) " · Tempo zu verschieden: B im eigenen Tempo" else " · Raster unsicher: B im eigenen Tempo") +
+        } + (if (match) " · B im Takt von A" else if (!tempoClose) " · Tempo zu verschieden: B im eigenen Tempo" else " · Raster unsicher: B im eigenen Tempo") +
             " · B ab ${mmss(bStart)}"
         return TransitionPlan(
             type = type, mixBar = exitBar ?: a.barAt(exitSec), mixSec = exitSec, bStartSec = bStart,

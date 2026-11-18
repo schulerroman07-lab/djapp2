@@ -107,6 +107,10 @@ class PlannerV2Test {
         // B auf einem Downbeat: hier nach dem 8-Takte-Intro (leise), wo B "voll" wird – nie mitten in einer Phrase
         assertEquals("B auf dem Downbeat nach dem leisen Intro", b.barTime(8), p.bStartSec, 1e-6)
         assertFalse(b.midVocal(p.bStartSec))
+        // im Takt von A: Einsatz genau auf einem Beat von A, B im Tempo von A (das Echo bleibt im Takt)
+        assertTrue(p.reason, p.matchTempo)
+        val k = (p.mixSec - a.firstDownbeat) / a.beatSec
+        assertEquals("auf einem Beat von A", Math.round(k).toDouble(), k, 1e-6)
     }
 
     @Test
