@@ -135,18 +135,19 @@ const val GRID_DEV_MAX_MS = 20
 object StructureAnalyzer {
     /** Schwelle der Gesangs-Wahrscheinlichkeit (an den Übungs-Songs bestimmt, siehe train_vocal_net.py):
      *  bewusst tief – lieber Gesang zu viel erkennen als zu wenig. */
-    var vocalThreshold = 0.15f
+    var vocalThreshold = 0.10f
 
     /**
      * Fenster am Song-Ende: Endet der erkannte Gesang weniger als so viele Sekunden vor dem hörbaren Ende, gilt
      * er bis zum Ende – die Erkennung verpasst leise Gesangsreste am Schluss (Ad-libs, Chor im Fade-out) oft.
-     * Bestimmt zusammen mit [vocalThreshold] und TransitionPlanner.RELEASE_MARGIN an den Übungs-Songs (jeder Song
-     * nur von einem Netz beurteilt, das ihn nie gesehen hat): Übergang vor dem Ende der letzten vollen Phrase bei
-     * 4 von 84 Songs (wie mit der früheren, viel vorsichtigeren Regel), aber der instrumentale Schluss ist bei
-     * 38 % statt 10 % der Songs nutzbar (A spielt nach dem Einsatz noch ≥ 4 s) – für Blend, Schnitt, Filter.
+     * Bestimmt zusammen mit [vocalThreshold] und TransitionPlanner.RELEASE_MARGIN an 202 Übungs- und Lern-Songs
+     * (jeder Song nur von einem Netz beurteilt, das ihn nie gelernt hat): Übergang vor dem Ende der letzten vollen
+     * Phrase bei 7 von 173 Songs mit Gesang (4 %); der instrumentale Schluss bleibt bei 18 % nutzbar (A spielt nach
+     * dem Einsatz noch ≥ 4 s – für Blend, Schnitt, Filter). Vorsichtiger (15 s) wären es 2,9 % / 9 %, mutiger
+     * (4 s) 6–8 % / 25–29 % – "nie vor dem Ende der letzten Phrase" hat Vorrang.
      */
-    const val VOCAL_TAIL_SONG = 4.0
-    const val VOCAL_TAIL_ELECTRONIC = 4.0
+    const val VOCAL_TAIL_SONG = 8.0
+    const val VOCAL_TAIL_ELECTRONIC = 8.0
     const val VOCAL_HOP = 0.25
 
     /** Gesangs-Abschnitte aus der Wahrscheinlichkeit: Median über 1,25 s, Lücken < 1 s schliessen, Stücke < 0,5 s weg. */

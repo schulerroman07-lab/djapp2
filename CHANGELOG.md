@@ -18,12 +18,22 @@
 - **Einstieg von B:** auf einem Downbeat; fast stille Anfangstakte und lange, ruhige Intros (≥ 8 Takte) werden
   übersprungen (Start auf der Phrase, wo B "voll" wird). Nie mitten in einer Gesangsphrase und nicht direkt
   vor einem Gesangsbeginn (Auftakt).
-- **Ende des Gesangs von A:** Schwelle 0,15, Gesang < 4 s vor dem Ende gilt bis zum Ende, Übergang frühestens
-  2 s nach dem letzten erkannten Gesang. An den Übungs-Songs bestimmt: gleich selten zu früh wie die alte,
-  sehr vorsichtige Regel (30 s), aber der instrumentale Schluss ist 4-mal so oft nutzbar.
+- **Ende des Gesangs von A:** neu bestimmt (siehe Lizenzen): der instrumentale Schluss ist fast doppelt so oft
+  nutzbar wie mit der alten, sehr vorsichtigen Regel (30 s), bei gleich wenigen zu frühen Einsätzen.
 - "Weiter"/"Zurück", Früh-Übergang und vom DJ gewählte Arten bleiben wie bisher.
 - Tests: Planer-Tests an die neuen Regeln angepasst (u. a. Pop ohne Fade, Abwechslung, B-Einstieg); Zufallstest
   mit 3000 Song-Paaren prüft: nie Gesang voll über Gesang, nie Einstieg mitten in einer Phrase, höchstens 20 % Fades.
+
+### Lizenzen: Netze nur noch mit CC0 / CC BY / Public Domain gelernt
+- Die Gesangs- und die Beat-Erkennung waren auch mit NC/ND/SA-Songs gelernt (84 von 102 Übungs-Songs). Beide Netze
+  sind jetzt **nur** mit erlaubten Songs gelernt: 18 Übungs-Songs + **100 neue Lern-Songs** (ccMixter, CC BY/CC0,
+  Pop/Rock/House/Techno, mit und ohne Gesang; Referenzen im CI erzeugt).
+- Die Regel steht an einer Stelle (`refs.training_allowed()`), die Lern-Skripte halten sich automatisch daran.
+- **`LIZENZEN_TRAINING.md`**: alle Trainings-, Übungs- und Test-Songs mit Lizenz und Quelle, dazu der Vergleich:
+  Beats 87,2 % statt 86,9 %, Downbeats 71,3 % statt 71,6 % (Test-Songs) – praktisch gleich; Gesangserkennung rund
+  3 Punkte ungenauer (83,0 % statt 86,1 %).
+- Gesangsregel mit dem neuen Netz neu bestimmt (202 Songs, jeder von einem Netz beurteilt, das ihn nie gelernt hat):
+  Schwelle 0,10, Gesang < 8 s vor dem Ende gilt bis zum Ende, Übergang frühestens 3 s nach dem letzten Gesang.
 
 ### Messung erweitert
 - Anteil der Übergangsarten und Fades; Gesang über Gesang getrennt in "voll" (A weniger als 6 dB leiser) und

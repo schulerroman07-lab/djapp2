@@ -31,7 +31,7 @@ object TransitionPlanner {
     /** Abstand nach dem letzten erkannten Gesang von A, bevor der Übergang beginnt (Sekunden). An den Übungs-Songs
      *  bestimmt (zusammen mit Schwelle und Ende-Regel der Gesangserkennung): fängt die meisten Fälle ab, in denen die
      *  Erkennung das Ende der letzten Phrase etwas zu früh sieht, und lässt den instrumentalen Schluss nutzbar. */
-    const val RELEASE_MARGIN = 2.0
+    const val RELEASE_MARGIN = 3.0
 
     /** Einblenden von B, wenn A schon zu Ende ist (Sekunden): kurz, damit zwischen den Songs kein Loch entsteht. */
     const val QUICK_IN = 0.4
