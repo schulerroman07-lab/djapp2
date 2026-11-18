@@ -1,1 +1,1 @@
-train 14
+train 8

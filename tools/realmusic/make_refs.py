@@ -51,7 +51,13 @@ def main():
         print("madmom nicht verfügbar:", repr(e)[:300], flush=True)
     if f2b is None and mm is None:
         raise SystemExit("Keine Beat-Referenz-Software verfügbar")
+    # schon vorhandene Referenzen (im Projekt) überspringen – nur neue Songs rechnen (--redo: alle)
+    import refs as R
+    have = R.list_paths(R.list_name(sys.argv))[1]
     for s in songs(sys.argv):
+        if "--redo" not in sys.argv and os.path.exists(os.path.join(have, s["id"] + ".json")):
+            print("vorhanden:", s["id"], flush=True)
+            continue
         mp3 = fetch(s, audio)
         with tempfile.TemporaryDirectory() as tmp:
             wav = os.path.join(tmp, s["id"] + ".wav")

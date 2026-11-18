@@ -15,11 +15,11 @@ berechneten Referenzen (Beat-Zeiten, Lautstärke-Hüllkurven).
   analysiert und gemessen, aber nicht in die Netze gelernt.
 - **Test-Songs** (`songs.json`): nur zum Messen der Ergebnisse (Bericht), nie zum Lernen oder Abstimmen.
 
-**Zusammen 118 Songs zum Lernen der App-Netze** (alle CC0/CC BY/PD).
+**Zusammen 155 Songs zum Lernen der App-Netze** (alle CC0/CC BY/PD).
 
-## Lern-Songs (nur CC0/CC-BY): 100 Songs, davon 100 zum Lernen
+## Lern-Songs (nur CC0/CC-BY): 137 Songs, davon 137 zum Lernen
 
-Lizenzen: CC BY 3.0 (75), CC BY 2.5 (18), CC0 1.0 (7)
+Lizenzen: CC BY 3.0 (109), CC BY 2.5 (19), CC0 1.0 (9)
 
 | ID | Titel | Interpret | Genre | Lizenz | Lernen | Quelle |
 |---|---|---|---|---|---|---|
@@ -123,6 +123,43 @@ Lizenzen: CC BY 3.0 (75), CC BY 2.5 (18), CC0 1.0 (7)
 | t098 | Dirtbag Chorus remix | Mseq | Rock | CC BY 2.5 | ja | https://ccmixter.org/files/Mseq/21969 |
 | t099 | I Have Often Told You Stories (guitar instrumental) | ramblinglibrarian | Rock | CC BY 3.0 | ja | https://ccmixter.org/files/ramblinglibrarian/41284 |
 | t100 | Alternator | RobertWarrington | Rock | CC BY 3.0 | ja | https://ccmixter.org/files/RobertWarrington/31783 |
+| t101 | Melancholicose | aerosolspray | House | CC BY 3.0 | ja | https://ccmixter.org/files/aerosolspray/32690 |
+| t102 | Miles Ahead | andrewwainwright | Techno | CC0 1.0 | ja | https://ccmixter.org/files/andrewwainwright/56001 |
+| t103 | Brake Dance | MalreDeszik | House | CC BY 3.0 | ja | https://ccmixter.org/files/MalreDeszik/62324 |
+| t104 | Truth? | onlymeith | House | CC BY 3.0 | ja | https://ccmixter.org/files/onlymeith/38010 |
+| t105 | Another Way | Psykick | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/Psykick/52938 |
+| t106 | Restless Sleep | gurdonark | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/gurdonark/10922 |
+| t107 | eighteen pieces (soda) | soda | House | CC BY 3.0 | ja | https://ccmixter.org/files/soda/16738 |
+| t108 | Under Siege | mad_beet | House | CC BY 3.0 | ja | https://ccmixter.org/files/mad_beet/65014 |
+| t109 | sleepwalking | airtone | House | CC BY 3.0 | ja | https://ccmixter.org/files/airtone/65416 |
+| t110 | Kamihamiha! - There Were No Aliens at the Olympics (Full Stems) | Kamihamiha | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/Kamihamiha/40503 |
+| t111 | F | myfreemickey | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/myfreemickey/39896 |
+| t112 | Never Give Up | ElectroActive | House | CC BY 3.0 | ja | https://ccmixter.org/files/ElectroActive/52022 |
+| t113 | Staying together as the first time | moscardo | House | CC BY 3.0 | ja | https://ccmixter.org/files/moscardo/60242 |
+| t114 | Paper Planes - Durden ft. Airtone | DURDEN | House | CC BY 3.0 | ja | https://ccmixter.org/files/DURDEN/55041 |
+| t115 | Yeah Kurt - this was kinda kool | Wired_Ant | House | CC BY 3.0 | ja | https://ccmixter.org/files/Wired_Ant/41918 |
+| t116 | School Boys | Lemoneight | Rock | CC BY 3.0 | ja | https://ccmixter.org/files/Lemoneight/59691 |
+| t117 | Sawmill | gurdonark | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/gurdonark/23358 |
+| t118 | Resonator Drums | Wired_Ant | House | CC BY 3.0 | ja | https://ccmixter.org/files/Wired_Ant/39374 |
+| t119 | Online Musical Journal Journey | septahelix | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/septahelix/59223 |
+| t120 | Fly | ElectroActive | House | CC BY 3.0 | ja | https://ccmixter.org/files/ElectroActive/52023 |
+| t121 | Static | mactonite | House | CC BY 3.0 | ja | https://ccmixter.org/files/mactonite/29469 |
+| t122 | Shiro (Kirkoid Mix) | Kirkoid | House | CC BY 3.0 | ja | https://ccmixter.org/files/Kirkoid/43938 |
+| t123 | SkyDub | Psykick | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/Psykick/52937 |
+| t124 | Thunderlizard at the Art War | Super_Sigil | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/Super_Sigil/40539 |
+| t125 | Here's the Keys | laerlooper | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/laerlooper/31819 |
+| t126 | Intergalactic Journey | spinmeister | House | CC0 1.0 | ja | https://ccmixter.org/files/spinmeister/21067 |
+| t127 | Transceiver | RobertWarrington | Rock | CC BY 3.0 | ja | https://ccmixter.org/files/RobertWarrington/37204 |
+| t128 | 1973 | doxent | Pop | CC BY 3.0 | ja | https://ccmixter.org/files/doxent/41411 |
+| t129 | Early in the morning (revisited) | Milky_Blue | House | CC BY 3.0 | ja | https://ccmixter.org/files/Milky_Blue/63404 |
+| t130 | Beat 1 | whytong | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/whytong/39216 |
+| t131 | nervous refix | dubslate | Techno | CC BY 2.5 | ja | https://ccmixter.org/files/dubslate/739 |
+| t132 | starfrosch - Deadfro5h Remix Kit | starfrosch | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/starfrosch/60781 |
+| t133 | The night is calling | Karstenholymoly | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/Karstenholymoly/62739 |
+| t134 | Geek took control of the guitar | psubhashish | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/psubhashish/58315 |
+| t135 | axiomatic | awesomizer | Techno | CC BY 3.0 | ja | https://ccmixter.org/files/awesomizer/40595 |
+| t136 | Braineating Zombies from Area 51 | moolen | Rock | CC BY 3.0 | ja | https://ccmixter.org/files/moolen/32827 |
+| t137 | New Life | Fireproof_Babies | Rock | CC BY 3.0 | ja | https://ccmixter.org/files/Fireproof_Babies/32731 |
 
 ## Übungs-Songs (Abstimmen; Lernen nur mit erlaubter Lizenz): 102 Songs, davon 18 zum Lernen
 
