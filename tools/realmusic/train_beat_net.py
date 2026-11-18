@@ -201,7 +201,7 @@ def export(net, mu, sd, path):
 def main():
     cli, dev_audio = sys.argv[1], sys.argv[2]
     epochs = int(sys.argv[sys.argv.index("--epochs") + 1]) if "--epochs" in sys.argv else 60
-    torch.set_num_threads(os.cpu_count() or 4)
+    torch.set_num_threads(int(os.environ.get("TORCH_THREADS", 0)) or os.cpu_count() or 4)
     cache = os.path.join(os.path.dirname(os.path.abspath(cli)), "mel_cache", "dev")
     audio = {"dev": dev_audio}
     if "--train-audio" in sys.argv:
