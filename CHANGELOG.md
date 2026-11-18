@@ -54,6 +54,12 @@
 - **Keine Blends:** Die Gesangserkennung meldet am Ende fast immer noch Gesang; mit der Vorgabe "nie vor dem Ende der
   letzten Phrase" bleibt dann nur der Ausklang am Schluss. Vorschläge im Bericht.
 
+### Tests und CI
+- 60 Unit-Tests grün (u. a. Pop ohne Fade, Abwechslung der Ausstiege, Echo im Takt von A, Filter-Out, B-Einstieg,
+  Zufallstest mit 3000 Paaren); Engine-Tests am PC grün.
+- CI: App-Build grün, Gerätetest grün (Dauerbetrieb ohne Aussetzer, Rand-Prüfung, Drag hoch/runter,
+  Bewertung/Export). Der Bewertungs-Test tippt den Daumen jetzt erst an, wenn die hereingleitende Karte still steht.
+
 ### Messung erweitert
 - Anteil der Übergangsarten und Fades; Gesang über Gesang getrennt in "voll" (A weniger als 6 dB leiser) und
   "ausklingend" (Dauer in Takten); der Echo-/Hall-Schweif von A zählt dabei mit. Einsatz gegen das Ende der letzten
