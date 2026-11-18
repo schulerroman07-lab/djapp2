@@ -2,7 +2,7 @@
 """
 Lädt die Test-Songs aus songs.json (frei lizenzierte Musik: Free Music Archive, ccMixter, Jamendo).
 Die Audiodateien werden NICHT ins Projekt gelegt – nur Adresse, Lizenz und Referenz-Daten.
-Aufruf: python3 fetch.py <Zielordner> [--list dev] [--shard i/n] [--ids s01,s02]
+Aufruf: python3 fetch.py <Zielordner> [--list dev|train] [--shard i/n] [--ids s01,s02]
 """
 import json, os, subprocess, sys, time
 
@@ -10,9 +10,12 @@ UA = "fadelux-test/1.0 (music test set for an open-source DJ app)"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
+LISTS = {"test": "songs.json", "dev": "songs_dev.json", "train": "songs_train.json"}
+
+
 def songs(argv):
-    # --list dev: Übungs-Songs (zum Abstimmen/Trainieren), sonst die Test-Songs (für die Messung)
-    name = "songs_dev.json" if "--list" in argv and argv[argv.index("--list") + 1] == "dev" else "songs.json"
+    # --list dev: Übungs-Songs, --list train: Lern-Songs (nur CC0/CC-BY), sonst die Test-Songs (für die Messung)
+    name = LISTS[argv[argv.index("--list") + 1]] if "--list" in argv else "songs.json"
     all_songs = json.load(open(os.path.join(HERE, name), encoding="utf-8"))
     if "--ids" in argv:
         ids = argv[argv.index("--ids") + 1].split(",")

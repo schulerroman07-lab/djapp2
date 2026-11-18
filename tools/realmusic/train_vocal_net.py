@@ -3,11 +3,13 @@
 Trainiert das Gesangs-Netz der App (kleines Faltungsnetz auf dem Mel-Spektrum, Mitte + Seite) und schreibt es
 als C++-Datei app/src/main/cpp/VocalNet.h. Die App rechnet das Netz in Analyzer.cpp (vocalNet) genau gleich.
 
-Lern-Daten: NUR die Übungs-Songs (songs_dev.json) – Eingang aus dem App-Analysator (analyze_cli --mel),
+Lern-Daten: NUR Songs mit Lizenz CC0/CC-BY/PD (songs_dev.json mit erlaubter Lizenz + songs_train.json),
+nie die Test-Songs – Eingang aus dem App-Analysator (analyze_cli --mel),
 Vorlage = hörbarer Gesang laut Referenz (Demucs-Gesangsspur, Regel in refs.py).
 Die Test-Songs (songs.json) werden nur zur Kontrolle gemessen, nie zum Lernen benutzt.
 
-Aufruf: python3 train_vocal_net.py <analyze_cli> <audio_dev-Ordner> <audio_test-Ordner> [--epochs N] [--no-export]
+Aufruf: python3 train_vocal_net.py <analyze_cli> <audio_dev-Ordner> <audio_test-Ordner> [--train-audio <Ordner>]
+        [--epochs N] [--no-export] [--all-licenses (nur Vergleich)]
 Braucht: numpy, torch (CPU reicht, ein paar Minuten).
 """
 import json, os, struct, subprocess, sys
@@ -52,11 +54,14 @@ def seg_labels(segs, t):
     return y
 
 
-def load_set(cli, listfile, audio_dir, ref_dir, cache_dir):
-    songs = json.load(open(os.path.join(HERE, listfile), encoding="utf-8"))
+def load_set(cli, listfile, audio_dir, ref_dir, cache_dir, songs=None):
+    """songs: [(song, ref_dir, audio_dir)] – sonst alle Songs aus listfile."""
+    if songs is None:
+        songs = [(s, ref_dir, audio_dir) for s in json.load(open(os.path.join(HERE, listfile), encoding="utf-8"))]
     os.makedirs(cache_dir, exist_ok=True)
 
-    def one(s):
+    def one(item):
+        s, ref_dir, audio_dir = item
         rp = os.path.join(ref_dir, s["id"] + ".json")
         mp3 = os.path.join(audio_dir, s["id"] + ".mp3")
         if not (os.path.exists(rp) and os.path.exists(mp3)):
@@ -207,7 +212,7 @@ def export(net, mu, sd, path):
     with open(path, "w") as o:
         o.write("// Gesangs-Netz – AUTOMATISCH ERZEUGT von tools/realmusic/train_vocal_net.py (nicht von Hand ändern).\n")
         o.write("// Faltungsnetz auf dem Mel-Spektrum (Mitte relativ zum Song + Stereo-Breite), gelernt an den\n")
-        o.write("// Übungs-Songs (songs_dev.json) mit Demucs-Gesangsspuren als Vorlage. Gerechnet in Analyzer.cpp (vocalNet).\n")
+        o.write("// Lern-Songs mit Lizenz CC0/CC-BY/PD (songs_dev.json + songs_train.json) mit Demucs-Gesangsspuren als Vorlage. Gerechnet in Analyzer.cpp (vocalNet).\n")
         o.write("#pragma once\nnamespace dj { namespace vn {\nconstexpr bool kReady = true;\n")
         o.write(f"constexpr int kIn = 2, kF = {NMEL}, kC1 = {C1}, kC2 = {C2}, kC3 = {C3}, kC4 = {C4}, kF4 = {NMEL // 8}, kK4 = {K4};\n")
         o.write(f"static const float kMean[kIn * kF] = {{{f(mu)}}};\n")
@@ -225,7 +230,14 @@ def main():
     epochs = int(sys.argv[sys.argv.index("--epochs") + 1]) if "--epochs" in sys.argv else 150
     torch.set_num_threads(os.cpu_count() or 4)
     cache = os.path.join(os.path.dirname(os.path.abspath(cli)), "mel_cache")
-    dev = load_set(cli, "songs_dev.json", dev_audio, os.path.join(HERE, "refs_dev"), cache + "/dev")
+    audio = {"dev": dev_audio}
+    if "--train-audio" in sys.argv:
+        audio["train"] = sys.argv[sys.argv.index("--train-audio") + 1]
+    if "--all-licenses" in sys.argv:          # nur zum Vergleich mit dem früheren Netz
+        learn = None
+    else:                                     # Standard: nur CC0/CC-BY/PD (siehe LIZENZEN_TRAINING.md)
+        learn = [(s, ref, audio[name]) for s, ref, name in R.training_songs(tuple(audio))]
+    dev = load_set(cli, "songs_dev.json", dev_audio, os.path.join(HERE, "refs_dev"), cache + "/dev", learn)
     test = load_set(cli, "songs.json", test_audio, os.path.join(HERE, "refs"), cache + "/test")
     print(f"Übungs-Songs: {len(dev)}, Test-Songs: {len(test)}")
     if "--cv" in sys.argv:

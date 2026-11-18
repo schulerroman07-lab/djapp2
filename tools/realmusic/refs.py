@@ -21,6 +21,42 @@ VOCAL_MAX_OVER_MIX_DB = 3.0   # lauter als der ganze Song kann die Stimme nicht 
 GAP_FILL = 0.5
 MIN_SEG = 0.4
 
+# Song-Listen: Name → (Liste, Referenz-Ordner)
+#   test  = 56 Test-Songs (nur zum Messen, nie zum Lernen oder Abstimmen)
+#   dev   = Übungs-Songs (Abstimmen; zum Lernen nur die mit erlaubter Lizenz)
+#   train = zusätzliche Lern-Songs, ausschliesslich CC0 / CC-BY
+LISTS = {"test": ("songs.json", "refs"), "dev": ("songs_dev.json", "refs_dev"), "train": ("songs_train.json", "refs_train")}
+
+
+def list_name(argv, default="test"):
+    return argv[argv.index("--list") + 1] if "--list" in argv else default
+
+
+def list_paths(name):
+    lst, ref = LISTS[name]
+    return os.path.join(HERE, lst), os.path.join(HERE, ref)
+
+
+def training_allowed(license_url):
+    """Darf ein Song zum LERNEN der Netze in der App benutzt werden? Nur CC0, CC-BY (jede Version, ohne NC/ND/SA)
+    und Public Domain – siehe LIZENZEN_TRAINING.md."""
+    u = (license_url or "").lower()
+    return ("creativecommons.org/licenses/by/" in u or "creativecommons.org/publicdomain/zero/" in u
+            or "creativecommons.org/publicdomain/mark/" in u)
+
+
+def training_songs(lists=("dev", "train")):
+    """Alle Songs mit erlaubter Lizenz aus den Listen, je mit Referenz-Ordner: [(song, ref_dir, liste), ...]."""
+    out = []
+    for name in lists:
+        lst, ref = list_paths(name)
+        if not os.path.exists(lst):
+            continue
+        for s in json.load(open(lst, encoding="utf-8")):
+            if training_allowed(s.get("license")):
+                out.append((s, ref, name))
+    return out
+
 
 def load(song_id, folder=None):
     folder = folder or os.path.join(HERE, "refs")

@@ -60,7 +60,7 @@ def evaluate(argv, quiet=False):
     pcm_dir, cli = argv[1], argv[2]
     extra = [a for a in argv[3:] if "=" in a]
     lst = songs(argv)
-    folder = os.path.join(R.HERE, "refs_dev" if "--list" in argv and argv[argv.index("--list") + 1] == "dev" else "refs")
+    folder = R.list_paths(R.list_name(argv))[1]
     rows = []
 
     def one(s):

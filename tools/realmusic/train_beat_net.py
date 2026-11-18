@@ -4,11 +4,13 @@ Trainiert das Beat-Netz der App: aus dem Mel-Spektrum (Mitte, 23 ms pro Rahmen) 
 Beat" und eine Kurve "hier ist eine 1 (Downbeat)". Die App ersetzt damit die einfache Onset-Kurve: Tempo,
 Beat-Raster, Phase und Downbeat werden aus dieser Kurve bestimmt (Analyzer.cpp, beatNet()).
 
-Lern-Daten: NUR die Übungs-Songs (songs_dev.json) mit Beat-/Downbeat-Referenzen (Beat This!, madmom).
+Lern-Daten: NUR Songs mit Lizenz CC0/CC-BY/Public Domain (Übungs-Songs songs_dev.json mit erlaubter Lizenz und
+Lern-Songs songs_train.json) mit Beat-/Downbeat-Referenzen (Beat This!, madmom). Nie die Test-Songs.
 Songs, bei denen die zwei Referenzen sich nicht einig sind, werden nicht zum Lernen benutzt.
 Die Test-Songs (songs.json) werden nie zum Lernen benutzt.
 
-Aufruf: python3 train_beat_net.py <analyze_cli> <audio_dev-Ordner> [--epochs N] [--no-export] [--holdout] [--out Datei.h]
+Aufruf: python3 train_beat_net.py <analyze_cli> <audio_dev-Ordner> [--train-audio <audio_train-Ordner>]
+        [--epochs N] [--no-export] [--holdout] [--out Datei.h] [--all-licenses (nur Vergleich)]
 Braucht: numpy, torch.
 """
 import json, os, sys
@@ -70,12 +72,19 @@ class Net(nn.Module):
         return self.out(h)
 
 
-def load(cli, audio_dir, cache_dir, listfile="songs_dev.json", ref_dir=None):
-    songs = json.load(open(os.path.join(HERE, listfile), encoding="utf-8"))
-    ref_dir = ref_dir or os.path.join(HERE, "refs_dev")
+def learn_songs(audio):
+    """Lern-Songs: [(song, ref_dir, audio_dir)]. Standard: nur erlaubte Lizenzen (CC0/CC-BY/PD, siehe
+    LIZENZEN_TRAINING.md); --all-licenses nur zum Vergleich mit den früheren Netzen."""
+    if "--all-licenses" in sys.argv:
+        lst, ref = R.list_paths("dev")
+        return [(s, ref, audio["dev"]) for s in json.load(open(lst, encoding="utf-8"))]
+    return [(s, ref, audio[name]) for s, ref, name in R.training_songs(tuple(audio))]
+
+
+def load(cli, audio, cache_dir):
     os.makedirs(cache_dir, exist_ok=True)
     data = []
-    for s in songs:
+    for s, ref_dir, audio_dir in learn_songs(audio):
         rp, mp3 = os.path.join(ref_dir, s["id"] + ".json"), os.path.join(audio_dir, s["id"] + ".mp3")
         if not (os.path.exists(rp) and os.path.exists(mp3)):
             continue
@@ -170,7 +179,7 @@ def export(net, mu, sd, path):
     with open(path, "w") as o:
         o.write("// Beat-Netz – AUTOMATISCH ERZEUGT von tools/realmusic/train_beat_net.py (nicht von Hand ändern).\n")
         o.write("// Mel-Spektrum (Mitte) → Beat- und Downbeat-Kurve pro 23-ms-Rahmen. Gelernt an den Übungs-Songs\n")
-        o.write("// (songs_dev.json) mit Beat This!/madmom-Referenzen. Gerechnet in Analyzer.cpp (beatNet).\n")
+        o.write("// (nur CC0/CC-BY/PD: songs_dev.json + songs_train.json) mit Beat This!/madmom-Referenzen. Gerechnet in Analyzer.cpp (beatNet).\n")
         o.write("#pragma once\nnamespace dj { namespace bn {\nconstexpr bool kReady = true;\n")
         o.write(f"constexpr int kF = {NMEL}, kC1 = {C1}, kC2 = {C2}, kCh = {CH}, kK = {K}, kLayers = {len(DIL)};\n")
         o.write(f"static const int kDil[kLayers] = {{{','.join(str(d) for d in DIL)}}};\n")
@@ -194,7 +203,10 @@ def main():
     epochs = int(sys.argv[sys.argv.index("--epochs") + 1]) if "--epochs" in sys.argv else 60
     torch.set_num_threads(os.cpu_count() or 4)
     cache = os.path.join(os.path.dirname(os.path.abspath(cli)), "mel_cache", "dev")
-    dev = load(cli, dev_audio, cache)
+    audio = {"dev": dev_audio}
+    if "--train-audio" in sys.argv:
+        audio["train"] = sys.argv[sys.argv.index("--train-audio") + 1]
+    dev = load(cli, audio, cache)
     print(f"Übungs-Songs: {len(dev)} (Beats sicher: {sum(s['use_b'] for s in dev)}, Downbeats sicher: {sum(s['use_d'] for s in dev)})")
     if "--holdout" in sys.argv:
         # 20 % der Übungs-Songs zurückhalten (zum ehrlichen Prüfen der Nachverarbeitung in der App)
