@@ -49,7 +49,7 @@ def main():
             best = None
             for r in lst:
                 g = (songs[r["a"]]["genre"], songs[r["b"]]["genre"])
-                if used.get(r["a"], 0) >= 2 or used.get(r["b"], 0) >= 2:
+                if used.get(r["a"], 0) >= 2 or used.get(r["b"], 0) >= 2 or (r["a"], r["b"]) in {(p["a"], p["b"]) for p in pick}:
                     continue
                 if best is None or (g not in pairs and best[1] in pairs):
                     best = (r, g)
