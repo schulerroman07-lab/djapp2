@@ -25,7 +25,7 @@ class PlannerV2Test {
     fun song(
         bpm: Float = 124f, bars: Int = 96, intro: Int = 8, outro: Int = 8, conf: Float = 0.95f,
         vocal: List<ClosedFloatingPointRange<Double>> = emptyList(), family: GenreFamily? = GenreFamily.POP,
-        fadeBars: Int = 0, key: Int = 21, gridDev: ((Int) -> Int)? = null,
+        fadeBars: Int = 0, key: Int = 21, gridDev: ((Int) -> Int)? = null, silentBars: Int = 0,
     ): TrackStructure {
         val beatSec = 60.0 / bpm
         val beats = bars * 4
@@ -35,6 +35,7 @@ class PlannerV2Test {
             val loud = bar >= intro && bar < bars - outro
             var e = if (loud) 0.9f else 0.45f
             if (fadeBars > 0 && bar >= bars - fadeBars) e = 0.9f * (bars - bar).toFloat() / (fadeBars + 1)
+            if (bar < silentBars) e = 0.02f
             f[i * 5] = (e * 255).toInt().toByte()
             f[i * 5 + 1] = ((if (i % 4 == 0) 0.95f else 0.6f) * 255).toInt().toByte()
             f[i * 5 + 2] = 80; f[i * 5 + 3] = 100
@@ -63,14 +64,12 @@ class PlannerV2Test {
 
     @Test
     fun vocalNearTheEnd_countsUntilTheEnd() {
-        // Erkennung verpasst leise Reste am Schluss: Gesang < 30 s vor dem Ende gilt bis zum Ende (Pop) …
-        val pop = song(vocal = listOf(20.0..170.0))                          // Ende ca. 186 s
+        // Erkennung verpasst leise Reste am Schluss: Gesang < 4 s vor dem Ende gilt bis zum Ende …
+        val pop = song(vocal = listOf(20.0..183.0))                          // Ende ca. 186 s
         assertEquals(pop.soundEnd, pop.lastVocalEnd, 0.01)
-        // … bei Techno/House nur < 12 s: das lange Outro bleibt für den Blend
-        val techno = song(vocal = listOf(20.0..170.0), family = GenreFamily.TECHNO)
-        assertEquals(170.0, techno.lastVocalEnd, 0.3)
-        // weit vor dem Ende bleibt der Gesang, wie er ist
-        assertEquals(140.0, song(vocal = listOf(20.0..140.0)).lastVocalEnd, 0.3)
+        // … weiter vor dem Ende bleibt der Gesang, wie er ist – der instrumentale Schluss bleibt nutzbar
+        assertEquals(170.0, song(vocal = listOf(20.0..170.0)).lastVocalEnd, 0.3)
+        assertEquals(170.0, song(vocal = listOf(20.0..170.0), family = GenreFamily.TECHNO).lastVocalEnd, 0.3)
     }
 
     @Test
@@ -78,7 +77,7 @@ class PlannerV2Test {
         val a = song(vocal = listOf(10.0..120.0, 130.0..150.0))            // 96 Takte à 1,94 s = 186 s
         val b = song(bpm = 126f, vocal = listOf(20.0..100.0))
         val p = TransitionPlanner.plan(a, 30.0, 1f, b, pop)
-        assertTrue("Start ${p.mixSec} nach dem letzten Gesang", p.mixSec >= 150.0 + TransitionPlanner.VOCAL_MARGIN - 1e-6)
+        assertTrue("Start ${p.mixSec} nach dem letzten Gesang", p.mixSec >= 150.0 + TransitionPlanner.RELEASE_MARGIN - 1e-6)
         assertTrue("Pop: einfacher Typ (${p.type})", p.type in setOf(TransitionType.BLEND, TransitionType.FADE, TransitionType.CUT))
         assertTrue("fertig vor dem Ende", endOf(p, a, b) <= a.soundEnd + 0.01)
         assertTrue("so spät wie möglich: in den letzten 20 s (${p.mixSec} von ${a.soundEnd})", a.soundEnd - p.mixSec <= 20.0)
@@ -86,34 +85,41 @@ class PlannerV2Test {
     }
 
     @Test
-    fun pop_vocalCloseToTheEnd_newSongStartsWhereTheOldEnds() {
-        val a = song(vocal = listOf(10.0..120.0, 130.0..170.0))            // Gesang bis 16 s vor dem Ende
+    fun pop_instrumentalEnding_usedForTheTransition() {
+        // Gesang bis 16 s vor dem Ende: der instrumentale Schluss wird genutzt (nicht erst ganz am Ende gemischt)
+        val a = song(vocal = listOf(10.0..120.0, 130.0..170.0))
         val b = song(bpm = 126f, vocal = listOf(20.0..100.0))
         val p = TransitionPlanner.plan(a, 30.0, 1f, b, pop)
-        assertTrue("Start ${p.mixSec} am hörbaren Ende (${a.soundEnd})", p.mixSec >= a.soundEnd - 2 * a.barSec - 1e-6)
+        assertTrue("Start ${p.mixSec} nach dem Gesang", p.mixSec >= 170.0 + TransitionPlanner.RELEASE_MARGIN - 1e-6)
+        assertTrue("Start ${p.mixSec} im instrumentalen Schluss, vor dem Ende (${a.soundEnd})", p.mixSec <= a.soundEnd - 2 * a.barSec)
         assertFalse("A singt nach dem Start nicht mehr", a.vocalBetween(p.mixSec, a.soundEnd))
+        assertTrue(p.type != TransitionType.FADE)
     }
 
     @Test
-    fun vocalsUntilTheEnd_cutOrFadeRightAfter() {
+    fun vocalsUntilTheEnd_echoOnTheLastWord() {
+        // A singt bis zum Schluss: kein Fade, sondern das letzte Wort klingt im Echo aus, B setzt auf der 1 ein
         val a = song(vocal = listOf(10.0..185.5))
         val b = song(bpm = 124f)
         val p = TransitionPlanner.plan(a, 30.0, 1f, b, pop)
-        assertTrue("Start ${p.mixSec}", p.mixSec >= 185.5 + TransitionPlanner.VOCAL_MARGIN - 1e-6)
-        assertTrue(p.type == TransitionType.CUT || p.type == TransitionType.FADE)
+        assertTrue("Start ${p.mixSec} nach dem Gesang", p.mixSec >= 185.5 - 1e-6)
+        assertEquals(p.reason, TransitionType.ECHO_OUT, p.type)
+        // B auf einem Downbeat: hier nach dem 8-Takte-Intro (leise), wo B "voll" wird – nie mitten in einer Phrase
+        assertEquals("B auf dem Downbeat nach dem leisen Intro", b.barTime(8), p.bStartSec, 1e-6)
+        assertFalse(b.midVocal(p.bStartSec))
     }
 
     @Test
-    fun unsureBeatGrid_noBeatmatching_shortFade() {
+    fun unsureBeatGrid_noBeatmatching_echoOut() {
+        // Raster von A unsicher: kein Beatmatching, aber trotzdem kein Fade – A klingt mit Echo aus, B setzt auf der 1 ein
         val a = song(conf = 0.3f, vocal = listOf(10.0..150.0))
         val b = song(bpm = 125f)
         val p = TransitionPlanner.plan(a, 30.0, 1f, b, pop)
-        assertEquals(TransitionType.FADE, p.type)
+        assertEquals(p.reason, TransitionType.ECHO_OUT, p.type)
         assertFalse(p.matchTempo)
         assertEquals(1f, p.tempoRatio, 0f)
-        assertTrue(p.lengthSec in 1.0..8.0)
         assertTrue(p.mixSec >= 150.5)
-        assertTrue(endOf(p, a, b) <= a.soundEnd + 0.6)
+        assertTrue(endOf(p, a, b) <= a.soundEnd + 2 * b.barSec)
     }
 
     @Test
@@ -161,19 +167,57 @@ class PlannerV2Test {
     }
 
     @Test
-    fun pop_neverUsesEffects() {
+    fun pop_shortMusicalTransitions_noFade() {
+        // Pop/Schlager/Rock: kurze, musikalische Übergänge (Blend, Bass-Swap, Echo-Out, Filter, Schnitt, Loop) – kein Fade
         val settings = PlannerSettings(style = MixStyle.CLUB)
         for (bpm in listOf(90f, 118f, 124f, 126f, 140f)) for (conf in listOf(0.2f, 0.95f)) {
             val p = TransitionPlanner.plan(song(conf = conf, vocal = listOf(5.0..120.0)), 30.0, 1f, song(bpm = bpm), settings)
-            assertTrue("$bpm/$conf → ${p.type}", p.type in setOf(TransitionType.BLEND, TransitionType.FADE, TransitionType.CUT))
+            assertTrue("$bpm/$conf → ${p.type}", p.type in setOf(TransitionType.BLEND, TransitionType.BASS_SWAP, TransitionType.ECHO_OUT,
+                TransitionType.FILTER, TransitionType.CUT, TransitionType.LOOP))
+            assertTrue("$bpm/$conf: höchstens 8 Takte", p.lengthBars <= 8)
         }
+    }
+
+    @Test
+    fun variety_exitTypesAlternate() {
+        // gleich gute Ausstiege wechseln sich ab (Echo-Out, Filter-Sweep, Schnitt) statt immer derselbe
+        val a = song(conf = 0.95f, vocal = listOf(5.0..150.0))
+        val b = song(bpm = 90f)                                  // Tempo zu verschieden: kein Blend
+        val seen = mutableSetOf<TransitionType>()
+        val recent = mutableListOf<TransitionType>()
+        repeat(6) {
+            val p = TransitionPlanner.plan(a, 30.0, 1f, b, pop, recent)
+            seen += p.type; recent += p.type
+        }
+        assertTrue("Arten: $seen", seen.size >= 3)
+        assertFalse(TransitionType.FADE in seen)
+    }
+
+    @Test
+    fun bEntry_skipsNearSilentStart() {
+        // B blendet die ersten 2 Takte fast lautlos ein: nach einem Echo-Out wäre das ein Loch – B startet beim 3. Takt
+        val b = song(bars = 96, intro = 0, silentBars = 2)
+        assertEquals(b.barTime(2), TransitionPlanner.bEntryHit(b), 1e-6)
+    }
+
+    @Test
+    fun bEntry_skipsLongQuietIntro_neverMidPhrase() {
+        // B: 16 Takte leises Intro, danach voll – bei einem Ausstieg (Echo/Schnitt) startet B dort, wo es voll wird
+        val b = song(bars = 96, intro = 16, vocal = listOf(60.0..90.0))
+        val t = TransitionPlanner.bEntryHit(b)
+        assertEquals(b.barTime(16), t, 1e-6)
+        // Gesang direkt am Ende des Intros: B startet auf dem Phrasenanfang, nie mitten in der Phrase
+        val b2 = song(bars = 96, intro = 16, vocal = listOf(28.0..60.0))
+        assertFalse(b2.midVocal(TransitionPlanner.bEntryHit(b2)))
     }
 
     @Test
     fun fadeOut_mixesInsideTheFade() {
         val a = song(bars = 100, outro = 0, fadeBars = 8, vocal = listOf(5.0..170.0))
         val p = TransitionPlanner.plan(a, 30.0, 1f, song(bpm = 124f), pop)
-        assertTrue("im Fade-out (${p.mixSec}, Fade ab ${a.fadeOutStart})", a.fadeOutStart > 0 && p.mixSec >= a.fadeOutStart)
+        // der Übergang reicht in den Fade-out hinein (B kommt, während A leiser wird) und ist am Ende fertig
+        val end = p.mixSec + p.lengthBars * a.barSec
+        assertTrue("im Fade-out (${p.mixSec}..$end, Fade ab ${a.fadeOutStart})", a.fadeOutStart > 0 && end > a.fadeOutStart && end <= a.soundEnd + 0.5)
     }
 
     @Test

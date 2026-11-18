@@ -152,7 +152,9 @@ class TransitionPlannerTest {
         val pos = a.barTime(90)
         val p = TransitionPlanner.plan(a, pos, 1f, track(bpm = 125f), PlannerSettings())
         assertTrue("mixBar=${p.mixBar}", p.mixBar >= 92)
-        assertTrue("type=${p.type} len=${p.lengthBars}", p.type !in TransitionPlanner.blendTypes || p.mixBar + p.lengthBars <= a.endBar)
+        // Loop als Brücke darf über das Ende hinausgehen (A loopt seinen letzten instrumentalen Takt)
+        assertTrue("type=${p.type} len=${p.lengthBars}", p.type !in TransitionPlanner.blendTypes || p.type == TransitionType.LOOP ||
+            p.mixBar + p.lengthBars <= a.endBar)
     }
 
     // ---------- Länge passend zum Song-Paar + Begründung ----------

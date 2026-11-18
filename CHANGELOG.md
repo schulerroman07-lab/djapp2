@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.2 – Mehr echte DJ-Übergänge statt kurzer Fades
+
+### Planer Version 3 (neue Regeln, Fade nur als letzter Ausweg)
+- **Prüfreihenfolge:** (a) Blend/Bass-Swap im Takt, wenn Tempo und Beat-Raster genau an der Mix-Stelle passen
+  (Techno/House 16–32 Takte im Outro, Pop/Schlager/Rock 4–8 Takte im instrumentalen Schluss bzw. Fade-out,
+  auf der Phrase) → (d) Loop des letzten instrumentalen Takts als Brücke → (b) Echo-Out bzw. Filter-Sweep →
+  (c) Schnitt auf die 1 → (e) Fade. Gleich gute Arten wechseln sich ab.
+- **Echo-Out / Hall:** A klingt auf einer Phrasengrenze nach dem letzten Gesang aus; singt A bis zum Schluss,
+  bekommt das letzte Wort ein Echo (oder dezenten Hall), und B setzt auf seinem Downbeat ein – bei passendem Tempo
+  im Takt von A, sonst im eigenen Tempo (auch bei unsicherem Beat-Raster).
+- **Filter-Sweep** (2 Takte): A wird mit einem Hochpass in einem Takt "weggezogen", B kommt auf der 1. Der lange
+  Filter-Blend (Techno/House) bleibt.
+- **Gesang (neue Regeln):** nie zwei Gesangsphrasen voll übereinander. Spielt A weiter (Blend, Loop), darf B ab der
+  zweiten Hälfte singen (über dem instrumentalen Schluss von A). Endet A beim Einsatz (Echo, Hall, Schnitt,
+  Sweep), darf B sofort singen – vom alten Song klingt höchstens das letzte Wort leise im Echo aus.
+- **Einstieg von B:** auf einem Downbeat; fast stille Anfangstakte und lange, ruhige Intros (≥ 8 Takte) werden
+  übersprungen (Start auf der Phrase, wo B "voll" wird). Nie mitten in einer Gesangsphrase und nicht direkt
+  vor einem Gesangsbeginn (Auftakt).
+- **Ende des Gesangs von A:** Schwelle 0,15, Gesang < 4 s vor dem Ende gilt bis zum Ende, Übergang frühestens
+  2 s nach dem letzten erkannten Gesang. An den Übungs-Songs bestimmt: gleich selten zu früh wie die alte,
+  sehr vorsichtige Regel (30 s), aber der instrumentale Schluss ist 4-mal so oft nutzbar.
+- "Weiter"/"Zurück", Früh-Übergang und vom DJ gewählte Arten bleiben wie bisher.
+- Tests: Planer-Tests an die neuen Regeln angepasst (u. a. Pop ohne Fade, Abwechslung, B-Einstieg); Zufallstest
+  mit 3000 Song-Paaren prüft: nie Gesang voll über Gesang, nie Einstieg mitten in einer Phrase, höchstens 20 % Fades.
+
+### Messung erweitert
+- Anteil der Übergangsarten und Fades; Gesang über Gesang getrennt in "voll" (A weniger als 6 dB leiser) und
+  "ausklingend" (Dauer in Takten); der Echo-/Hall-Schweif von A zählt dabei mit. Einsatz gegen das Ende der letzten
+  vollen Gesangsphrase; B-Einstieg mitten in einer Phrase; Buckel durch Überlagerung (Mix gegen lauteren Song allein).
+
 ## 2.1 – Übergänge mit echter Musik, Drag-Fehler
 
 ### Drag-Fehler in "Als Nächstes" behoben

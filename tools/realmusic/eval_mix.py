@@ -201,6 +201,10 @@ def evaluate(n, mixdir, rdir, pcmdir, cache):
     during = st[int(t0 / FR):max(int(t0 / FR) + 1, int(t1 / FR))]
     ref_lvl = max(np.median(before) if len(before) else -99, np.median(after) if len(after) else -99)
     res["bump_db"] = float(np.max(during) - ref_lvl) if len(during) else 0.0
+    # Buckel durch die Überlagerung: Mix gegen den lauteren der beiden Songs allein (ohne die Dynamik von B selbst)
+    sa = smooth_db(env_db(solo_a, OUT_RATE)[:nfr], 4); sb = smooth_db(env_db(solo_b, OUT_RATE)[:nfr], 4)
+    i0s, i1s = int(t0 / FR), max(int(t0 / FR) + 1, int(t1 / FR))
+    res["overlap_bump_db"] = float(np.max(st[i0s:i1s] - np.maximum(sa[i0s:i1s], sb[i0s:i1s]))) if i1s > i0s else 0.0
     res["dip_db"] = float(np.min(during) - min(np.median(before) if len(before) else 0, np.median(after) if len(after) else 0)) if len(during) else 0.0
     # "Loch" zwischen den Songs: Zeit, in der der Mix mehr als 20 dB unter dem leiseren der beiden Songs liegt
     body = min(np.median(before) if len(before) else -99, np.median(after) if len(after) else -99)
@@ -353,8 +357,12 @@ def block(rows, title):
     gaps = [r["gap_sec"] for r in ok]
     L.append(f"Loch zwischen den Songs (Mix > 20 dB leiser): Median {np.median(gaps):.1f} s, max {max(gaps):.1f} s, "
              f"Übergänge mit Loch ≥ 1 s: {sum(g >= 1.0 for g in gaps)}")
+    ob = [r for r in ok if r.get("overlap_bump_db", 0) > 3.0]
+    L.append(f"Buckel durch Überlagerung (Mix > lauterer Song allein + 3 dB): {len(ob)}, höchstens "
+             f"{max([r.get('overlap_bump_db', 0) for r in ok], default=0):+.1f} dB" + (f" → {[(r['n'], round(r['overlap_bump_db'], 1)) for r in ob]}" if ob else ""))
     bumps = [r for r in ok if r["bump_db"] > 3.0]
-    L.append(f"Lautheits-Buckel > 3 dB: {len(bumps)}" + (f" → {[(r['n'], round(r['bump_db'], 1)) for r in bumps]}" if bumps else ""))
+    L.append(f"  Pegel-Sprung zum neuen Song > 3 dB (Mix gegen vorher/nachher, enthält die Dynamik von B): {len(bumps)}"
+             + (f" → {[(r['n'], round(r['bump_db'], 1)) for r in bumps]}" if bumps else ""))
     L.append(f"Höchster Spitzenwert: {max(r['peak'] for r in ok):.2f} (Begrenzer bei 0,90)")
     return L
 

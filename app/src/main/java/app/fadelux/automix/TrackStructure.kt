@@ -62,6 +62,11 @@ data class TrackStructure(
         if (vocalKnown) vocalSegments.any { it.start < to && it.endInclusive > from }
         else vocalIn(barAt(from), kotlin.math.ceil((to - firstDownbeat) / barSec).toInt())
 
+    /** Liegt [t] mitten in einer Gesangsphrase (nicht an ihrem Anfang)? Dort darf ein Song nie einsetzen. */
+    fun midVocal(t: Double): Boolean =
+        if (vocalKnown) vocalSegments.any { it.start < t - 0.3 && it.endInclusive > t + 0.3 }
+        else barAt(t).let { k -> k in 1 until barCount && bars[k].vocal && bars[k - 1].vocal }
+
     /** Beginn des ersten Gesangs ab [from] (Sekunden), oder null. */
     fun nextVocalStart(from: Double): Double? =
         if (vocalKnown) vocalSegments.firstOrNull { it.endInclusive > from }?.start?.coerceAtLeast(from)
@@ -130,16 +135,18 @@ const val GRID_DEV_MAX_MS = 20
 object StructureAnalyzer {
     /** Schwelle der Gesangs-Wahrscheinlichkeit (an den Übungs-Songs bestimmt, siehe train_vocal_net.py):
      *  bewusst tief – lieber Gesang zu viel erkennen als zu wenig. */
-    var vocalThreshold = 0.2f
+    var vocalThreshold = 0.15f
 
     /**
      * Fenster am Song-Ende: Endet der erkannte Gesang weniger als so viele Sekunden vor dem hörbaren Ende, gilt
      * er bis zum Ende – die Erkennung verpasst leise Gesangsreste am Schluss (Ad-libs, Chor im Fade-out) oft.
-     * Pop/Schlager/Rock mischen ohnehin ganz am Ende (30 s); Techno/House behalten ihr langes Outro (12 s).
-     * An den 102 Übungs-Songs bestimmt: letzter Gesang > 0,5 s zu früh erkannt bei 8 statt 32 Songs.
+     * Bestimmt zusammen mit [vocalThreshold] und TransitionPlanner.RELEASE_MARGIN an den Übungs-Songs (jeder Song
+     * nur von einem Netz beurteilt, das ihn nie gesehen hat): Übergang vor dem Ende der letzten vollen Phrase bei
+     * 4 von 84 Songs (wie mit der früheren, viel vorsichtigeren Regel), aber der instrumentale Schluss ist bei
+     * 38 % statt 10 % der Songs nutzbar (A spielt nach dem Einsatz noch ≥ 4 s) – für Blend, Schnitt, Filter.
      */
-    const val VOCAL_TAIL_SONG = 30.0
-    const val VOCAL_TAIL_ELECTRONIC = 12.0
+    const val VOCAL_TAIL_SONG = 4.0
+    const val VOCAL_TAIL_ELECTRONIC = 4.0
     const val VOCAL_HOP = 0.25
 
     /** Gesangs-Abschnitte aus der Wahrscheinlichkeit: Median über 1,25 s, Lücken < 1 s schliessen, Stücke < 0,5 s weg. */
